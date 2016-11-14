@@ -1,0 +1,2765 @@
+/*
+*********************************************************************************************************
+*                                              APPLICATION CODE
+*
+*                          (c) Copyright 2015; Guangdong Hydrogen Energy Science And Technology Co.,Ltd
+*
+*               All rights reserved.  Protected by international copyright laws.
+*               Knowledge of the source code may NOT be used without authorization.
+*********************************************************************************************************
+*/
+/*
+*********************************************************************************************************
+* Filename      : bsp.c
+* Version       : V1.00
+* Programmer(s) : SunKing.Yun
+*********************************************************************************************************
+*/
+
+/*
+*********************************************************************************************************
+*                                             INCLUDE FILES
+*********************************************************************************************************
+*/
+#define  BSP_MODULE
+#include <bsp.h>
+#include "app_system_real_time_parameters.h"
+#include "app_wireness_communicate_task.h"
+#include "bsp_speed_adjust_device.h"
+#include <app_speed_control_device_monitor_task.h>
+#include "bsp_pvd.h"
+
+/*
+*********************************************************************************************************
+*                                           MACRO DEFINITIONS
+*********************************************************************************************************
+*/
+#define MX6675_Bits_NUM                 16u
+
+#define ANALOG_TEMP_TO_MAX6675_LSB_RATIO   4.0 //MAX6675的LSB数值与温度的比例常数
+
+#define MAX6675_DATA_CLK_DELAY_SYSTEM_CYCLES    (BSP_CPU_ClkFreq()/10000000 + 1)    //读MAX6675数据时，读取时钟需要保持的系统时钟周期数
+#define MAX6675_DATA_READ_DELAY_SYSTEM_CYCLES   ((MAX6675_DATA_CLK_DELAY_SYSTEM_CYCLES + 1) / 2) //读MAX6675数据时，读取时钟就绪后，为保证准确而将读取动作延后的系统时钟数
+
+#define MAX6675_CS_YES   GPIO_ResetBits(BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT, BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT_NMB);   //MAX6675片选选中
+#define MAX6675_CS_NO    GPIO_SetBits(BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT, BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT_NMB);
+#define MAX6675_SCK_UP   GPIO_SetBits(BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT, BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT_NMB);
+#define MAX6675_SCK_DOWN GPIO_ResetBits(BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT, BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT_NMB);
+
+#define GET_REFORMER_TEMP_DATA_BY_BIT   GPIO_ReadInputDataBit(BSP_GPIOC_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT,BSP_GPIOC_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB)
+#define GET_FIRE_TEMP_DATA_BY_BIT       GPIO_ReadInputDataBit(BSP_GPIOC_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT,BSP_GPIOC_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB)
+
+#define NUMBER_OF_THE_PUMP_SPEED_GRADES     (200u)
+#define DAC_DELT_LSB_PER_PUMP_SPEED         (4095 / ((float)NUMBER_OF_THE_PUMP_SPEED_GRADES))      //    4095/ 200
+
+#define NUMBER_OF_THE_HYDROGEN_FAN_SPEED_GRADES     (200)
+
+#define NUMBER_OF_THE_STACK_FAN_SPEED_GRADES        (200)
+#define TIMER_UPDATE_NUMBER                         (999)
+
+#define TIMER_CMP_DELT_NUMBER_PER_STACK_FAN_SPEED   ((TIMER_UPDATE_NUMBER + 1) / ((float)NUMBER_OF_THE_STACK_FAN_SPEED_GRADES))
+#define TIMER_CMP_DELT_NUMBER_PER_HYDROGEN_FAN_SPEED   ((TIMER_UPDATE_NUMBER + 1) / ((float)NUMBER_OF_THE_HYDROGEN_FAN_SPEED_GRADES ))
+
+#define ADC1_DR_Address     ((uint32_t)ADC1_BASE + 0x4C)
+#define TIM_CCR1_Address    ((uint32_t)TIM3_BASE + 0x34)
+#define TIM_CCR2_Address    ((uint32_t)TIM3_BASE + 0x38)
+#define TIM_CCR3_Address    ((uint32_t)TIM3_BASE + 0x3C)
+#define TIM_CCR4_Address    ((uint32_t)TIM3_BASE + 0x40)
+/*
+*********************************************************************************************************
+*                                         OS-RELATED    VARIABLES
+*********************************************************************************************************
+*/
+extern      OS_SEM      g_stAnaSigConvertFinishSem;
+
+
+/*
+*********************************************************************************************************
+*                                           GLOBAL VARIABLES
+*********************************************************************************************************
+*/
+
+SWITCH_TYPE_VARIABLE_Typedef g_eSpdCaptureWorkSwitch[4] = {OFF};
+uint8_t  g_eSpdCaptureTriggersCrossCycleNmb[4] = {0};
+uint16_t g_u16SpdCaptureLastTimeCounter[4] = {0};
+uint16_t g_u16SpdCaptureFrequency[4] = {0};
+
+/*
+*********************************************************************************************************
+*                                           LOCAL VARIABLES
+*********************************************************************************************************
+*/
+CPU_INT32U      BSP_CPU_ClkFreq_MHz;
+
+
+/*
+*********************************************************************************************************
+*                                      LOCAL FUNCTION PROTOTYPES
+*********************************************************************************************************
+*/
+
+static  void  BSP_AnaSensorInit(void);
+static  void  BSP_AnaSensorPortsInit(void);
+static  void  BSP_AnaSensorADCNVIC_Init(void);
+static  void  BSP_AdcNormalConvertStart(vu16 *i_pBuffAddr, uint8_t i_u8ChUsedNmb);
+
+static  void  BSP_AnaSigConvertFinishHandler(void);
+
+static  void  BSP_DigSensorInit(void);
+
+static  void  BSP_SpdCtrlDevicesInit(void);
+
+static  void  BSP_PumpCtrlInit(void);
+static  void  BSP_PumpPwrOn(void);
+static  void  BSP_PumpPwrOff(void);
+static  void  BSP_HydrgProducerPumpSpdCheckPortInit(void);
+
+static  void  BSP_HydrgFanCtrInit(void);
+static  void  BSP_HydrgFanPwrOn(void);
+static  void  BSP_HydrgFanPwrOff(void);
+static  void  BSP_HydrgProducerFanSpdCheckPortInit(void);
+
+void  BSP_BuzzerInit(void);
+
+void  BSP_CmdButtonInit(void);
+void  EXTI15_10_IRQHandler(void);
+void  CmdButtonFuncDisable(void);
+void  CmdButtonFuncEnable(void);
+void  TIM7_DlyMilSecondsInit(u16 i_u16DlyMilSeconds);
+void  CmdButtonStatuCheck(void);
+void  StartCmdButtonActionCheckDly(void);
+void  TIM7_DlyMilSecondsInit(u16 i_u16DlyMilSeconds);
+
+static  void  BSP_SwTypePwrDeviceStatuInit(void);
+
+static  void  BSP_StackFanCtrInit(void);
+static  void  BSP_StackFanPwrOn(void);
+static  void  BSP_StackFanPwrOff(void);
+//static  void  BSP_StackFan1SpdCheckPortInit(void);
+//static  void  BSP_StackFan2SpdCheckPortInit(void);
+
+static  void  BSP_DeviceSpdCheckPortInit(void);
+static void BSP_DevSpdCaptureFinishedHandler(void);
+
+/*
+*********************************************************************************************************
+*                                             REGISTERS
+*********************************************************************************************************
+*/
+#define  DWT_CR      *(CPU_REG32 *)0xE0001000
+#define  DWT_CYCCNT  *(CPU_REG32 *)0xE0001004
+#define  DEM_CR      *(CPU_REG32 *)0xE000EDFC
+#define  DBGMCU_CR   *(CPU_REG32 *)0xE0042004
+
+/*
+*********************************************************************************************************
+*                                            REGISTER BITS
+*********************************************************************************************************
+*/
+#define  DBGMCU_CR_TRACE_IOEN_MASK       0x10
+#define  DBGMCU_CR_TRACE_MODE_ASYNC      0x00
+#define  DBGMCU_CR_TRACE_MODE_SYNC_01    0x40
+#define  DBGMCU_CR_TRACE_MODE_SYNC_02    0x80
+#define  DBGMCU_CR_TRACE_MODE_SYNC_04    0xC0
+#define  DBGMCU_CR_TRACE_MODE_MASK       0xC0
+
+#define  DEM_CR_TRCENA                   (1 << 24)
+
+#define  DWT_CR_CYCCNTENA                (1 <<  0)
+
+/*
+*********************************************************************************************************
+*                                     LOCAL CONFIGURATION ERRORS
+*********************************************************************************************************
+*/
+/*
+#if ((CPU_CFG_TS_TMR_EN          != DEF_ENABLED) && \
+     (APP_CFG_PROBE_OS_PLUGIN_EN == DEF_ENABLED) && \
+     (OS_PROBE_HOOKS_EN          >  0u))
+#error  "CPU_CFG_TS_EN                  illegally #define'd in 'cpu.h'"
+#error  "                              [MUST be  DEF_ENABLED] when    "
+#error  "                               using uC/Probe COM modules    "
+#endif
+
+*/
+/*
+*********************************************************************************************************
+*                                               BSP_Init()
+*
+* Description : Initialize the Board Support Package (BSP).
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : (1) This function SHOULD be called before any other BSP function is called.
+*
+*               (2) CPU instruction / data tracing requires the use of the following pins :
+*                   (a) (1) Aysynchronous     :  PB[3]
+*                       (2) Synchronous 1-bit :  PE[3:2]
+*                       (3) Synchronous 2-bit :  PE[4:2]
+*                       (4) Synchronous 4-bit :  PE[6:2]
+*
+*                   (b) The uC-Eval board MAY utilize the following pins depending on the application :
+*                       (1) PE[5], MII_INT
+*                       (1) PE[6], SDCard_Detection
+*
+*                   (c) The application may wish to adjust the trace bus width depending on I/O
+*                       requirements.
+*********************************************************************************************************
+*/
+
+void  BSP_Init(void)
+{
+    ErrorStatus HSEStartUpStatus;
+
+    BSP_IntInit();
+
+    RCC_DeInit();
+    RCC_HSEConfig(RCC_HSE_ON);
+    HSEStartUpStatus = RCC_WaitForHSEStartUp();
+
+    //HSE起振成功
+    if(HSEStartUpStatus == SUCCESS)
+    {
+        RCC_PREDIV2Config(RCC_PREDIV2_Div2);                        /* Fprediv2 = HSE      /  2 =  4MHz.                    */
+        RCC_PLL2Config(RCC_PLL2Mul_10);                             /* PLL2     = Fprediv2 *  10 = 40MHz.                    */
+        RCC_PLL2Cmd(ENABLE);
+        RCC_PLL3Config(RCC_PLL3Mul_10);                             /* PLL3     = Fprediv2 * 10 = 40MHz.                    */
+        RCC_PLL3Cmd(ENABLE);
+
+        RCC_HCLKConfig(RCC_SYSCLK_Div1);                            /* HCLK    = AHBCLK  = PLL / AHBPRES(1) = 72MHz.       */
+        RCC_PCLK2Config(RCC_HCLK_Div1);                             /* APB2CLK = AHBCLK  / APB2DIV(1)  = 72MHz.             */
+        RCC_PCLK1Config(RCC_HCLK_Div2);                             /* APB1CLK = AHBCLK  / APB1DIV(2)  = 36MHz (max).       */
+        RCC_ADCCLKConfig(RCC_PCLK2_Div6);                           /* ADCCLK  = AHBCLK  / APB2DIV / 6 = 12MHz.             */
+        RCC_OTGFSCLKConfig(RCC_OTGFSCLKSource_PLLVCO_Div3);        /* OTGCLK  = PLLVCO / USBPRES(3)  = 144MHz / 3 = 48MHz */
+
+        FLASH_SetLatency(FLASH_Latency_2);                          /* 设置FLASH延时周期数为2,when HCLK > 48MHz.*/
+        FLASH_PrefetchBufferCmd(FLASH_PrefetchBuffer_Enable);        /*使能预取缓存*/
+
+        while(RCC_GetFlagStatus(RCC_FLAG_PLL2RDY) == RESET)         /* Wait for PLL2 to lock.                               */
+        {
+            ;
+        }
+
+        while(RCC_GetFlagStatus(RCC_FLAG_PLL3RDY) == RESET)         /* Wait for PLL3 to lock.                               */
+        {
+            ;
+        }
+
+        /* Fprediv1 = PLL2 / 5 =  8MHz.                         */
+        RCC_PREDIV1Config(RCC_PREDIV1_Source_PLL2, RCC_PREDIV1_Div5);
+        RCC_PLLConfig(RCC_PLLSource_PREDIV1, RCC_PLLMul_9);      /* PLL1 = Fprediv1 * 9 = 72Mhz.                         */
+        RCC_PLLCmd(ENABLE);
+
+        while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET)         /* Wait for PLL1 to lock.                               */
+        {
+            ;
+        }
+
+        RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);                 /* HCLK = SYSCLK = PLL = 72MHz.                        */
+
+        while(RCC_GetSYSCLKSource() != 0x08)
+        {
+            ;
+        }
+    }
+
+    BSP_CPU_ClkFreq_MHz = BSP_CPU_ClkFreq() / (CPU_INT32U)1000000;
+    BSP_CPU_ClkFreq_MHz = BSP_CPU_ClkFreq_MHz;                  /* Surpress compiler warning BSP_CPU_ClkFreq_MHz    ... */
+    /* ... set and not used.                                */
+
+
+    BSP_AnaSensorInit();            // 模拟传感器初始化
+    BSP_DigSensorInit();            // 数字传感器初始化——K型热电偶适配的MAX6675
+    BSP_SpdCtrlDevicesInit();       // 调速设备
+    BSP_DeviceSpdCheckPortInit();   // 测速引脚初始化
+    BSP_SwTypePwrDeviceStatuInit(); // 开关型输出设备
+
+
+//    Bsp_PVD_Configuration();        // 掉电保护开关引脚初始化，默认开启
+//    BSP_BuzzerInit();               // 蜂鸣器
+ //   BSP_CmdButtonInit();            // 硬件按钮
+
+#ifdef TRACE_EN                                                 /* See project / compiler preprocessor options.         */
+    DBGMCU_CR |=  DBGMCU_CR_TRACE_IOEN_MASK;                    /* Enable tracing (see Note #2).                        */
+    DBGMCU_CR &= ~DBGMCU_CR_TRACE_MODE_MASK;                    /* Clr trace mode sel bits.                             */
+    DBGMCU_CR |=  DBGMCU_CR_TRACE_MODE_SYNC_04;                 /* Cfg trace mode to synch 4-bit.                       */
+#endif
+}
+
+
+/*
+*********************************************************************************************************
+*                                            BSP_CPU_ClkFreq()
+*
+* Description : Read CPU registers to determine the CPU clock frequency of the chip.
+*
+* Argument(s) : none.
+*
+* Return(s)   : The CPU clock frequency, in Hz.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+
+CPU_INT32U  BSP_CPU_ClkFreq(void)
+{
+    RCC_ClocksTypeDef  rcc_clocks;
+
+
+    RCC_GetClocksFreq(&rcc_clocks);
+
+    return ((CPU_INT32U)rcc_clocks.HCLK_Frequency);
+}
+
+/*
+*********************************************************************************************************
+*********************************************************************************************************
+*                                      ANALOG INPUT SERSOR FUNCTIONS
+*********************************************************************************************************
+*********************************************************************************************************
+*/
+/*
+*********************************************************************************************************
+*                                        BSP_AnaSensorInit ()
+*
+* Description : Initialize the sensor.
+*
+* Argument(s) : none.
+*
+* Return(s)   :
+*
+* Caller(s)   : Application
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static void  BSP_AnaSensorInit(void)
+{
+    BSP_AnaSensorPortsInit();
+    BSP_AnaSensorADCNVIC_Init();    // ADC DMA1channel1中断优先级配置
+}
+
+/*
+*********************************************************************************************************
+*                                             BSP_AnaSensorPortsInit()
+*
+* Description : Initialize the signal Port(s) for the analog sersor(s).
+*               模拟量传感器引脚初始化
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_Init().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static  void  BSP_AnaSensorPortsInit(void)
+{
+    GPIO_InitTypeDef  gpio_init;
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);//使能GPIO口A/B/C的时钟
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_ADC1, ENABLE);
+
+    gpio_init.GPIO_Pin   = BSP_GPIOB_STACK_VOLTAGE_ANA_SIGNAL_PORT_NMB; // 电堆电压传感器
+    gpio_init.GPIO_Speed = GPIO_Speed_50MHz;
+    gpio_init.GPIO_Mode  = GPIO_Mode_AIN;
+    GPIO_Init(BSP_GPIOB_STACK_VOLTAGE_ANA_SIGNAL_PORT, &gpio_init);
+
+    gpio_init.GPIO_Pin   = BSP_GPIOA_STACK_CURRENT_ANA_SIGNAL_PORT_NMB; //电堆电流传感器
+    GPIO_Init(BSP_GPIOA_STACK_CURRENT_ANA_SIGNAL_PORT, &gpio_init);
+
+    gpio_init.GPIO_Pin   = BSP_GPIOB_STACK_HYDROGEN_PRESS_ONE_ANA_SIGNAL_PORT_NMB;  //气压1传感器
+    GPIO_Init(BSP_GPIOB_STACK_HYDROGEN_PRESS_ONE_ANA_SIGNAL_PORT, &gpio_init);
+
+    gpio_init.GPIO_Pin   = BSP_GPIOA_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT_NMB;  //气压2传感器
+    GPIO_Init(BSP_GPIOA_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT, &gpio_init);
+
+    gpio_init.GPIO_Pin   = BSP_GPIOA_LIQUID_LEVEL_ANA_SIGNAL_PORT_NMB;  // 液位传感器
+    GPIO_Init(BSP_GPIOA_LIQUID_LEVEL_ANA_SIGNAL_PORT, &gpio_init);
+
+    gpio_init.GPIO_Pin   = BSP_GPIOA_LIQUID_PRESS_ANA_SIGNAL_PORT_NMB;  //液压传感器
+    GPIO_Init(BSP_GPIOA_LIQUID_PRESS_ANA_SIGNAL_PORT, &gpio_init);
+
+//    gpio_init.GPIO_Pin   = BSP_GPIOA_RSVD_ANA_SIGNAL_TWO_PORT_NMB;  //预留模拟输入2传感器
+//    GPIO_Init(BSP_GPIOA_RSVD_ANA_SIGNAL_TWO_PORT, &gpio_init);
+
+//    gpio_init.GPIO_Pin   = BSP_GPIOB_RSVD_ANA_SIGNAL_THREE_PORT_NMB;    //预留模拟输入3传感器
+//    GPIO_Init(BSP_GPIOB_RSVD_ANA_SIGNAL_THREE_PORT, &gpio_init);
+
+    gpio_init.GPIO_Pin   = BSP_GPIOC_STACK_TEMP_ANA_SIGNAL_PORT_NMB;    //电堆温度传感器
+    GPIO_Init(BSP_GPIOC_STACK_TEMP_ANA_SIGNAL_PORT, &gpio_init);
+}
+
+void BSP_AnaSensorADCNVIC_Init(void)
+{
+    NVIC_InitTypeDef NVIC_InitStructure;
+
+    /* Configure and enable DMA1_Channel1 interrupt */
+    NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel1_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+}
+/*
+*********************************************************************************************************
+*                                             BSP_AnaSensorConvertStart()()
+*
+* Description : Start the conversion of the analog sensor(s).
+*
+* Argument(s) : *i_pBuffAddr is the head address of the array that to store the value after analog to digital convert.
+*               i_u8ChUsedNmb is the number of the channels that has been used in the project.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void BSP_AnaSensorConvertStart(vu16 *i_pBuffAddr, uint8_t i_u8ChUsedNmb)
+{
+    //标准模数转换开始
+    BSP_AdcNormalConvertStart(i_pBuffAddr, i_u8ChUsedNmb);
+}
+/*
+*********************************************************************************************************
+*                                             BSP_AdcNormalConvertStart()()
+*
+* Description : Start the work of ADC.
+*               开始AD转换(ADC1)
+* Argument(s) : *i_pBuffAddr is the head address of the array that to store the value after analog to digital convert.
+*               i_u8ChUsedNmb is the number of the channels that has been used in the project.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_AnaSensorConvertStart().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static void BSP_AdcNormalConvertStart(vu16 *i_pBuffAddr, uint8_t i_u8ChUsedNmb)
+{
+    ADC_InitTypeDef ADC_InitStructure;
+    DMA_InitTypeDef DMA_InitStructure;
+
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);  //使能DMA1时钟
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_ADC1, ENABLE);
+    RCC_ADCCLKConfig(RCC_PCLK2_Div6);   //设置ADC分频因子6 72M/6=12,ADC时钟最大频率不能超过14M
+
+    /* DMA1 channel1 configuration ----------------------------------------------*/
+    DMA_DeInit(DMA1_Channel1);
+    DMA_InitStructure.DMA_PeripheralBaseAddr = ADC1_DR_Address;
+    DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)i_pBuffAddr;   //DMA外设基地址(_u16OriginalDigValue)
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;              //外设作为数据传输来源
+    DMA_InitStructure.DMA_BufferSize = i_u8ChUsedNmb;
+    DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;//数据宽度为16位
+    DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+    DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+    DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+    DMA_Init(DMA1_Channel1, &DMA_InitStructure);
+    /* Enable DMA1 channel1 */
+    DMA_Cmd(DMA1_Channel1, ENABLE);
+    DMA_ITConfig(DMA1_Channel1, DMA_IT_TC, ENABLE);
+    BSP_IntVectSet(BSP_INT_ID_DMA1_CH1, BSP_AnaSigConvertFinishHandler);//AD装换完成信号量发送
+    BSP_IntEn(BSP_INT_ID_DMA1_CH1);
+
+    /* ADC1 configuration ------------------------------------------------------*/
+    ADC_DeInit(ADC1);
+    ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;          //独立工作模式
+    ADC_InitStructure.ADC_ScanConvMode = ENABLE;                //允许扫描——多通道
+    ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;         //非连续转换模式
+    ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;//转换由软件而不是外部触发启动
+    ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;      //数据右对齐
+    ADC_InitStructure.ADC_NbrOfChannel = i_u8ChUsedNmb;
+    ADC_Init(ADC1, &ADC_InitStructure);
+    /*设置规则组通道、采样顺序、采样时间 */
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_2, 1, ADC_SampleTime_239Cycles5);    // 电堆温度
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_9, 2, ADC_SampleTime_239Cycles5);    // 电堆电压
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_3, 3, ADC_SampleTime_239Cycles5);    // 电堆电流
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 4, ADC_SampleTime_239Cycles5);    // 液压
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 5, ADC_SampleTime_239Cycles5);    // 气压1
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_7, 6, ADC_SampleTime_239Cycles5);    // 气压2
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 7, ADC_SampleTime_239Cycles5);    // 液位
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 8, ADC_SampleTime_239Cycles5);    // 预留
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_7, 9, ADC_SampleTime_239Cycles5);    // 预留
+    /* Enable ADC1 DMA */
+    ADC_DMACmd(ADC1, ENABLE);
+
+    /* Enable ADC1 */
+    ADC_Cmd(ADC1, ENABLE);
+
+    /* Enable ADC1 reset calibration register */
+    ADC_ResetCalibration(ADC1);
+
+    /* get the status of ADC1 reset calibration register */
+    while(ADC_GetResetCalibrationStatus(ADC1));
+
+    /* Start ADC1 calibration */
+    ADC_StartCalibration(ADC1);
+
+    /* Check the end of ADC1 calibration */
+    while(ADC_GetCalibrationStatus(ADC1));  //等待校准结果
+
+    ADC_SoftwareStartConvCmd(ADC1, ENABLE); //使能软件转换启动功能
+}
+/*
+*********************************************************************************************************
+*                                        BSP_AnaSigConvertFinishHandlerDummy()
+*
+* Description : Send post that the adc conversion is finish to the task.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_IntHandler().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void BSP_AnaSigConvertFinishHandler(void)
+{
+    OS_ERR      err;
+
+    if(DMA_GetITStatus(DMA1_IT_TC1) != RESET)
+    {
+        //发送信号量，告知ADC的DMA转换已经完成
+        OSSemPost(&g_stAnaSigConvertFinishSem,
+                  OS_OPT_POST_1,
+                  &err);
+        DMA_ClearITPendingBit(DMA1_IT_TC1);
+    }
+}
+/*
+*********************************************************************************************************
+*********************************************************************************************************
+*                                      DIGITAL INPUT SERSOR FUNCTIONS
+*********************************************************************************************************
+*********************************************************************************************************
+*/
+/*
+*********************************************************************************************************
+*                                        BSP_DigSensorInit ()
+*
+* Description : Initialize the ports of the MCU that connect to MAX6675 which is between the MCU and the K-type thermocouple sensor(s).
+*               初始化芯片与热电偶连接引脚
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_Init().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+
+static void  BSP_DigSensorInit(void)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOB , ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);    //使能功能复用IO
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);    //SWJ调试接口完全失能
+
+    /******配置GPIOB口引脚*********/
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOC_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB | BSP_GPIOC_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT_NMB | BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT_NMB;
+    GPIO_Init(GPIOD, &GPIO_InitStructure);
+    GPIO_ResetBits(GPIOD, BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT_NMB | BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                             DigTempSensorConvertStart()
+*
+* Description : Start the conversion of the Digital temperature sensor(s).
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void DigTempSensorConvertStart()
+{
+    BSP_MAX6675ConvertStart();
+}
+/*
+*********************************************************************************************************
+*                                             BSP_MAX6675ConvertStart()()
+*
+* Description : Start the conversion of the MAX6675.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : DigTempSensorConvertStart().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void BSP_MAX6675ConvertStart(void)
+{
+    MAX6675_CS_NO;
+}
+
+/*
+*********************************************************************************************************
+*                                             BSP_MAX6675_Temp_Read()()
+*
+* Description : Get the convert values of the MAX6675.
+*
+* Argument(s) :  *i_fTemp   存放温度数据的数组
+*                *err       存放错误标志的数组
+* Return(s)   : unsigned int16.
+*
+* Caller(s)   : Applition.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void BSP_MAX6675_Temp_Read(float *i_fTemp, uint8_t *err)
+{
+    int i, j;
+    uint16_t m_temp[2] = {0};
+
+    MAX6675_CS_YES;
+
+    for(i = 0; i < MAX6675_DATA_CLK_DELAY_SYSTEM_CYCLES; i++);      // 由于片选选中后，输入的MX6675的时钟需要滞后100ns，所以在此空延时以满足时间要求
+
+    for(j = 0; j < MX6675_Bits_NUM; j++)
+    {
+        MAX6675_SCK_UP;
+
+        for(i = 0; i < MAX6675_DATA_READ_DELAY_SYSTEM_CYCLES; i++); // 因MAX6675时钟电平维持时间不得短于100ns，所以在读取动作前后各空延时几个周期，保证数据准确性
+
+        m_temp[0] = (m_temp[0] << 1) | GET_REFORMER_TEMP_DATA_BY_BIT;
+        m_temp[1] = (m_temp[1] << 1) | GET_FIRE_TEMP_DATA_BY_BIT;
+
+        for(i = 0; i < MAX6675_DATA_READ_DELAY_SYSTEM_CYCLES; i++);
+
+        MAX6675_SCK_DOWN;
+
+        for(i = 0; i < MAX6675_DATA_CLK_DELAY_SYSTEM_CYCLES; i++);
+    }
+
+    MAX6675_CS_NO;
+
+    if((m_temp[0] & (1 << 15 | 4)) == 0) //数据正确且热电偶均未断线
+    {
+        m_temp[0] &= 0x7FFF;
+        m_temp[0] >>= 3;
+        *err = 0;
+    }
+    else
+    {
+        m_temp[0] = 0xF9C;      //3996
+        *err = 1;
+    }
+
+    if((m_temp[1] & (1 << 15 | 4)) == 0) //数据正确且热电偶均未断线
+    {
+        m_temp[1] &= 0x7FFF;
+        m_temp[1] >>= 3;
+        *(err + 1) = 0;
+    }
+    else
+    {
+        m_temp[1] = 0xF9C;
+        *(err + 1) = 1;
+    }
+
+    *i_fTemp = ((float) m_temp[0] / ANALOG_TEMP_TO_MAX6675_LSB_RATIO);
+    *(i_fTemp + 1) = ((float) m_temp[1] / ANALOG_TEMP_TO_MAX6675_LSB_RATIO);
+}
+/*
+*********************************************************************************************************
+*********************************************************************************************************
+*                                      SWITCH OUTPUT DEVICE FUNCTIONS
+*********************************************************************************************************
+*********************************************************************************************************
+*/
+/*
+*********************************************************************************************************
+*                                             BSP_BuzzerInit()()
+*
+* Description : Initialize the I/O for the buzzer.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_Init().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+
+void  BSP_BuzzerInit(void)
+{
+    GPIO_InitTypeDef  gpio_init;
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA
+                           | RCC_APB2Periph_GPIOB
+                           | RCC_APB2Periph_GPIOC
+                           | RCC_APB2Periph_GPIOD
+                           , ENABLE);//使能所有GPIO口时钟
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
+
+    PWR_BackupAccessCmd(ENABLE);//允许修改RTC 和后备寄存器
+    RCC_LSEConfig(RCC_LSE_OFF);//关闭外部低速外部时钟信号功能 后，PC13 PC14 PC15 才可以当普通IO用。
+    BKP_TamperPinCmd(DISABLE);//关闭入侵检测功能，也就是 PC13，也可以当普通IO 使用
+    PWR_BackupAccessCmd(DISABLE);//禁止修改后备寄存器
+
+
+    gpio_init.GPIO_Pin   = BSP_GPIOC_BUZZER_CTRL_PORT_NMB;
+    gpio_init.GPIO_Speed = GPIO_Speed_2MHz;
+    gpio_init.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_Init(BSP_GPIOC_BUZZER_CTRL_PORT, &gpio_init);
+    GPIO_ResetBits(BSP_GPIOC_BUZZER_CTRL_PORT, BSP_GPIOC_BUZZER_CTRL_PORT_NMB);
+
+}
+
+
+/*
+*********************************************************************************************************
+*                                             BSP_BuzzerOn()
+*
+* Description : Turn ON the buzzer on the board.
+*               开蜂鸣器
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+
+void  BSP_BuzzerOn()
+{
+    GPIO_SetBits(BSP_GPIOC_BUZZER_CTRL_PORT, BSP_GPIOC_BUZZER_CTRL_PORT_NMB);
+}
+
+
+/*
+*********************************************************************************************************
+*                                              BSP_BuzzerOff()
+*
+* Description : Turn off the buzzer on the board.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+
+void  BSP_BuzzerOff()
+{
+    GPIO_ResetBits(BSP_GPIOC_BUZZER_CTRL_PORT, BSP_GPIOC_BUZZER_CTRL_PORT_NMB);
+}
+
+
+/*
+*********************************************************************************************************
+*                                            BSP_BuzzerTurnover()
+*
+* Description : Overturn the buzzer on the board.
+*               蜂鸣器反转
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+
+void  BSP_BuzzerTurnover()
+{
+    GPIO_ReadOutputDataBit(BSP_GPIOC_BUZZER_CTRL_PORT, BSP_GPIOC_BUZZER_CTRL_PORT_NMB)\
+    ? GPIO_ResetBits(BSP_GPIOC_BUZZER_CTRL_PORT, BSP_GPIOC_BUZZER_CTRL_PORT_NMB)\
+    : GPIO_SetBits(BSP_GPIOC_BUZZER_CTRL_PORT, BSP_GPIOC_BUZZER_CTRL_PORT_NMB);
+}
+
+/*
+*********************************************************************************************************
+*                                              BSP_SwTypePwrDeviceStatuInit()
+*
+*Description : Initialize the switch-type power device control port(s)
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_Init()
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static void BSP_SwTypePwrDeviceStatuInit(void)
+{
+    GPIO_InitTypeDef  GPIO_InitStructure;
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA
+                           | RCC_APB2Periph_GPIOB
+                           | RCC_APB2Periph_GPIOC
+                           | RCC_APB2Periph_GPIOD
+                           | RCC_APB2Periph_GPIOE
+                           , ENABLE);//使能所有GPIO口时钟
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);//部分引脚占用了SW调试口或JTAG口，需要将其先关闭
+
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB;  // 进液电磁阀1控制引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT, BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB);
+
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB;  // 进液电磁阀2控制引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT, &GPIO_InitStructure);
+//  GPIO_PinLockConfig(BSP_GPIOA_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT, BSP_GPIOA_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT, BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB);
+
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB;             // 点火器控制引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOC_IGNITER_PWR_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOC_IGNITER_PWR_CTRL_PORT, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
+
+
+
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB;              // 保温加热器控制引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT, BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB);
+
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB;              // 快速加热器控制引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
+
+
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB; // 电堆进气阀控制引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT, BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB);
+
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB;// 电堆出气阀控制引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT, BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB);
+
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB;             // 直流接触器控制引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT, BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB);
+
+    PWR_BackupAccessCmd(ENABLE);//允许修改RTC 和后备寄存器
+    RCC_LSEConfig(RCC_LSE_OFF);//关闭外部低速外部时钟信号功能 后，PC13 PC14 PC15 才可以当普通IO用。
+    BKP_TamperPinCmd(DISABLE);//关闭入侵检测功能，也就是 PC13，也可以当普通IO 使用
+    PWR_BackupAccessCmd(DISABLE);//禁止修改后备寄存器
+
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB;             // 自动加液外置甲醇泵
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+    GPIO_Init(BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
+
+
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;        //推挽输出        预留输出8
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;       //IO口速度为50MHz  不配置时钟LED也亮。
+    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB ;             //输出控制端口配置,
+    GPIO_Init(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT, &GPIO_InitStructure);                  //推挽输出 ，IO口速度为50MHz
+    GPIO_ResetBits(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT,  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);                     //输出低  
+    
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;        //推挽输出          预留输出6
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;       //IO口速度为50MHz  不配置时钟LED也亮。
+    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB ;             //输出控制端口配置,
+    GPIO_Init(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT, &GPIO_InitStructure);                  //推挽输出 ，IO口速度为50MHz
+    GPIO_ResetBits(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT,  BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);                     //输出低  
+    
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;        //推挽输出          预留输出7
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;       //IO口速度为50MHz  不配置时钟LED也亮。
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB  ;             //输出控制端口配置,
+    GPIO_Init(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT, &GPIO_InitStructure);                  //推挽输出 ，IO口速度为50MHz
+    GPIO_ResetBits(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT,  BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB );                     //输出低  
+
+//
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;        //推挽输出           预留输出5   
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;       //IO口速度为50MHz  不配置时钟LED也亮。
+    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB;             //输出控制端口配置,
+    GPIO_Init(BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT, &GPIO_InitStructure);                  //推挽输出 ，IO口速度为50MHz
+    GPIO_ResetBits(BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);                     //输出低  
+   
+}
+/*
+*********************************************************************************************************
+*                                            BSP_LqdValve1_PwrOn()
+*
+* Description : Open the power switch of the liquid valve one.
+*               开进液电磁阀1
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_LqdValve1_PwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT, BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_LqdValve1_PwrOff()
+*
+* Description : Close the power switch of the liquid valve one.
+*                               关进液电磁阀1
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_LqdValve1_PwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT, BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_LqdValve2_PwrOn()
+*
+* Description : Open the power switch of the liquid valve two.
+*               开进液电磁阀2
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_LqdValve2_PwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT, BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_LqdValve2_PwrOff()
+*
+* Description : Close the power switch of the liquid valve two.
+*               关进液电磁阀2
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_LqdValve2_PwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT, BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_IgniterPwrOn()
+*
+* Description : Open the power switch of the igniter.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_IgniterPwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOC_IGNITER_PWR_CTRL_PORT, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_IgniterPwrOff()
+*
+* Description : Close the power switch of the igniter.
+*               关点火器
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_IgniterPwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOC_IGNITER_PWR_CTRL_PORT, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_KeepWarmHeaterPwrOn()
+*
+* Description : Open the power switch of the heater.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_KeepWarmHeaterPwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT, BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_KeepWarmHeaterPwrOff()
+*
+* Description : Close the power switch of the heater.
+*               关电磁加热器
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_KeepWarmHeaterPwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT, BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB);
+}
+
+
+/*
+*********************************************************************************************************
+*                                            BSP_FastHeaterPwrOn()
+*
+* Description : Open the power switch of the heater.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_FastHeaterPwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
+}
+
+/*
+*********************************************************************************************************
+*                                            BSP_FastHeaterPwrOff()
+*
+* Description : Open the power switch of the heater.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_FastHeaterPwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
+}
+
+/*
+*********************************************************************************************************
+*                                            BSP_HydrgInValvePwrOn()
+*
+* Description : Open the power switch of the hydrogen input valve.
+*               电堆进气电磁阀开
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_HydrgInValvePwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT, BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB);
+}
+
+/*
+*********************************************************************************************************
+*                                            BSP_HydrgInValvePwrOff()
+*
+* Description : Close the power switch of the hydrogen input valve.
+*               电堆进气电磁阀关
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_HydrgInValvePwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT, BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_HydrgOutValvePwrOn()
+*
+* Description : Open the power switch of the hydrogen output valve.
+*               电堆出气电磁阀开
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_HydrgOutValvePwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT, BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_HydrgOutValvePwrOff()
+*
+* Description : Close the power switch of the hydrogen output valve.
+*               电堆出气阀关
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_HydrgOutValvePwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT, BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_DCConnectValvePwrOn()
+*
+* Description : Open the power switch of the DC connect.
+*               开直流接触器
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_DCConnectValvePwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT, BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_DCConnectValvePwrOff()
+*
+* Description : Close the power switch of the DC connect.
+*               关直流接触器
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_DCConnectValvePwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT, BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB);
+}
+
+/*
+*********************************************************************************************************
+*                                            BSP_OutsidePumpPwrOn()
+*
+* Description : Open the power switch of the outside pump.
+*               自动加液水泵开关
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_OutsidePumpPwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_OutsidePumpPwrOff()
+*
+* Description : Close the power switch of the the outside pump.
+*              自动加液水泵开关
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+
+void  BSP_OutsidePumpPwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
+}
+
+/*
+*********************************************************************************************************
+*                                           预留5/6/7/8口开关
+*
+* Description : 
+*             
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void  BSP_RSVD5PwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
+}
+void  BSP_RSVD5PwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
+}
+
+
+
+void  BSP_RSVD6PwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT, BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
+}
+void  BSP_RSVD6PwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT, BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
+}
+
+
+
+void  BSP_RSVD7PwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT, BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
+}
+void  BSP_RSVD7PwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT, BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
+}
+
+
+
+void  BSP_RSVD8PwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT, BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
+}
+void  BSP_RSVD8PwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT, BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
+}
+
+/*
+*********************************************************************************************************
+*********************************************************************************************************
+*                                      SPEED CONTROL OUTPUT DEVICE FUNCTIONS
+*********************************************************************************************************
+*********************************************************************************************************
+*/
+
+/*
+*********************************************************************************************************
+*                                            BSP_DeviceSpdCheckPortInit()
+*
+* Description : Initialize the all Device speed check port
+*                               初始化所有设备速度检测引脚
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SpdCheckPortInit()
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static  void  BSP_DeviceSpdCheckPortInit(void)
+{
+    BSP_HydrgProducerPumpSpdCheckPortInit();
+    BSP_HydrgProducerFanSpdCheckPortInit();
+  //  BSP_StackFan1SpdCheckPortInit();
+  //  BSP_StackFan2SpdCheckPortInit();
+}
+
+/*
+*********************************************************************************************************
+*                                            BSP_HydrgProducerPumpSpdCheckPortInit()
+*
+* Description : Initialize the Pump speed check port
+*                               初始化水泵速度检测引脚
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SpdCheckPortInit()
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static  void BSP_HydrgProducerPumpSpdCheckPortInit(void)
+{
+    GPIO_InitTypeDef  GPIO_InitStructure;
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB |  RCC_APB2Periph_GPIOE| RCC_APB2Periph_AFIO, ENABLE);
+    GPIO_PinRemapConfig(GPIO_FullRemap_TIM1, ENABLE);                       //定时器一完全重映射
+    
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);                    //SWJ完全失能
+
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_PUMP_SPEED_CHECK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;//或者上拉输入    GPIO_Mode_IPU
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOC_PUMP_SPEED_CHECK_PORT, &GPIO_InitStructure);
+}
+
+
+/*
+*********************************************************************************************************
+*                                             BSP_HydrgProducerPumpMonitorStart()
+*
+* Description : Start the conversion of the analog sensor(s).
+*
+* Argument(s) : *i_pBuffAddr is the head address of the array that to store the value after analog to digital convert.
+*               i_u8ChUsedNmb is the number of the channels that has been used in the project.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void BSP_HydrgProducerPumpMonitorStart(void)
+{
+    TIM_ICInitTypeDef  TIM_ICInitStructure;
+    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+    /*初始化定时器*/
+    TIM_DeInit(TIM2);
+    TIM_TimeBaseStructure.TIM_Period = 0xffff;                     //自动重载值 TIMX->ARR
+    TIM_TimeBaseStructure.TIM_Prescaler = 7199;                    //预分频值, 使TIMx_CLK=10KHz
+    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;         //输入时钟不分频
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;     //向上计数
+    TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
+
+    //输入捕获模式
+    //TIM_ICInitStructure.TIM_ICMode = TIM_ICMode_ICAP;
+    TIM_Cmd(TIM2, DISABLE);
+    TIM_ICInitStructure.TIM_Channel = TIM_Channel_3;                //捕获通道
+    TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Rising;     //捕获上升沿
+    TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI; //捕获中断
+    TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;           //捕获不分频
+    TIM_ICInitStructure.TIM_ICFilter = 0x0;                         //捕获输入不滤波
+    TIM_ICInit(TIM2, &TIM_ICInitStructure);
+    TIM_ARRPreloadConfig(TIM2, ENABLE);                              //使能ARR预装载缓冲器(影子功能)
+    TIM_Cmd(TIM2, ENABLE);
+    TIM_ITConfig(TIM2, TIM_IT_CC3, ENABLE);
+
+    BSP_IntVectSet(BSP_INT_ID_TIM2, BSP_DevSpdCaptureFinishedHandler);//捕获完成中断产生进入中断
+    BSP_IntEn(BSP_INT_ID_TIM2);
+}
+
+/*
+*********************************************************************************************************
+*                                            BSP_HydrgProducerFanSpdCheckPortInit()
+*
+* Description : Initialize the HydrgFan speed check port
+*                               初始化制氢风机速度检测引脚
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SpdCheckPortInit()
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static  void BSP_HydrgProducerFanSpdCheckPortInit(void)
+{
+    GPIO_InitTypeDef  GPIO_InitStructure;
+
+    /* 时钟使能 */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOE| RCC_APB2Periph_AFIO, ENABLE);
+    GPIO_PinRemapConfig(GPIO_FullRemap_TIM1, ENABLE);               //定时器YI完全重映射
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);            //SWJ完全失能
+
+    /*初始化IO口*/
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_HYDRG_FAN_SPEED_CHECK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOC_HYDRG_FAN_SPEED_CHECK_PORT, &GPIO_InitStructure);
+}
+
+/*
+*********************************************************************************************************
+*                                             BSP_HydrgProducerFanMonitorStart()
+*
+* Description : Start the conversion of the analog sensor(s).
+*
+* Argument(s) : *i_pBuffAddr is the head address of the array that to store the value after analog to digital convert.
+*               i_u8ChUsedNmb is the number of the channels that has been used in the project.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void BSP_HydrgProducerFanMonitorStart(void)
+{
+    TIM_ICInitTypeDef  TIM_ICInitStructure;
+    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+    /*初始化定时器*/
+    TIM_DeInit(TIM3);
+    TIM_TimeBaseStructure.TIM_Period = 999;                      //自动重载值 TIMX->ARR
+    TIM_TimeBaseStructure.TIM_Prescaler = 35999;                        //预分频值, 使TIMx_CLK=10KHz
+    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;         //输入时钟不分频
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;     //向上计数
+    TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+
+    //输入捕获模式
+    //TIM_ICInitStructure.TIM_ICMode = TIM_ICMode_ICAP;
+    TIM_Cmd(TIM3, DISABLE);
+    TIM_ICInitStructure.TIM_Channel = TIM_Channel_2;                        //捕获通道
+    TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Rising;     //捕获上升沿
+    TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI; //捕获中断
+    TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;               //捕获不分频
+    TIM_ICInitStructure.TIM_ICFilter = 0x0;                                         //捕获输入不滤波
+    TIM_ICInit(TIM3, &TIM_ICInitStructure);
+    TIM_ARRPreloadConfig(TIM3, ENABLE);                                                     //使能ARR预装载缓冲器(影子功能)
+    TIM_Cmd(TIM3, ENABLE);
+    TIM_ITConfig(TIM3, TIM_IT_CC2, ENABLE);
+
+    BSP_IntVectSet(BSP_INT_ID_TIM3, BSP_DevSpdCaptureFinishedHandler);//捕获完成中断产生进入中断
+    BSP_IntEn(BSP_INT_ID_TIM3);
+}
+
+
+/*
+*********************************************************************************************************
+*                                            BSP_StackFan1SpdCheckPortInit()
+*
+* Description : Initialize the StackFan1 speed check port
+*                               初始化电堆风扇1速度检测引脚
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SpdCheckPortInit()
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+//static  void BSP_StackFan1SpdCheckPortInit(void)
+//{
+////    GPIO_InitTypeDef  GPIO_InitStructure;
+
+////    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO, ENABLE);
+////    GPIO_PinRemapConfig(GPIO_FullRemap_TIM3, ENABLE);   //定时器三完全重映射
+////    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);    //SWJ完全失能
+
+////    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_STACK_FAN1_SPEED_CHECK_PORT_NMB;
+////    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
+////    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+////    GPIO_Init(BSP_GPIOC_STACK_FAN1_SPEED_CHECK_PORT, &GPIO_InitStructure);
+//}
+
+
+/*
+*********************************************************************************************************
+*                                             BSP_StackFan1SpdMonitorStart()
+*
+* Description : Start the conversion of the analog sensor(s).
+*
+* Argument(s) : *i_pBuffAddr is the head address of the array that to store the value after analog to digital convert.
+*               i_u8ChUsedNmb is the number of the channels that has been used in the project.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void BSP_StackFan1SpdMonitorStart(void)
+{
+    TIM_ICInitTypeDef  TIM_ICInitStructure;
+    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+    /*初始化定时器*/
+    TIM_DeInit(TIM3);
+    TIM_TimeBaseStructure.TIM_Period = 0xffff;                      //自动重载值 TIMX->ARR
+    TIM_TimeBaseStructure.TIM_Prescaler = 7199;                         //预分频值, 使TIMx_CLK=10KHz
+    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;         //输入时钟不分频
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;     //向上计数
+    TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
+
+    //输入捕获模式
+    //TIM_ICInitStructure.TIM_ICMode = TIM_ICMode_ICAP;
+    TIM_Cmd(TIM3, DISABLE);
+    TIM_ICInitStructure.TIM_Channel = TIM_Channel_3;                        //捕获通道
+    TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Rising;     //捕获上升沿
+    TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI; //捕获中断
+    TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;               //捕获不分频
+    TIM_ICInitStructure.TIM_ICFilter = 0x0;                                         //捕获输入不滤波
+    TIM_ICInit(TIM3, &TIM_ICInitStructure);
+    TIM_ARRPreloadConfig(TIM3, ENABLE);                                                     //使能ARR预装载缓冲器(影子功能)
+    TIM_Cmd(TIM3, ENABLE);
+    TIM_ITConfig(TIM3, TIM_IT_CC3, ENABLE);
+
+    BSP_IntVectSet(BSP_INT_ID_TIM3, BSP_DevSpdCaptureFinishedHandler);//捕获完成中断产生进入中断
+    BSP_IntEn(BSP_INT_ID_TIM3);
+}
+
+/*
+*********************************************************************************************************
+*                                            BSP_StackFan2SpdCheckPortInit()
+*
+* Description : 初始化电堆风扇2速度检测引脚
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SpdCheckPortInit()
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+
+//static  void BSP_StackFan2SpdCheckPortInit(void)
+//{
+////    GPIO_InitTypeDef  GPIO_InitStructure;
+
+////    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO, ENABLE);
+////    GPIO_PinRemapConfig(GPIO_FullRemap_TIM3, ENABLE);   //定时器三完全重映射
+////    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);    //SWJ完全失能
+
+////    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_STACK_FAN2_SPEED_CHECK_PORT_NMB;
+////    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
+////    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+////    GPIO_Init(BSP_GPIOC_STACK_FAN2_SPEED_CHECK_PORT, &GPIO_InitStructure);
+//}
+
+
+/*
+*********************************************************************************************************
+*                                             BSP_StackFan2SpdMonitorStart()
+*
+* Description : Start the conversion of the analog sensor(s).
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void BSP_StackFan2SpdMonitorStart(void)
+{
+    TIM_ICInitTypeDef  TIM_ICInitStructure;
+    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+    /*初始化定时器*/
+    TIM_DeInit(TIM3);
+    TIM_TimeBaseStructure.TIM_Period = 0xffff;                     //自动重载值 TIMX->ARR
+    TIM_TimeBaseStructure.TIM_Prescaler = 7199;                    //预分频值, 使TIMx_CLK=10KHz
+    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;         //输入时钟不分频
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;     //向上计数
+    TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
+
+    //输入捕获模式
+    //TIM_ICInitStructure.TIM_ICMode = TIM_ICMode_ICAP;
+    TIM_Cmd(TIM3, DISABLE);
+    TIM_ICInitStructure.TIM_Channel = TIM_Channel_4;                //捕获通道
+    TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Rising;     //捕获上升沿
+    TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI; //捕获中断
+    TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;           //捕获不分频
+    TIM_ICInitStructure.TIM_ICFilter = 0x0;                         //捕获输入不滤波
+    TIM_ICInit(TIM3, &TIM_ICInitStructure);
+    TIM_ARRPreloadConfig(TIM3, ENABLE);                             //使能ARR预装载缓冲器(影子功能)
+    TIM_Cmd(TIM3, ENABLE);
+    TIM_ITConfig(TIM3, TIM_IT_CC4, ENABLE);
+
+    BSP_IntVectSet(BSP_INT_ID_TIM3, BSP_DevSpdCaptureFinishedHandler);//捕获完成中断产生进入中断
+    BSP_IntEn(BSP_INT_ID_TIM3);
+}
+
+/*********************************************************************************************************
+*                                          BSP_SpdCaptureFinishedHandler()
+*
+* Description : TIM3 capture finished handler.
+*                               定时器3输入捕获完成中断服务函数
+* Argument(s) : int_id          Interrupt that will be handled.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : none.
+*
+* Note(s)     : none.
+*********************************************************************************************************/
+void BSP_DevSpdCaptureFinishedHandler(void)
+{
+    uint16_t g_u16SpdCaptureCurrentCounter;
+    uint8_t i;
+
+    //泵速捕获完成中断产生
+    if(TIM_GetITStatus(TIM3, TIM_IT_CC1) != RESET)
+    {
+        if(g_eSpdCaptureWorkSwitch[PUMP_SPD_MONITOR_SWITCH] == ON)
+        {
+            g_u16SpdCaptureCurrentCounter = TIM_GetCapture1(TIM3);
+
+            if((g_eSpdCaptureTriggersCrossCycleNmb[0] > 0) && (g_eSpdCaptureTriggersCrossCycleNmb[0] < 10)) //10代表经过10个定时更新周期——5s，仍然没有捕获到下降沿
+            {
+                g_u16SpdCaptureFrequency[0] = 2000 / ((1000 - g_u16SpdCaptureLastTimeCounter[0]) + (g_eSpdCaptureTriggersCrossCycleNmb[0] * 2000) + g_u16SpdCaptureCurrentCounter); //
+            }
+            else
+            {
+                g_u16SpdCaptureFrequency[0] = 2000 / (g_u16SpdCaptureCurrentCounter - g_u16SpdCaptureLastTimeCounter[0]);
+            }
+
+            g_u16SpdCaptureLastTimeCounter[0] = g_u16SpdCaptureCurrentCounter;
+            g_eSpdCaptureTriggersCrossCycleNmb[0] = 0;
+        }
+        else
+        {}
+
+        TIM_ClearITPendingBit(TIM3, TIM_IT_CC1);
+    }
+
+    //制氢风机速度捕获完成中断产生
+    if(TIM_GetITStatus(TIM3, TIM_IT_CC2) != RESET)
+    {
+        if(g_eSpdCaptureWorkSwitch[HYDROGEN_FAN_SPD_MONITOR_SWITCH] == ON)
+        {
+            g_u16SpdCaptureCurrentCounter = TIM_GetCapture2(TIM3);
+
+            if((g_eSpdCaptureTriggersCrossCycleNmb[1] > 0) && (g_eSpdCaptureTriggersCrossCycleNmb[1] < 10))
+            {
+                g_u16SpdCaptureFrequency[1] = 2000 / ((1000 - g_u16SpdCaptureLastTimeCounter[1]) + (g_eSpdCaptureTriggersCrossCycleNmb[1] * 2000) + g_u16SpdCaptureCurrentCounter); //
+            }
+            else
+            {
+                g_u16SpdCaptureFrequency[1] = 2000 / (g_u16SpdCaptureCurrentCounter - g_u16SpdCaptureLastTimeCounter[1]);
+            }
+
+            g_u16SpdCaptureLastTimeCounter[1] = g_u16SpdCaptureCurrentCounter;
+            g_eSpdCaptureTriggersCrossCycleNmb[1] = 0;
+        }
+        else
+        {}
+
+        TIM_ClearITPendingBit(TIM3, TIM_IT_CC2);
+    }
+
+    //电堆风扇1速度捕获完成中断产生
+    if(TIM_GetITStatus(TIM3, TIM_IT_CC3) != RESET)
+    {
+        if(g_eSpdCaptureWorkSwitch[STACK_FAN1_SPD_MONITOR_SWITCH] == ON)
+        {
+            g_u16SpdCaptureCurrentCounter = TIM_GetCapture3(TIM3);
+
+            if((g_eSpdCaptureTriggersCrossCycleNmb[2] > 0) && (g_eSpdCaptureTriggersCrossCycleNmb[2] < 10))
+            {
+                g_u16SpdCaptureFrequency[2] = 2000 / ((1000 - g_u16SpdCaptureLastTimeCounter[2]) + (g_eSpdCaptureTriggersCrossCycleNmb[2] * 2000) + g_u16SpdCaptureCurrentCounter); //
+            }
+            else
+            {
+                g_u16SpdCaptureFrequency[2] = 2000 / (g_u16SpdCaptureCurrentCounter - g_u16SpdCaptureLastTimeCounter[2]);
+            }
+
+            g_u16SpdCaptureLastTimeCounter[2] = g_u16SpdCaptureCurrentCounter;
+            g_eSpdCaptureTriggersCrossCycleNmb[2] = 0;
+        }
+        else
+        {}
+
+        TIM_ClearITPendingBit(TIM3, TIM_IT_CC3);
+    }
+
+    //电堆风扇2速度捕获完成中断产生
+    if(TIM_GetITStatus(TIM3, TIM_IT_CC4) != RESET)
+    {
+        if(g_eSpdCaptureWorkSwitch[STACK_FAN2_SPD_MONITOR_SWITCH] == ON)
+        {
+            g_u16SpdCaptureCurrentCounter = TIM_GetCapture4(TIM3);
+
+            if((g_eSpdCaptureTriggersCrossCycleNmb[3] > 0) && (g_eSpdCaptureTriggersCrossCycleNmb[3] < 10))
+            {
+                g_u16SpdCaptureFrequency[3] = 2000 / ((1000 - g_u16SpdCaptureLastTimeCounter[3]) + (g_eSpdCaptureTriggersCrossCycleNmb[3] * 2000) + g_u16SpdCaptureCurrentCounter); //
+            }
+            else
+            {
+                g_u16SpdCaptureFrequency[3] = 2000 / (g_u16SpdCaptureCurrentCounter - g_u16SpdCaptureLastTimeCounter[3]);
+            }
+
+            g_u16SpdCaptureLastTimeCounter[3] = g_u16SpdCaptureCurrentCounter;
+            g_eSpdCaptureTriggersCrossCycleNmb[3] = 0;
+        }
+        else
+        {}
+
+        TIM_ClearITPendingBit(TIM3, TIM_IT_CC4);
+    }
+
+    //更新中断产生
+    if(TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET)
+    {
+        for(i = 0; i < 4; i++)
+        {
+            if(g_eSpdCaptureWorkSwitch[i] == ON)
+            {
+                g_eSpdCaptureTriggersCrossCycleNmb[i]++;
+
+                if(g_eSpdCaptureTriggersCrossCycleNmb[i] >= 10)
+                {
+                    g_eSpdCaptureTriggersCrossCycleNmb[i] = 0;
+                }
+            }
+            else
+            {
+                g_eSpdCaptureTriggersCrossCycleNmb[i] = 0;
+                g_u16SpdCaptureFrequency[i] = 0;
+                g_u16SpdCaptureLastTimeCounter[i] = 0;
+            }
+        }
+
+        TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+    }
+}
+
+
+
+/*
+*********************************************************************************************************
+*                                             GetHydrgFanFeedBackSpd()
+*
+* Description : get the hydrogen fan feed back speed grade number.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+uint16_t    GetPumpFeedBackSpd(void)
+{
+    return (g_u16SpdCaptureFrequency[0] * 30);
+}
+
+/*
+*********************************************************************************************************
+*                                             GetHydrgFanFeedBackSpd()
+*
+* Description : get the hydrogen fan feed back speed grade number.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+uint16_t GetHydrgFanFeedBackSpd(void)
+{
+    return (g_u16SpdCaptureFrequency[1] * 30);
+}
+
+
+/*
+*********************************************************************************************************
+*                                         GetStackFan1SpdFeedBack()
+*
+* Description : get the stack fan feed back speed grade number.
+*
+* Arguments   : none.
+*
+* Returns     : the stack fan speed grade number.
+*
+* Notes       : the speed grade whole number is 200.
+*********************************************************************************************************
+*/
+uint16_t GetStackFan1SpdFeedBack(void)
+{
+    return (g_u16SpdCaptureFrequency[2] * 30);
+}
+
+
+
+/*
+*********************************************************************************************************
+*                                         GetStackFan2SpdFeedBack()
+*
+* Description : get the stack fan feed back speed grade number.
+*
+* Arguments   : none.
+*
+* Returns     : the stack fan speed grade number.
+*
+* Notes       : the speed grade whole number is 200.
+*********************************************************************************************************
+*/
+uint16_t GetStackFan2SpdFeedBack(void)
+{
+    return (g_u16SpdCaptureFrequency[3] * 30);
+}
+
+
+/*
+*********************************************************************************************************
+*                                            BSP_SpdCtrlDeviceInit()
+*
+* Description : Initialize the speed control device(s)
+*                               初始化速度控制引脚
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_Init()
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static  void  BSP_SpdCtrlDevicesInit(void)
+{
+    BSP_PumpCtrlInit();     //泵速调节DAC引脚初始化
+    BSP_HydrgFanCtrInit();  //制氢风机PWM调速引脚初始化
+    BSP_StackFanCtrInit();  //电堆风扇调速
+}
+/*
+*********************************************************************************************************
+*                                            BSP_PumpCtrlInit()
+*
+* Description : Initialize the pump control I/O ports and DAC port.
+*                               泵速控制引脚初始化
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SpdCtrlDevicesInit()
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static void  BSP_PumpCtrlInit(void)
+{
+    GPIO_InitTypeDef  GPIO_InitStructure;
+    DAC_InitTypeDef DAC_InitType;
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD
+                           | RCC_APB2Periph_AFIO , ENABLE);//使能所有GPIO口时钟
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);       //使能DAC通道时钟
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
+
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PUMP_SPD_ANA_SIGNAL_CTRL_PORT_NMB;   //水泵速度控制引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOA_PUMP_SPD_ANA_SIGNAL_CTRL_PORT, &GPIO_InitStructure);
+
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;                           //水泵供电开关控制引脚
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOC_PUMP_PWR_CTRL_PORT_NMB;
+    GPIO_Init(BSP_GPIOC_PUMP_PWR_CTRL_PORT, &GPIO_InitStructure);
+
+//  GPIO_PinLockConfig(BSP_GPIOA_PUMP_PWR_CTRL_PORT, BSP_GPIOA_PUMP_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOC_PUMP_PWR_CTRL_PORT, BSP_GPIOC_PUMP_PWR_CTRL_PORT_NMB);
+
+    DAC_InitType.DAC_Trigger = DAC_Trigger_None;    //不使用触发功能 TEN1=0
+    DAC_InitType.DAC_WaveGeneration = DAC_WaveGeneration_None;//不使用波形发生
+    DAC_InitType.DAC_LFSRUnmask_TriangleAmplitude = DAC_LFSRUnmask_Bit0;//屏蔽、幅值设置
+    DAC_InitType.DAC_OutputBuffer = DAC_OutputBuffer_Enable ;   //DAC输出缓存关闭
+    DAC_Init(DAC_Channel_1, &DAC_InitType);  //初始化DAC通道1
+//  DAC_Init(DAC_Channel_2,&DAC_InitType);   //初始化DAC通道2
+
+    DAC_Cmd(DAC_Channel_1, ENABLE);
+    DAC_SoftwareTriggerCmd(DAC_Channel_1, ENABLE);      //DAC channel 1软件触发使能
+//  DAC_Cmd(DAC_Channel_2, ENABLE);
+//  DAC_SoftwareTriggerCmd(DAC_Channel_2,ENABLE);
+    DAC_SetChannel1Data(DAC_Align_12b_R, 0);            //12位右对齐数据格式设置DAC值
+    DAC_SoftwareTriggerCmd(DAC_Channel_1, ENABLE);
+//  DAC_SetChannel2Data(DAC_Align_12b_R, 0);            //12位右对齐数据格式设置DAC值
+//  DAC_SoftwareTriggerCmd(DAC_Channel_2,ENABLE);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_PumpPwrOn()
+*
+* Description : Open the power switch of the pump.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SetPumpSpd().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static void  BSP_PumpPwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOC_PUMP_PWR_CTRL_PORT, BSP_GPIOC_PUMP_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_PumpPwrOff()
+*
+* Description : Close the power switch of the pump.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SetPumpSpd().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static void  BSP_PumpPwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOC_PUMP_PWR_CTRL_PORT, BSP_GPIOC_PUMP_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_SetPumpSpd()
+*
+* Description : Control the speed of the pump.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void BSP_SetPumpSpd(u8 i_u8SpdValue)
+{
+    uint16_t u16DAC1_Value;
+
+    if(i_u8SpdValue >= NUMBER_OF_THE_PUMP_SPEED_GRADES)
+    {
+        i_u8SpdValue = NUMBER_OF_THE_PUMP_SPEED_GRADES;
+    }
+
+    if(i_u8SpdValue > 0)
+    {
+        BSP_PumpPwrOn();
+    }
+    else
+    {
+        BSP_PumpPwrOff();
+    }
+
+    u16DAC1_Value = (uint16_t)(i_u8SpdValue * DAC_DELT_LSB_PER_PUMP_SPEED);
+
+    if(u16DAC1_Value >= 4095)
+    {
+        u16DAC1_Value = 4095;
+    }
+
+    DAC_SetChannel1Data(DAC_Align_12b_R, u16DAC1_Value);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_HydrgFanCtrInit()
+*
+* Description : Initialize the Hydrg Fan control I/O ports and timer ports.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SpdCtrlDevicesInit()
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static void  BSP_HydrgFanCtrInit(void)
+{
+    GPIO_InitTypeDef  GPIO_InitStructure;
+//    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+//    TIM_BDTRInitTypeDef TIM_BDTRInitStructure;
+
+    /*时钟使能*/
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
+
+    /*GPIO使能*/
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_HYDROGEN_FAN_SPD_PWM_SIGNAL_CTRL_PORT_NMB;   //制氢风机速度PWM控制引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOA_HYDROGEN_FAN_SPD_PWM_SIGNAL_CTRL_PORT, &GPIO_InitStructure);
+
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;                           //制氢风机电源控制引脚
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB;
+    GPIO_Init(BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT, &GPIO_InitStructure);
+
+    //GPIO_PinLockConfig(BSP_GPIOA_PUMP_PWR_CTRL_PORT, BSP_GPIOA_PUMP_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT, BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB);
+
+//    TIM_DeInit(TIM1);
+//    TIM_TimeBaseStructure.TIM_Period = TIMER_UPDATE_NUMBER;       //当定时器从0计数到999，即为1000次，为一个定时周期50ms
+//    TIM_TimeBaseStructure.TIM_Prescaler = 3599;                   //设置预分频：72MHz/3600 = 20KHz
+//    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;       //设置时钟分频系数：不分频
+//    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;   //向上计数模式
+//    TIM_TimeBaseInit(TIM1, &TIM_TimeBaseStructure);
+
+//    //设置OSSR/OSSI状态、锁电平、死区时间、刹车特性、自动输出
+//    TIM_BDTRInitStructure.TIM_OSSRState = TIM_OSSRState_Disable;
+//    TIM_BDTRInitStructure.TIM_OSSIState = TIM_OSSIState_Disable;
+//    TIM_BDTRInitStructure.TIM_LOCKLevel = TIM_LOCKLevel_OFF;
+//    TIM_BDTRInitStructure.TIM_DeadTime = 0x90;
+//    TIM_BDTRInitStructure.TIM_Break = TIM_Break_Disable;
+//    TIM_BDTRInitStructure.TIM_BreakPolarity = TIM_BreakPolarity_Low;
+//    TIM_BDTRInitStructure.TIM_AutomaticOutput = TIM_AutomaticOutput_Disable;
+//    TIM_BDTRConfig(TIM1, &TIM_BDTRInitStructure);
+
+    DAC_InitTypeDef DAC_InitType;
+    DAC_InitType.DAC_Trigger = DAC_Trigger_None;                         //不使用触发功能 TEN1=0
+    DAC_InitType.DAC_WaveGeneration = DAC_WaveGeneration_None;           //不使用波形发生
+    DAC_InitType.DAC_LFSRUnmask_TriangleAmplitude = DAC_LFSRUnmask_Bit0; //屏蔽、幅值设置
+    DAC_InitType.DAC_OutputBuffer = DAC_OutputBuffer_Disable ;           //DAC1输出缓存关闭 BOFF1=1
+    DAC_Init(DAC_Channel_2, &DAC_InitType);                              //初始化DAC通道2
+    DAC_Cmd(DAC_Channel_2, ENABLE);                                      //使能DAC2
+
+    DAC_SetChannel2Data(DAC_Align_12b_R, 0);  //12位右对齐数据格式设置DAC值
+
+}
+/*
+*********************************************************************************************************
+*                                            BSP_HydrgFanPwrOn()
+*
+* Description : Open the power switch of the hydrogen fan.
+*                               开制氢风机
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SetHydrgFanSpd().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static void  BSP_HydrgFanPwrOn(void)
+{
+    GPIO_SetBits(BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT, BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_HydorgenFanPwrOff()
+*
+* Description : Close the power switch of the hydrogen fan.
+*                               关制氢风机
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SetHydrgFanSpd().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static void  BSP_HydrgFanPwrOff(void)
+{
+    GPIO_ResetBits(BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT, BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_SetHydrgFanSpd()
+*
+* Description : Control the speed of the hydrogen fan.
+*                               PWM控制风机速度
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+void BSP_SetHydrgFanSpd(u16 i_u16HydrgFanSpdValue)
+{
+
+    uint16_t temp = i_u16HydrgFanSpdValue;
+
+    if(temp > 0)
+    {
+        BSP_HydrgFanPwrOn();
+
+        if(temp <= 200)
+        {
+            temp = 4095 * temp / 200;
+        }
+        else
+        {
+            temp = 4095;
+        }
+
+        DAC_SetChannel2Data(DAC_Align_12b_R, temp); //12位右对齐数据格式设置DAC值
+    }
+    else
+    {
+        BSP_HydrgFanPwrOff();
+        DAC_SetChannel2Data(DAC_Align_12b_R, 0); //12位右对齐数据格式设置DAC值
+    }
+
+//    uint16_t u16TIM1_CMP_Value;
+//    TIM_OCInitTypeDef  TIM_OCInitStructure;
+
+//    if(i_u8HydrgFanSpdValue >= NUMBER_OF_THE_HYDROGEN_FAN_SPEED_GRADES)
+//    {
+//        i_u8HydrgFanSpdValue = NUMBER_OF_THE_HYDROGEN_FAN_SPEED_GRADES;
+//    }
+
+//    if(i_u8HydrgFanSpdValue > 0)
+//    {
+//        BSP_HydrgFanPwrOn();
+//    }
+//    else
+//    {
+//        BSP_HydrgFanPwrOff();
+//    }
+
+//    u16TIM1_CMP_Value = (uint16_t)(i_u8HydrgFanSpdValue * TIMER_CMP_DELT_NUMBER_PER_HYDROGEN_FAN_SPEED);
+
+//    if(u16TIM1_CMP_Value >= TIMER_UPDATE_NUMBER)//&& PULSE >= 0.0)//占空比为小数时需要判断是否大于0
+//    {
+//        u16TIM1_CMP_Value = TIMER_UPDATE_NUMBER;
+//    }
+
+//    TIM_Cmd(TIM1, DISABLE);
+//    /* PWM1 Mode configuration: Channel1 */
+//    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;                   //选择定时器1模式:TIM脉冲宽度调制模式1
+//    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+//    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;        //有效电平为低
+//    TIM_OCInitStructure.TIM_Pulse = i_u8HydrgFanSpdValue;               // m_PULSE 设置待装入输出比较寄存器的脉冲值
+//    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+//    TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
+//    TIM_OCInitStructure.TIM_OCNIdleState = TIM_OCIdleState_Reset;
+
+//    TIM_OC1Init(TIM1, &TIM_OCInitStructure);
+
+//    TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Enable);           //使能TIM1在CCR1上的预装载寄存器,即TIM1_CCR1的预装载值在更新事件到来时才能被传送至当前寄存器中。
+//    TIM_ARRPreloadConfig(TIM1, ENABLE);                                         // 使能TIM1重载寄存器ARR
+//    TIM_GenerateEvent(TIM1, TIM_EventSource_Update);            // 产生软件更新事件，立即更新数据,使重载寄存器中的数据立即生效
+//    TIM_ClearFlag(TIM1, TIM_FLAG_Update);                       //清除标志位,定时器一打开便产生更新事件，若不清除，将会进入中断
+//    TIM_ITConfig(TIM1, TIM_IT_Update | TIM_IT_CC1, DISABLE); //允许更新中断
+
+//    TIM_Cmd(TIM1, ENABLE);
+//    TIM_CtrlPWMOutputs(TIM1, ENABLE);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_StackFanCtrInit()
+*
+* Description : Initialize the stack Fan control I/O ports and timer ports.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SpdCtrlDevicesInit()
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static void  BSP_StackFanCtrInit(void)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+    TIM_OCInitTypeDef  TIM_OCInitStructure;
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE); //使能TIMx外设
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE); //使能GPIOB外设时钟使能
+    //设置该引脚为复用输出功能,输出TIM4 CH1的PWM脉冲波形
+
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT_NMB;   //制氢风机速度PWM控制引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT, &GPIO_InitStructure);
+    
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6; //TIM_CH1、CH2
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;  //复用功能输出
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOB, &GPIO_InitStructure); //初始化GPIO
+
+
+    TIM_TimeBaseStructure.TIM_Period = 40000; //设置自动重装载周期值
+    TIM_TimeBaseStructure.TIM_Prescaler = 0; //设置预分频值 不分频
+    TIM_TimeBaseStructure.TIM_ClockDivision = 0; //设置时钟分割:TDTS = Tck_tim
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;  //TIM向上计数模式
+    TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure); //根据指定的参数初始化TIMx
+
+    //PWM1
+    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2; //CH1 PWM2模式    电平方向不一样！
+    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable; //比较输出使能
+    TIM_OCInitStructure.TIM_Pulse = 0; //设置待装入捕获比较寄存器的脉冲值
+    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low; //OC1 逆向
+    TIM_OC1Init(TIM4, &TIM_OCInitStructure);  //根据指定的参数初始化外设TIMx
+    TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable);  //CH1 预装载使能
+
+    TIM_ARRPreloadConfig(TIM4, ENABLE); //使能TIMx在ARR上的预装载寄存器
+    //PWM2
+    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2; //选择定时器模式:TIM脉冲宽度调制模式2
+    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable; //比较输出使能
+    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low; //输出极性:TIM输出比较极性高
+    TIM_OC2Init(TIM4, &TIM_OCInitStructure);  //根据T指定的参数初始化外设TIM4 OC2
+    TIM_OC2PreloadConfig(TIM4, TIM_OCPreload_Enable);  //使能TIM4在CCR2上的预装载寄存器
+
+    TIM_Cmd(TIM4, ENABLE);  //使能TIMx
+}
+/*
+*********************************************************************************************************
+*                                            BSP_StackFanPwrOn()
+*
+* Description : Open the power switch of the stack fan.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SetStackFanSpd().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+
+static void  BSP_StackFanPwrOn(void)
+{
+
+    GPIO_SetBits(BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT, BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_HydorgenFanPwrOff()
+*
+* Description : Close the power switch of the hydrogen fan.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_SetHydrgFanSpd().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static void  BSP_StackFanPwrOff(void)
+{
+
+    GPIO_ResetBits(BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT, BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT_NMB);
+}
+/*
+*********************************************************************************************************
+*                                            BSP_SetStackFanSpd()
+*
+* Description : Control the speed of the hydrogen fan.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+//void BSP_SetStackFanSpd(u8 i_u8StackFanSpdValue)
+//{
+//    uint16_t u16TIM4_CMP_Value;
+//    TIM_OCInitTypeDef  TIM_OCInitStructure;
+
+//    if(i_u8StackFanSpdValue >= NUMBER_OF_THE_STACK_FAN_SPEED_GRADES)
+//    {
+//        i_u8StackFanSpdValue = NUMBER_OF_THE_STACK_FAN_SPEED_GRADES;
+//    }
+
+//    if(i_u8StackFanSpdValue > 0)
+//    {
+//        BSP_StackFanPwrOn();
+//    }
+//    else
+//    {
+//        BSP_StackFanPwrOff();
+//    }
+
+//    u16TIM4_CMP_Value = (uint16_t)(i_u8StackFanSpdValue * TIMER_CMP_DELT_NUMBER_PER_STACK_FAN_SPEED);
+
+//    if(u16TIM4_CMP_Value >= TIMER_UPDATE_NUMBER)//&& PULSE >= 0.0)//占空比为小数时需要判断是否大于0
+//    {
+//        u16TIM4_CMP_Value = TIMER_UPDATE_NUMBER;
+//    }
+
+//    TIM_Cmd(TIM4, DISABLE);  //失能TIM4
+//    /* PWM1 Mode configuration: Channel2 */
+//    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1; //选择定时器模式:TIM脉冲宽度调制模式1
+//    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+//    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low; //有效电平为低
+//    TIM_OCInitStructure.TIM_Pulse = u16TIM4_CMP_Value; // m_PULSE设置待装入输出比较寄存器的脉冲值
+
+//    TIM_OC2Init(TIM4, &TIM_OCInitStructure);
+//    TIM_OC2PreloadConfig(TIM4, TIM_OCPreload_Enable); //使能TIM4在CCR2上的预装载寄存器,即TIM4_CCR2的预装载值在更新事件到来时才能被传送至当前寄存器中。
+
+//    TIM_ARRPreloadConfig(TIM4, ENABLE);          // 使能TIM4重载寄存器ARR
+//    TIM_GenerateEvent(TIM4, TIM_EventSource_Update);   // 产生软件更新事件，立即更新数据,使重载寄存器中的数据立即生效
+//    TIM_ClearFlag(TIM4, TIM_FLAG_Update);             //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
+//    TIM_ITConfig(TIM4, TIM_IT_Update | TIM_IT_CC1, DISABLE); //允许更新中断
+
+//    TIM_Cmd(TIM4, ENABLE);  //使能TIM4
+//}
+void Set_PWM(u8 channr, u16 duc)
+{
+    u16 dd;
+//  dd=10000*duc/200;   //PB6  PB7 改tim3改tim4后变递减PWM了 TIM_OCPolarity_Low  这个
+    
+    if(  duc < 200 )
+    {
+        BSP_StackFanPwrOn();
+    }
+    
+    else
+    {
+        BSP_StackFanPwrOff();
+    }
+    switch(channr)
+    {
+        case 0:
+            dd = 40000 * duc / 200;
+            TIM_SetCompare1(TIM4, dd);  //电堆风扇设置PWM占空比
+            break;
+
+        case 1:
+            dd = 40000 * duc / 200;
+            TIM_SetCompare2(TIM4, dd);  //制氢机发送设置PWM占空比
+            break;
+
+        default:
+            break;
+    }
+}
+
+/*
+*********************************************************************************************************
+*********************************************************************************************************
+*                                           OS PROBE FUNCTIONS
+*********************************************************************************************************
+*********************************************************************************************************
+*/
+void BSP_CmdButtonInit(void)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    EXTI_InitTypeDef EXTI_InitStructure;
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOB, ENABLE); //使能复用功能时钟
+
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource13);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line13;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    EXTI_Init(&EXTI_InitStructure);     //根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+
+    BSP_IntVectSet(BSP_INT_ID_EXTI15_10, EXTI15_10_IRQHandler);
+    BSP_IntEn(BSP_INT_ID_EXTI15_10);
+}
+
+void EXTI15_10_IRQHandler(void)
+{
+    CmdButtonFuncDisable();
+    StartCmdButtonActionCheckDly(); //定时器定时0.5后的中断中判断按钮按下，然后执行相应流程
+    EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE10上的中断标志位
+}
+void CmdButtonFuncDisable(void)
+{
+    EXTI_InitTypeDef EXTI_InitStructure;
+
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource13);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line13; //外部控制键
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = DISABLE;
+    EXTI_Init(&EXTI_InitStructure);     //根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+}
+
+void CmdButtonFuncEnable(void)
+{
+    EXTI_InitTypeDef EXTI_InitStructure;
+
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource13);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line13; //外部控制键
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    EXTI_Init(&EXTI_InitStructure);
+}
+
+void StartCmdButtonActionCheckDly(void)
+{
+    TIM7_DlyMilSecondsInit(500);
+}
+void TIM7_DlyMilSecondsInit(u16 i_u16DlyMilSeconds)
+{
+    NVIC_InitTypeDef NVIC_InitStructure;
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);    //使能TIM7时钟，APB1=72MHz
+
+    //初始化定时器7
+    TIM_DeInit(TIM7);
+    TIM_TimeBaseStructure.TIM_Period = (i_u16DlyMilSeconds * 2 - 1); //设定计数器自动重装值,0.5秒后产生中断
+    TIM_TimeBaseStructure.TIM_Prescaler = 35999;                     //预分频器,将72MHz降为2KHz
+    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;          //设置时钟分割:TDTS = Tck_tim,对于TIM6、7无效
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;      //TIM向上计数模式
+    TIM_TimeBaseInit(TIM7, &TIM_TimeBaseStructure);                  //根据TIM_TimeBaseInitStruct中指定的参数初始化TIMx的时间基数单位
+
+    //中断分组初始化
+    NVIC_InitStructure.NVIC_IRQChannel = TIM7_IRQn;             //TIM7中断
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;   //先占优先级2级
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;          //从优先级0级
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;             //IRQ通道被使能
+    NVIC_Init(&NVIC_InitStructure);                             //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
+
+    TIM_GenerateEvent(TIM7, TIM_EventSource_Update);   // 产生软件更新事件，立即更新数据
+    TIM_ClearFlag(TIM7, TIM_FLAG_Update);             //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
+
+    TIM_ITConfig(TIM7, TIM_IT_Update, ENABLE);
+
+    BSP_IntVectSet(BSP_INT_ID_TIM7, CmdButtonStatuCheck);
+    BSP_IntEn(BSP_INT_ID_DMA2_CH3);
+
+    TIM_Cmd(TIM7, ENABLE);  //使能定时器7
+}
+
+void CmdButtonStatuCheck(void)
+{
+    SYSTEM_WORK_STATU_Typedef eSysRunningStatu;
+
+    if(GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13) == 0)
+    {
+        eSysRunningStatu = GetSystemWorkStatu();
+
+        if((EN_WAITTING_COMMAND == eSysRunningStatu) || (eSysRunningStatu == EN_ALARMING))
+        {
+            CmdStart();
+        }
+        else
+        {
+            CmdShutDown();
+        }
+    }
+
+    CmdButtonFuncEnable();
+    TIM_ITConfig(TIM7, TIM_IT_Update, DISABLE);
+    TIM_ClearITPendingBit(TIM7, TIM_IT_Update); //清除中断标志位
+}
+/*
+*********************************************************************************************************
+*                                           OSProbe_TmrInit()
+*
+* Description : Select & initialize a timer for use with the uC/Probe Plug-In for uC/OS-II.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : OSProbe_Init().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+
+#if ((APP_CFG_PROBE_OS_PLUGIN_EN == DEF_ENABLED) && \
+     (OS_PROBE_HOOKS_EN          == 1))
+void  OSProbe_TmrInit(void)
+{
+}
+#endif
+
+
+/*
+*********************************************************************************************************
+*                                            OSProbe_TmrRd()
+*
+* Description : Read the current counts of a free running timer.
+*
+* Argument(s) : none.
+*
+* Return(s)   : The 32-bit timer counts.
+*
+* Caller(s)   : OSProbe_TimeGetCycles().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+
+#if ((APP_CFG_PROBE_OS_PLUGIN_EN == DEF_ENABLED) && \
+     (OS_PROBE_HOOKS_EN          == 1))
+CPU_INT32U  OSProbe_TmrRd(void)
+{
+    return ((CPU_INT32U)DWT_CYCCNT);
+}
+#endif
+
+
+/*$PAGE*/
+/*
+*********************************************************************************************************
+*                                          CPU_TS_TmrInit()
+*
+* Description : Initialize & start CPU timestamp timer.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : CPU_TS_Init().
+*
+*               This function is an INTERNAL CPU module function & MUST be implemented by application/
+*               BSP function(s) [see Note #1] but MUST NOT be called by application function(s).
+*
+* Note(s)     : (1) CPU_TS_TmrInit() is an application/BSP function that MUST be defined by the developer
+*                   if either of the following CPU features is enabled :
+*
+*                   (a) CPU timestamps
+*                   (b) CPU interrupts disabled time measurements
+*
+*                   See 'cpu_cfg.h  CPU TIMESTAMP CONFIGURATION  Note #1'
+*                     & 'cpu_cfg.h  CPU INTERRUPTS DISABLED TIME MEASUREMENT CONFIGURATION  Note #1a'.
+*
+*               (2) (a) Timer count values MUST be returned via word-size-configurable 'CPU_TS_TMR'
+*                       data type.
+*
+*                       (1) If timer has more bits, truncate timer values' higher-order bits greater
+*                           than the configured 'CPU_TS_TMR' timestamp timer data type word size.
+*
+*                       (2) Since the timer MUST NOT have less bits than the configured 'CPU_TS_TMR'
+*                           timestamp timer data type word size; 'CPU_CFG_TS_TMR_SIZE' MUST be
+*                           configured so that ALL bits in 'CPU_TS_TMR' data type are significant.
+*
+*                           In other words, if timer size is not a binary-multiple of 8-bit octets
+*                           (e.g. 20-bits or even 24-bits), then the next lower, binary-multiple
+*                           octet word size SHOULD be configured (e.g. to 16-bits).  However, the
+*                           minimum supported word size for CPU timestamp timers is 8-bits.
+*
+*                       See also 'cpu_cfg.h   CPU TIMESTAMP CONFIGURATION  Note #2'
+*                              & 'cpu_core.h  CPU TIMESTAMP DATA TYPES     Note #1'.
+*
+*                   (b) Timer SHOULD be an 'up'  counter whose values increase with each time count.
+*
+*                   (c) When applicable, timer period SHOULD be less than the typical measured time
+*                       but MUST be less than the maximum measured time; otherwise, timer resolution
+*                       inadequate to measure desired times.
+*
+*                   See also 'CPU_TS_TmrRd()  Note #2'.
+*********************************************************************************************************
+*/
+
+#if (CPU_CFG_TS_TMR_EN == DEF_ENABLED)
+void  CPU_TS_TmrInit(void)
+{
+    CPU_INT32U  cpu_clk_freq_hz;
+
+
+    DEM_CR         |= (CPU_INT32U)DEM_CR_TRCENA;                /* Enable Cortex-M3's DWT CYCCNT reg.                   */
+    DWT_CYCCNT      = (CPU_INT32U)0u;
+    DWT_CR         |= (CPU_INT32U)DWT_CR_CYCCNTENA;
+
+    cpu_clk_freq_hz = BSP_CPU_ClkFreq();
+    CPU_TS_TmrFreqSet(cpu_clk_freq_hz);
+}
+#endif
+
+
+/*$PAGE*/
+/*
+*********************************************************************************************************
+*                                           CPU_TS_TmrRd()
+*
+* Description : Get current CPU timestamp timer count value.
+*
+* Argument(s) : none.
+*
+* Return(s)   : Timestamp timer count (see Notes #2a & #2b).
+*
+* Caller(s)   : CPU_TS_Init(),
+*               CPU_TS_Get32(),
+*               CPU_TS_Get64(),
+*               CPU_IntDisMeasStart(),
+*               CPU_IntDisMeasStop().
+*
+*               This function is an INTERNAL CPU module function & MUST be implemented by application/
+*               BSP function(s) [see Note #1] but SHOULD NOT be called by application function(s).
+*
+* Note(s)     : (1) CPU_TS_TmrRd() is an application/BSP function that MUST be defined by the developer
+*                   if either of the following CPU features is enabled :
+*
+*                   (a) CPU timestamps
+*                   (b) CPU interrupts disabled time measurements
+*
+*                   See 'cpu_cfg.h  CPU TIMESTAMP CONFIGURATION  Note #1'
+*                     & 'cpu_cfg.h  CPU INTERRUPTS DISABLED TIME MEASUREMENT CONFIGURATION  Note #1a'.
+*
+*               (2) (a) Timer count values MUST be returned via word-size-configurable 'CPU_TS_TMR'
+*                       data type.
+*
+*                       (1) If timer has more bits, truncate timer values' higher-order bits greater
+*                           than the configured 'CPU_TS_TMR' timestamp timer data type word size.
+*
+*                       (2) Since the timer MUST NOT have less bits than the configured 'CPU_TS_TMR'
+*                           timestamp timer data type word size; 'CPU_CFG_TS_TMR_SIZE' MUST be
+*                           configured so that ALL bits in 'CPU_TS_TMR' data type are significant.
+*
+*                           In other words, if timer size is not a binary-multiple of 8-bit octets
+*                           (e.g. 20-bits or even 24-bits), then the next lower, binary-multiple
+*                           octet word size SHOULD be configured (e.g. to 16-bits).  However, the
+*                           minimum supported word size for CPU timestamp timers is 8-bits.
+*
+*                       See also 'cpu_cfg.h   CPU TIMESTAMP CONFIGURATION  Note #2'
+*                              & 'cpu_core.h  CPU TIMESTAMP DATA TYPES     Note #1'.
+*
+*                   (b) Timer SHOULD be an 'up'  counter whose values increase with each time count.
+*
+*                       (1) If timer is a 'down' counter whose values decrease with each time count,
+*                           then the returned timer value MUST be ones-complemented.
+*
+*                   (c) (1) When applicable, the amount of time measured by CPU timestamps is
+*                           calculated by either of the following equations :
+*
+*                           (A) Time measured  =  Number timer counts  *  Timer period
+*
+*                                   where
+*
+*                                       Number timer counts     Number of timer counts measured
+*                                       Timer period            Timer's period in some units of
+*                                                                   (fractional) seconds
+*                                       Time measured           Amount of time measured, in same
+*                                                                   units of (fractional) seconds
+*                                                                   as the Timer period
+*
+*                                                  Number timer counts
+*                           (B) Time measured  =  ---------------------
+*                                                    Timer frequency
+*
+*                                   where
+*
+*                                       Number timer counts     Number of timer counts measured
+*                                       Timer frequency         Timer's frequency in some units
+*                                                                   of counts per second
+*                                       Time measured           Amount of time measured, in seconds
+*
+*                       (2) Timer period SHOULD be less than the typical measured time but MUST be less
+*                           than the maximum measured time; otherwise, timer resolution inadequate to
+*                           measure desired times.
+*********************************************************************************************************
+*/
+
+#if (CPU_CFG_TS_TMR_EN == DEF_ENABLED)
+CPU_TS_TMR  CPU_TS_TmrRd(void)
+{
+    return ((CPU_TS_TMR)DWT_CYCCNT);
+}
+#endif

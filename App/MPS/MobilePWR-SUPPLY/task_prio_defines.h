@@ -1,0 +1,27 @@
+#ifndef __TASK_PRIO_DEFINES_H__
+#define __TASK_PRIO_DEFINES_H__
+
+#define  HYDRG_PRODUCER_DELAY_STOP_TASK_PRIO    14
+#define  STACK_MANAGER_DELAY_STOP_TASK_PRIO     3
+
+#define  HYDROGEN_PRODUCER_MANAGER_TASK_PRIO    4
+#define  STACK_MANAGER_TASK_PRIO                5
+
+#define  APP_TASK_START_PRIO                    6
+
+#define  ANA_SIGNAL_MONITOR_TASK_PRIO           7
+#define  DIG_SIGNAL_MONITOR_TASK_PRIO           8
+
+#define  SYSTEM_TIME_STATISTIC_TASK_PRIO        9
+#define  IGNITER_WORK_TASK_PRIO                 10
+
+#define  WIRENESS_COMMUNICATE_TASK_PRIO         11
+#define  RS485_COMMUNICATE_WITH_UART5_TASK_PRIO 2
+
+#define  Make_Vaccuum_Task_PRIO 15
+
+#define  SERIAL_SCREEN_DISPLAY_TASK_PRIO        12
+#define  SPEED_CONTROL_DEVICE_MONITOR_TASK_PRIO 13
+          
+
+#endif

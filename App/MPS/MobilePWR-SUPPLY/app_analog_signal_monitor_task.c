@@ -1,0 +1,430 @@
+/*
+*********************************************************************************************************
+*                                              APPLICATION CODE
+*
+*                          (c) Copyright 2015; Guangdong Hydrogen Energy Science And Technology Co.,Ltd
+*
+*               All rights reserved.  Protected by international copyright laws.
+*               Knowledge of the source code may NOT be used without authorization.
+*********************************************************************************************************
+*/
+/*
+*********************************************************************************************************
+* Filename      : app_analog_signal_monitor_task.c
+* Version       : V1.00
+* Programmer(s) : EHS
+*                 DC
+*********************************************************************************************************
+*/
+/*
+*********************************************************************************************************
+*                                             INCLUDE FILES
+*********************************************************************************************************
+*/
+#include <includes.h>
+#include "bsp.h"
+#include "app_analog_signal_monitor_task.h"
+#include "bsp_ana_sensor.h"
+#include "app_system_run_cfg_parameters.h"
+#include "app_top_task.h"
+#include "bsp_speed_adjust_device.h"
+#include "app_analog_signal_monitor_task.h"
+#include "app_wireness_communicate_task.h"
+
+/*
+*********************************************************************************************************
+*                                           MACRO DEFINES
+*********************************************************************************************************
+*/
+#define         ANA_SIGNAL_MONITOR_TASK_STK_SIZE        200
+
+/*
+*********************************************************************************************************
+*                                         OS-RELATED    VARIABLES
+*********************************************************************************************************
+*/
+extern      OS_TCB      StackManagerTaskTCB;
+OS_TCB      AnaSigMonitorTaskTCB;
+
+OS_SEM      g_stAnaSigConvertFinishSem;
+
+OS_SEM      DevSpdCptureFinishSem;
+static      CPU_STK_8BYTE_ALIGNED     AnaSigMonitorTaskStk[ANA_SIGNAL_MONITOR_TASK_STK_SIZE];
+/*
+*********************************************************************************************************
+*                                                STACKS
+*********************************************************************************************************
+*/
+extern LIQUID_PRESSURE_CMP_LINES_Typedef   g_stLqdPressCmpTbl;
+extern LIQUID_HEIGHT_CMP_LINES_Typedef     g_stLqdHeightCmpTbl;
+
+u8                          g_u8HydrgProducerAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;        //制氢机运行模拟信号警报监测开关
+
+u8                          g_u8StackHydrgPressHighEnoughHookSw = DEF_DISABLED;                 //等待电堆压力满足开关
+u8                          g_u8StackAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;            //电堆运行模拟信号警报监测开关
+u8                          g_u8HydrgProducerAnaSigalarmRunningStartAutoAdjHookSw = DEF_DISABLED;   //制氢机泵速自动调节开关
+
+u8                          g_u8PumpAutoAdjFinishStatu = DEF_YES;
+
+u16                         g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;       //电堆气压小于10Kpa的秒数
+/*
+*********************************************************************************************************
+*                                         FUNCTION PROTOTYPES
+*********************************************************************************************************
+*/
+static      void        AnaSigMonitorTask(void *p_arg);
+
+static      void        HydrgProducerAnaSigRunningStartAutoAdjHook(void);
+static      void        HydrgProducerAnaSigAlarmRunningMonitorHook(void);
+
+static      void        StackHydrgPressHighEnoughWaitHook(void);
+static      void        StackAnaSigAlarmRunningMonitorHook(void);
+
+/*
+*********************************************************************************************************
+*                                          ANALOG SIGNAL MONITOR TASK CREATE
+*
+* Description : The use of the the funciton is to create the task that monitor the analog signal.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+*********************************************************************************************************
+*/
+void  AnaSigMonitorTaskCreate()
+{
+    OS_ERR      err;
+
+    OSTaskCreate((OS_TCB *)&AnaSigMonitorTaskTCB,                    // Create the start task
+                 (CPU_CHAR *)"AnaSignal Monitor Task Start",
+                 (OS_TASK_PTR) AnaSigMonitorTask,
+                 (void *) 0,
+                 (OS_PRIO) ANA_SIGNAL_MONITOR_TASK_PRIO,
+                 (CPU_STK *)&AnaSigMonitorTaskStk[0],
+                 (CPU_STK_SIZE) ANA_SIGNAL_MONITOR_TASK_STK_SIZE / 10,
+                 (CPU_STK_SIZE) ANA_SIGNAL_MONITOR_TASK_STK_SIZE,
+                 (OS_MSG_QTY) 5u,
+                 (OS_TICK) 0u,
+                 (void *) 0,
+                 (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
+                 (OS_ERR *)&err);
+    APP_TRACE_INFO(("Created analog signal monitor Task, and err code is %d...\n\r", err));
+   
+}
+
+/*
+*********************************************************************************************************
+*                                          ANALOG SIGNAL MONITOR TASK
+*
+* Description : The use of the the funciton is to create the task that monitor the analog signal.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : The task manager the related analog signals accord to the switches.
+*********************************************************************************************************
+*/
+void  AnaSigMonitorTask(void *p_arg)
+{
+    OS_ERR      err;
+
+    while(DEF_TRUE)
+    {
+        OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_HMSM_STRICT, &err);
+        
+        /* 开始模拟信号采样，得到数字信号 */
+        AnaSigSampleStart();
+        OSSemPend(&g_stAnaSigConvertFinishSem,
+                  0,                              //一直等待模拟信号转换完成
+                  OS_OPT_PEND_BLOCKING,
+                  NULL,
+                  &err);
+        UpdateAnaSigDigValue();//更新采样值
+
+        /* 制氢机、电堆运行信号监测 */
+        if(g_u8HydrgProducerAnaSigRunningMonitorAlarmHookSw == DEF_ENABLED)
+        {
+            HydrgProducerAnaSigAlarmRunningMonitorHook();
+        }
+
+        if(g_u8StackAnaSigRunningMonitorAlarmHookSw == DEF_ENABLED)
+        {
+            StackAnaSigAlarmRunningMonitorHook();
+        }
+
+        if(g_u8StackHydrgPressHighEnoughHookSw == DEF_ENABLED)
+        {
+            StackHydrgPressHighEnoughWaitHook();    //电堆压力达到
+        }
+
+        if(g_u8HydrgProducerAnaSigalarmRunningStartAutoAdjHookSw == DEF_ENABLED)
+        {
+            HydrgProducerAnaSigRunningStartAutoAdjHook();       //制氢机开始自动调节
+        }
+    }
+}
+
+/*
+*********************************************************************************************************
+*                               hydrogen producer analog signal alarm hook
+*
+* Description : The use of the the funciton is to manager the analog signal alarm of the hydrogen producer.
+*               制氢机液压监测
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+*********************************************************************************************************
+*/
+void HydrgProducerAnaSigAlarmRunningMonitorHook(void)
+{
+    float fLqdPress, flqdHeight;
+
+    fLqdPress = GetSrcAnaSig(LIQUID_PRESS);
+    if(fLqdPress > g_stLqdPressCmpTbl.AlarmUpperLimit)
+    {
+        AlarmCmd(LIQUID_PRESS_HIGH_ALARM, ON);
+
+        if(fLqdPress > g_stLqdPressCmpTbl.ShutDownUpperLimit)
+        {
+            APP_TRACE_INFO(("Hydrogen producer liquid press is above the high press protect line...\n\r"));
+        }
+    }
+    else
+    {
+        AlarmCmd(LIQUID_PRESS_HIGH_ALARM, OFF);
+    }
+
+
+    flqdHeight = GetSrcAnaSig(LIQUID_LEVEL);
+    if(flqdHeight < g_stLqdHeightCmpTbl.AlarmlowerLiquidLevellimit)
+    {
+        AlarmCmd(FUEL_SHORTAGE_ALARM, ON);
+    }
+    else if( flqdHeight <= 100 )
+    {
+        BSP_OutsidePumpPwrOn();          // Control_Outside_Pump_Switch = 1 ;//关闭水泵开关
+    }
+    else if( flqdHeight >= 200 )
+    {
+        BSP_OutsidePumpPwrOff();         //  Control_Outside_Pump_Switch = 0 ;//关闭水泵开关
+
+    }
+    else
+    {
+        AlarmCmd(FUEL_SHORTAGE_ALARM, OFF);
+    }
+
+//  UpdateBuzzerStatuInCruise();
+}
+
+/*
+*********************************************************************************************************
+*                               HydrgProducerAnaSigRunningStartAutoAdjHook
+*
+* Description : The use of the the funciton is to auto adjust the pump at beginning of the run process
+*                   with the analog signal.
+*               制氢机运行起始状态，泵速根据液压自动调节
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+*********************************************************************************************************
+*/
+
+void HydrgProducerAnaSigRunningStartAutoAdjHook(void)
+{
+    float fLqdPress;
+    static u8 i = 0;
+
+    fLqdPress = GetSrcAnaSig( LIQUID_PRESS );
+    i++;
+
+    if(i >= 10)//模拟信号检测周期是100ms一次，计10次也即1秒调节1次
+    {
+        i = 0;
+
+        if(( fLqdPress >= 4) && (g_u8PumpAutoAdjFinishStatu == DEF_NO ))
+        {
+            PumpSpdDec();
+
+            if( GetPumpCtlSpd() <= 30 )
+            {
+                g_u8PumpAutoAdjFinishStatu = DEF_YES;
+                g_u8HydrgProducerAnaSigalarmRunningStartAutoAdjHookSw = DEF_DISABLED; //关自动调节开关
+            } 
+        }
+    }
+}
+
+/*
+*********************************************************************************************************
+*                               StackHydrgPressHighEnoughWaitHook
+*
+* Description : The use of the the funciton is to wait for the hydrogen press up to 40KPa, then start
+*                   the work of the stack.
+*               电堆压力达到40Kpa，信号量发送
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+*********************************************************************************************************
+*/
+void StackHydrgPressHighEnoughWaitHook(void)
+{
+    OS_ERR err;
+
+    if( GetSrcAnaSig(HYDROGEN_PRESS_1) >= 45    )
+    {
+        OSTaskSemPost(&StackManagerTaskTCB, OS_OPT_POST_NO_SCHED, &err);
+        g_u8StackHydrgPressHighEnoughHookSw = DEF_DISABLED;
+    }
+}
+
+/*
+*********************************************************************************************************
+*                               StackAnaSigAlarmRunningMonitorHook
+*
+* Description : The use of the the funciton is to manager the analog signal alarms of the stack.
+*               电堆运行温度和气压报警信号监测
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+*********************************************************************************************************
+*/
+void StackAnaSigAlarmRunningMonitorHook(void)
+{
+    float fStackTemp;
+    float fHydrgPress;
+    
+    /* 监测温度 */
+    fStackTemp = GetSrcAnaSig(STACK_TEMP);
+
+    if(fStackTemp > 60)
+    {
+        AlarmCmd(STACK_TEMP_HIGH_ALARM, ON);
+        StackFanSpdInc();
+
+        if(fStackTemp > 70)
+        {
+            APP_TRACE_INFO(("Stack temp is above the high temp protect line...\n\r"));
+        }
+    }
+    else if(fStackTemp < 20)
+    {
+        AlarmCmd(STACK_TEMP_LOW_ALARM, ON);
+        StackFanSpdDec();
+
+        if(fStackTemp < 10)
+        {
+            APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
+        }
+    }
+    else
+    {
+        AlarmCmd(STACK_TEMP_HIGH_ALARM, OFF);
+        AlarmCmd(STACK_TEMP_LOW_ALARM, OFF);
+    }
+
+    /* 监测气压 */
+    fHydrgPress = GetSrcAnaSig(HYDROGEN_PRESS_1);
+
+    if(fHydrgPress >= 10)
+    {
+        g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;
+        AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, OFF);
+    }
+    else
+    {
+        AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, ON);
+        g_u16StackManagerHydrgPressBelow10KPaHoldSeconds++;
+
+        if(g_u16StackManagerHydrgPressBelow10KPaHoldSeconds >= 30)
+        {
+            CmdShutDown();      //关机命令
+        }
+    }
+
+}
+/*
+*********************************************************************************************************
+*                               SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch
+*
+* Description : open the analog signal manager alarms monitor switch when running.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+*********************************************************************************************************
+*/
+void SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
+{
+    g_u8HydrgProducerAnaSigRunningMonitorAlarmHookSw = i_NewStatu;
+}
+
+/*
+*********************************************************************************************************
+*                               SetHydrgProducerAnaSigRunningStartAutoAdjHookSwitch
+*
+* Description : auto adjust the pump speed at the beginning of the running.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+*********************************************************************************************************
+*/
+void SetHydrgProducerAnaSigRunningStartAutoAdjHookSwitch(uint8_t i_NewStatu)
+{
+    g_u8HydrgProducerAnaSigalarmRunningStartAutoAdjHookSw = i_NewStatu;
+    g_u8PumpAutoAdjFinishStatu = DEF_NO;
+}
+
+/*
+*********************************************************************************************************
+*                               SetStackHydrgPressHighEnoughHookSwitch
+*
+* Description : open the switch of the hydrogen press monitor to start the stack.
+*               开电堆压力达到监测开关
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+*********************************************************************************************************
+*/
+void SetStackHydrgPressHighEnoughHookSwitch(uint8_t i_NewStatu)
+{
+    g_u8StackHydrgPressHighEnoughHookSw = i_NewStatu;
+}
+
+/*
+*********************************************************************************************************
+*                               SetStackAnaSigAlarmRunningMonitorHookSwitch
+*
+* Description : open the switch of the stack analog signal alarm manager switch.
+*               电堆模拟信号报警监测开关
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+*********************************************************************************************************
+*/
+void SetStackAnaSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
+{
+    g_u8StackAnaSigRunningMonitorAlarmHookSw = i_NewStatu;
+}
+
+/******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/
