@@ -35,6 +35,8 @@
 #include "RS485CommWithUart5TaskCreate.h"
 #include "Make_Vacuum.h"
 #include "Time.h"
+#include "app_huawei_communicate_task.h"
+#include "bsp_huawei_485_adjust.h"
 /*
 *********************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -124,7 +126,8 @@ static  void  AppTaskStart(void *p_arg)
     CPU_INT32U  cpu_clk_freq;
     CPU_INT32U  cnts;
     OS_ERR      err;
-
+    uint8_t i = 0;
+    
     VERIFY_RESULT_TYPE_VARIABLE_Typedef eWaitCmdCheckStatu;
 
     (void)p_arg;
@@ -149,12 +152,12 @@ static  void  AppTaskStart(void *p_arg)
     CPU_IntDisMeasMaxCurReset();                              //重置当前最大禁用中断时间
 #endif
 
-    /*
-    #if OS_CFG_SCHED_ROUND_ROBIN_EN                                                     //当使用时间片轮转的时候
-        //使能时间片轮转调度功能,时间片长度为1个系统时钟节拍，既1*5=5ms
-        OSSchedRoundRobinCfg(DEF_ENABLED,1,&err);
-    #endif
-    */
+
+#if OS_CFG_SCHED_ROUND_ROBIN_EN                                                     //当使用时间片轮转的时候
+    //使能时间片轮转调度功能,时间片长度为1个系统时钟节拍，既1*5=5ms
+    OSSchedRoundRobinCfg(DEF_ENABLED,1,&err);
+#endif
+
     
 #if (APP_CFG_SERIAL_EN == DEF_ENABLED)                                                    /*串口初始化*/
     BSP_Ser_Init(115200);                                       /* Enable Serial Interface                              */
@@ -174,51 +177,77 @@ static  void  AppTaskStart(void *p_arg)
 
     DigSigMonitorTaskCreate();          // 数字信号监测任务创建
 
-    SpdCtlDevMonitorTaskCreate();       // 调速设备监测任务
+//    SpdCtlDevMonitorTaskCreate();       // 调速设备监测任务
 
     WirenessCommTaskCreate();           // 无线通信任务创建
     
-    RS485CommWithUart5TaskCreate();                     //485与串口通信的任务搭建
+//    RS485CommWithUart5TaskCreate();                     //485与串口通信的任务搭建
+    HuaWeiModuleAdjustTaskCreate();
 
-    Make_Vacuum_FunctionTaskCreate();                   //抽真空函数任务的搭建
+//    Make_Vacuum_FunctionTaskCreate();                   //抽真空函数任务的搭建
     
-    SerToScreenDisplayTaskCreate();     // 串口显示屏显示任务创建
+//    SerToScreenDisplayTaskCreate();     // 串口显示屏显示任务创建
 
-    IgniterWorkTaskCreate();            // 点火工作任务创建
+//    IgniterWorkTaskCreate();            // 点火工作任务创建
 
-    HydrgProducerManagerTaskCreate();   // 制氢机管理任务
+//    HydrgProducerManagerTaskCreate();   // 制氢机管理任务
 
     StackManagerTaskCreate();           // 电堆管理任务
 
-    HydrgProducerDlyStopTaskCreate();   // 制氢机延时关闭任务
+//    HydrgProducerDlyStopTaskCreate();   // 制氢机延时关闭任务
 
     StackManagerDlyStopTaskCreate();    // 电堆延时关闭任务
 
-    while(DEF_TRUE)
-    {  
-        eWaitCmdCheckStatu = EN_THROUGH;                                        //EN_NOT_THROUGH          
-        if( EN_THROUGH == CheckAuthorization() )
-        {          
-            if( EN_THROUGH == eWaitCmdCheckStatu ) 
-            {
-                SetWorkMode( EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL );    // ucosIII test code.
-                Starting();            
-                Running();
-                KeepingWarm();                                                  
-            }
-            else
-            {
-                SetSystemWorkStatu( EN_ALARMING );
-                DeviceFaultAlarm();
-            }
-        }
-        else
-        {
-            SetSystemWorkStatu( EN_ALARMING );
-            DeviceFaultAlarm();
-        }
+    BSP_BuzzerOn();
+    OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
+    BSP_BuzzerOff();
+    OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
 
+    APP_TRACE_INFO(("Running top Task...\r\n"));
+    
+    while(DEF_TRUE)
+    {        
+        Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
+        OSTimeDlyHMSM(0, 0, 2, 000, OS_OPT_TIME_HMSM_STRICT, &err);
+        for(i= 0;i< RS485_RX_CNT;i++){
+            APP_TRACE_INFO(("RS485_RX_BUF1[%d]:=%X...\n\r",i,RS485_RX_BUF[i]));
+        }
+        RS485_RX_CNT =0;
+        OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
+        Bsp_SetHWmoduleOutPutVIvalue(50.50,20.0);
+        OSTimeDlyHMSM(0, 0, 2, 000, OS_OPT_TIME_HMSM_STRICT, &err);
+        for(i= 0;i< RS485_RX_CNT;i++){
+            APP_TRACE_INFO(("RS485_RX_BUF2[%d]:=%X...\n\r",i,RS485_RX_BUF[i]));
+        }
+        OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
+        RS485_RX_CNT =0;
+        
+        
     }
+//    while(DEF_TRUE)
+//    {                   
+//        if( EN_THROUGH == CheckAuthorization() )
+//        {          
+//            eWaitCmdCheckStatu = WaittingCommand();                                        
+//            if( EN_THROUGH == eWaitCmdCheckStatu ) 
+//            {
+//                Starting();            
+//                Running();
+//                KeepingWarm();                                                  
+//            }
+//            else
+//            {
+//                SetSystemWorkStatu( EN_ALARMING );
+//                DeviceFaultAlarm();
+//            }
+//        }
+//        else
+//        {
+//            SetSystemWorkStatu( EN_ALARMING );
+//            DeviceFaultAlarm();
+//        }
+
+//    }
 
 }
 

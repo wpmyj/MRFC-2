@@ -308,6 +308,7 @@ typedef struct
 
 } RUNNING_ALARM_CODE_Typedef;
 
+
 typedef struct
 {
     uint32_t    AlarmCode;

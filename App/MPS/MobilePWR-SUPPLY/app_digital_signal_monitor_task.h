@@ -3,8 +3,9 @@
 
     float   GetReformerTemp(void);
     float   GetFireOrRodTemp(void);
-    void SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(uint8_t i_NewStatu);
-
+    void    SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(uint8_t i_NewStatu);
+    void    SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu);
+    void    SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(uint8_t i_NewStatu);
     void    DigSigMonitorTaskCreate(void);
 #endif
 

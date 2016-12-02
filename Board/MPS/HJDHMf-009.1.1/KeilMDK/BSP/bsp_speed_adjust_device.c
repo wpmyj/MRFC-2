@@ -352,8 +352,7 @@ void SetStackFanCtlSpd(uint16_t i_u16NewSpd)
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();
     g_u16StackFanCtlSpd = i_u16NewSpd;
-    Set_PWM(0, g_u16StackFanCtlSpd);
-//    BSP_SetStackFanSpd(i_u16NewSpd);
+    BSP_SetStackFanSpd(i_u16NewSpd);
     CPU_CRITICAL_EXIT();
 
 }

@@ -35,7 +35,6 @@
 *********************************************************************************************************
 */
 #define WIRENESS_COMMUNICATE_TASK_STK_SIZE      200
-#define WIRENESS_COMMUNICATE_COMMAND_NMR        0xFF
 
 #define PRGM_TX_BUFF_SIZE       146
 #define PRGM_RX_BUFF_SIZE       10

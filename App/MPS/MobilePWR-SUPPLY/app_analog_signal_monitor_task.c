@@ -30,7 +30,7 @@
 #include "bsp_speed_adjust_device.h"
 #include "app_analog_signal_monitor_task.h"
 #include "app_wireness_communicate_task.h"
-
+#include "app_stack_manager.h"
 /*
 *********************************************************************************************************
 *                                           MACRO DEFINES
@@ -43,12 +43,11 @@
 *                                         OS-RELATED    VARIABLES
 *********************************************************************************************************
 */
-extern      OS_TCB      StackManagerTaskTCB;
 OS_TCB      AnaSigMonitorTaskTCB;
 
 OS_SEM      g_stAnaSigConvertFinishSem;
-
 OS_SEM      DevSpdCptureFinishSem;
+
 static      CPU_STK_8BYTE_ALIGNED     AnaSigMonitorTaskStk[ANA_SIGNAL_MONITOR_TASK_STK_SIZE];
 /*
 *********************************************************************************************************

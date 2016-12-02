@@ -570,6 +570,7 @@ void BSP_SerToWIFI_ISR_Handler(void)
 * Note(s)     : none.
 *********************************************************************************************************
 */
+void UART5_RX_IRQHandler(void);
 void BSP_SerToRS485_Init(u16 bound)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
@@ -595,9 +596,6 @@ void BSP_SerToRS485_Init(u16 bound)
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;    //浮空输入
     GPIO_Init(GPIOD, &GPIO_InitStructure);
 
-//    RCC_APB1PeriphResetCmd(RCC_APB1Periph_USART2, ENABLE); //复位串口2
-//    RCC_APB1PeriphResetCmd(RCC_APB1Periph_USART2, DISABLE); //停止复位
-
     //USART 初始化设置
     USART_InitStructure.USART_BaudRate = bound;   // 波特率设置
     USART_InitStructure.USART_WordLength = USART_WordLength_9b ;   // 串口传输的字长:8位字长，也可以设置为9位
@@ -608,29 +606,33 @@ void BSP_SerToRS485_Init(u16 bound)
     USART_Init(UART5, &USART_InitStructure);      //填充完结构体，调用库函数USART_Init()向寄存器写入配置参数
 
     //Usart1 NVIC 配置
-    NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3 ;       //抢占优先级3
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;    //子优先级3
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;           //IRQ通道使能
-    NVIC_Init(&NVIC_InitStructure);                                  //根据指定的参数初始化VIC寄存器
+//    NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;
+//    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3 ;       //抢占优先级3
+//    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;    //子优先级3
+//    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;           //IRQ通道使能
+//    NVIC_Init(&NVIC_InitStructure);                                  //根据指定的参数初始化VIC寄存器
 
+    BSP_IntVectSet(BSP_INT_ID_USART5, UART5_RX_IRQHandler);   //中断向量表设置
+    BSP_IntEn(BSP_INT_ID_USART5);
+    
     USART_ITConfig(UART5, USART_IT_RXNE, ENABLE);//开启中断
     USART_Cmd(UART5, ENABLE);     //调用USART_Cmd() 使能USART外设
- //   RS485_TX_EN = 0;        //默认为接收模式
 
 }
 
 uint8_t g_usart5_buff;
 
-void UART5_IRQHandler(void)         //
+//void UART5_IRQHandler(void)   
+void UART5_RX_IRQHandler(void)
 {
 //    u8 chr;
 #ifdef OS_TICKS_PER_SEC   
     OSIntEnter();
 #endif
 
-//    if(USART_GetITStatus(UART5, USART_IT_RXNE) != RESET)  //
-//    {
+    if(USART_GetITStatus(UART5, USART_IT_RXNE) != RESET)  //
+    {
+        USART_ClearITPendingBit(UART5,USART_IT_RXNE);
 //        uint8_t tmp_buf = USART_ReceiveData(UART5); //(USART1->DR);  
 
 //        if( tmp_buf )
@@ -638,7 +640,7 @@ void UART5_IRQHandler(void)         //
 //            g_usart5_buff = tmp_buf;
 //        }
 //        USART_SendData(USART1, g_usart5_buff);
-//    }
+    }
 
 
 
@@ -670,8 +672,6 @@ void RS485_Send_Data1(u16 *buffer, u16 count)
     for(i = 0; i < count; i++)
     {
         USART_SendData(UART5, buffer[i]);
-
-
         while(USART_GetFlagStatus(UART5, USART_FLAG_TC) != SET); 
     }
 }

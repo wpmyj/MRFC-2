@@ -89,6 +89,7 @@
 */
 
 #include  <stm32f10x_conf.h>
+#include  "stm32f10x.h"
 
 void BSP_BuzzerInit(void);
 /*

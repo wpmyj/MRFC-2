@@ -174,7 +174,7 @@
           </Flash1>
           <bUseTDR>0</bUseTDR>
           <Flash2>BIN\UL2CM3.DLL</Flash2>
-          <Flash3></Flash3>
+          <Flash3>"" ()</Flash3>
           <Flash4></Flash4>
           <pFcarmOut></pFcarmOut>
           <pFcarmGrp></pFcarmGrp>
@@ -463,19 +463,9 @@
               <FilePath>.\app_screen_display_task.c</FilePath>
             </File>
             <File>
-              <FileName>stm32f10x.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\stm32f10x.h</FilePath>
-            </File>
-            <File>
               <FileName>RS485CommWithUart5TaskCreate.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\RS485CommWithUart5TaskCreate.c</FilePath>
-            </File>
-            <File>
-              <FileName>RS485CommWithUart5TaskCreate.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\RS485CommWithUart5TaskCreate.h</FilePath>
             </File>
             <File>
               <FileName>Time.c</FileName>
@@ -486,6 +476,11 @@
               <FileName>Make_Vacuum.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Make_Vacuum.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_huawei_communicate_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\app_huawei_communicate_task.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -543,9 +538,9 @@
               <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_speed_adjust_device.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_pvd.c</FileName>
+              <FileName>bsp_huawei_485_adjust.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_pvd.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_huawei_485_adjust.c</FilePath>
             </File>
           </Files>
         </Group>

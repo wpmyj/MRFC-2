@@ -26,7 +26,7 @@
 #include <app_digital_signal_monitor_task.h>
 #include "app_system_run_cfg_parameters.h"
 #include "app_top_task.h"
-
+#include "app_stack_manager.h"
 /*
 *********************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -61,7 +61,7 @@ static  float    g_fAnaTemp[2] = {0};
 
 static  uint8_t  g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw = DEF_DISABLED;   //制氢机第一次点火后的数字信号监测任务开关
 static  uint8_t  g_u8HydrgProducerDigSigRunningMonitorAlarmHookSw = DEF_DISABLED;            //制氢机运行数字信号监测警报开关
-
+static  uint8_t  g_u8StackExhaustTimesCountPerMinutesMonitorHookSw = DEF_DISABLED;//电堆每分钟排气次数监测开关
 /*
 *********************************************************************************************************
 *                                         FUNCTION PROTOTYPES
@@ -71,7 +71,7 @@ static   void   UpdateThermocoupleTemp(uint8_t *i_TempErr);
 static   void   DigSigMonitorTask(void *p_arg);
 static   void   HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook(void);
 static   void   HydrgProducerDigSigAlarmRunningMonitorHook(void);
-
+static   void   SetStackExhaustTimesCountPerMinutesMonitorHook(void);
 /*
 *********************************************************************************************************
 *                                                UpdateThermocoupleTemp()
@@ -256,6 +256,10 @@ static void  DigSigMonitorTask(void *p_arg)
         {
             HydrgProducerDigSigAlarmRunningMonitorHook();
         }
+        if(g_u8StackExhaustTimesCountPerMinutesMonitorHookSw == DEF_ENABLED) {
+            SetStackExhaustTimesCountPerMinutesMonitorHook();
+        }
+        
     }
 }
 
@@ -307,6 +311,35 @@ static void HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook(void)
 
 }
 
+/*
+***************************************************************************************************
+*                     SetStackExhaustTimesCountPerMinutesMonitorHookSwitch()
+*
+* Description : Monitor the digital signal that fluid weight per minute.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : .
+***************************************************************************************************
+*/
+void SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(uint8_t i_NewStatu)
+{
+    g_u8StackExhaustTimesCountPerMinutesMonitorHookSw = i_NewStatu;
+}
+
+static void SetStackExhaustTimesCountPerMinutesMonitorHook()
+{
+    static uint16_t u16CountPerMinutes = 0;
+
+    u16CountPerMinutes ++;
+
+    if(u16CountPerMinutes >= 240) { //一分钟清零一次电堆排气次数
+        ResetStackExhaustTimesCountPerMinutes();
+        u16CountPerMinutes = 0;
+    }
+}
 /*
 *********************************************************************************************************
 *                     SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch()

@@ -90,248 +90,91 @@
 *********************************************************************************************************
 */
 //管脚定义分为:组别+管脚号
-/* -------------------- GPIOA PINS -------------------- */
-#define  BSP_GPIOA_MII_CRS                       DEF_BIT_00
-#define  BSP_GPIOA_MII_RX_CLK                    DEF_BIT_01
-#define  BSP_GPIOA_MII_MDIO                      DEF_BIT_02
-#define  BSP_GPIOA_MII_COL                       DEF_BIT_03
-#define  BSP_GPIOA_PIN_04                        DEF_BIT_04
-#define  BSP_GPIOA_SPI1_SCK                      DEF_BIT_05
-#define  BSP_GPIOA_SPI1_MISO                     DEF_BIT_06
-#define  BSP_GPIOA_SPI1_MOSI                     DEF_BIT_07
-#define  BSP_GPIOA_SDCARD_CS                     DEF_BIT_08
-#define  BSP_GPIOA_USB_VBUS                      DEF_BIT_09
-#define  BSP_GPIOA_USB_ID                        DEF_BIT_10
-#define  BSP_GPIOA_USB_DM                        DEF_BIT_11
-#define  BSP_GPIOA_USB_DP                        DEF_BIT_12
-#define  BSP_GPIOA_TMS_SWDIO                     DEF_BIT_13
-#define  BSP_GPIOA_TCK_SWCLK                     DEF_BIT_14
-#define  BSP_GPIOA_TDI                           DEF_BIT_15
+/* ------------------------------------------ GPIOA PINS ---------------------------------------- */
+#define  BSP_GPIOA_GROUP                                                        GPIOA
+        
+#define  BSP_GPIOA_LIQUID_LEVEL_ANA_SIGNAL_PORT_NMB                             DEF_BIT_00//液位传感器
+#define  BSP_GPIOA_LIQUID_PRESS_ANA_SIGNAL_PORT_NMB                             DEF_BIT_01//液压传感器
+#define  BSP_GPIOA_STACK_TEMP_ANA_SIGNAL_PORT_NMB                               DEF_BIT_02//电堆温度传感器
+#define  BSP_GPIOA_STACK_CURRENT_ANA_SIGNAL_PORT_NMB                            DEF_BIT_03//电堆电流传感器
+#define  BSP_GPIOA_PUMP_SPD_ANA_SIGNAL_CTRL_PORT_NMB                            DEF_BIT_04//泵速控制引脚
+#define  BSP_GPIOA_HYDROGEN_FAN_SPD_ANA_SIGNAL_CTRL_PORT_NMB                    DEF_BIT_05//制氢风机速度控制引脚
+#define  BSP_GPIOA_STACK_VOLETAGE_ANA_SIGNAL_PORT_NMB                           DEF_BIT_06//电堆电压传感器
+#define  BSP_GPIOA_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT_NMB                 DEF_BIT_07//气压传感器2
+#define  BSP_GPIOA_STACK_220_VOLATAGE_MONITOR_PORT_NMB                          DEF_BIT_08//交流220V电压监测
+#define  BSP_GPIOA_USART1_TX_PORT_NMB                                           DEF_BIT_09
+#define  BSP_GPIOA_USART1_RX_PORT_NMB                                           DEF_BIT_10
+#define  BSP_GPIOA_USB_DM_PORT_NMB                                              DEF_BIT_11
+#define  BSP_GPIOA_USB_DP_PORT_NMB                                              DEF_BIT_12
+#define  BSP_GPIOA_STM_SPI_NSS_PORT_NMB                                         DEF_BIT_15
 
-//电堆电压传感器
-#define  BSP_GPIOB_STACK_VOLTAGE_ANA_SIGNAL_PORT                    GPIOB
-#define  BSP_GPIOB_STACK_VOLTAGE_ANA_SIGNAL_PORT_NMB                DEF_BIT_01
-//电堆电流传感器
-#define  BSP_GPIOA_STACK_CURRENT_ANA_SIGNAL_PORT                    GPIOA
-#define  BSP_GPIOA_STACK_CURRENT_ANA_SIGNAL_PORT_NMB                DEF_BIT_03
-//气压传感器1
-#define  BSP_GPIOB_STACK_HYDROGEN_PRESS_ONE_ANA_SIGNAL_PORT         GPIOB
-#define  BSP_GPIOB_STACK_HYDROGEN_PRESS_ONE_ANA_SIGNAL_PORT_NMB     DEF_BIT_00
-//气压传感器2
-#define  BSP_GPIOA_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT         GPIOA
-#define  BSP_GPIOA_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT_NMB     DEF_BIT_07
+/* ------------------------------------------ GPIOB PINS ---------------------------------------- */
+#define  BSP_GPIOB_GROUP                                                        GPIOB
+        
+#define  BSP_GPIOB_STACK_HYDROGEN_PRESS_ONE_ANA_SIGNAL_PORT_NMB                 DEF_BIT_00//气压传感器1
+#define  BSP_GPIOB_STACK_VOLETAGE_ANA_SIGNAL_PORT_NMB                           DEF_BIT_01//电堆电压传感器
+#define  BSP_GPIOB_BUZZER_CTRL_PORT_NMB                                         DEF_BIT_02
+#define  BSP_GPIOB_STM_SPI_CLK_PORT_NMB                                         DEF_BIT_3
+#define  BSP_GPIOB_STM_SPI_MISO_PORT_NMB                                        DEF_BIT_4
+#define  BSP_GPIOB_STM_SPI_MOSI_PORT_NMB                                        DEF_BIT_5
+#define  BSP_GPIOB_STACK_FAN_SPD_CTRL_PORT_NMB                                  DEF_BIT_06//电堆风机速度控制引脚
+#define  BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB                     DEF_BIT_07//进液电磁阀一电源控制引脚
+#define  BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB                            DEF_BIT_08//保温加热器控制引脚
+#define  BSP_GPIOB_PUMP_AND_WATER_INPUT_VALVE_ONE_DIAGNOSTIC_FEEDBACK_PORT_NMB  DEF_BIT_09//泵和进液电磁阀1诊断监测引脚
+#define  BSP_GPIOB_PUMP_PWR_CTRL_PORT_NMB                                       DEF_BIT_10//泵电源开关引脚
+#define  BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB                               DEF_BIT_11//制氢机风机电源开关引脚
+#define  BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB                               DEF_BIT_12//直流接触器控制引脚
+#define  BSP_GPIOB_EXTERNEL_SWITCH_INPUT_PORT_NMB                               DEF_BIT_13//外部开关机按钮
+#define  BSP_GPIOB_USB_BUS_PWR_EN_CTRL_PORT_NMB                                 DEF_BIT_14//USB PWR EN
+#define  BSP_GPIOB_USB_BUS_PWR_OVRCR_CTRL_PORT_NMB                              DEF_BIT_15//USB BUS PWR OVRCR
 
-//泵速控制引脚
-#define  BSP_GPIOA_PUMP_SPD_ANA_SIGNAL_CTRL_PORT                    GPIOA
-#define  BSP_GPIOA_PUMP_SPD_ANA_SIGNAL_CTRL_PORT_NMB                DEF_BIT_04
-//制氢机风机电源开关引脚
-#define  BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT                       GPIOB
-#define  BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB                   DEF_BIT_11
-
-#define  BSP_GPIOA_RSVD_ANA_SIGNAL_TWO_PORT                         GPIOA
-#define  BSP_GPIOA_RSVD_ANA_SIGNAL_TWO_PORT_NMB                     DEF_BIT_07
-
-//制氢风机速度控制引脚
-#define  BSP_GPIOA_HYDROGEN_FAN_SPD_PWM_SIGNAL_CTRL_PORT            GPIOA
-#define  BSP_GPIOA_HYDROGEN_FAN_SPD_PWM_SIGNAL_CTRL_PORT_NMB        DEF_BIT_05
-
-#define  BSP_GPIOA_USART1_TX_PORT                                   GPIOA
-#define  BSP_GPIOA_USART1_TX_PORT_NMB                               DEF_BIT_09
-
-#define  BSP_GPIOA_USART1_RX_PORT                                   GPIOA
-#define  BSP_GPIOA_USART1_RX_PORT_NMB                               DEF_BIT_10
-
-#define  BSP_GPIOA_CAN1_RX_PORT                                     GPIOA
-#define  BSP_GPIOA_CAN1_RX_PORT_NMB                                 DEF_BIT_11
-
-#define  BSP_GPIOA_CAN1_TX_PORT                                     GPIOA
-#define  BSP_GPIOA_CAN1_TX_PORT_NMB                                 DEF_BIT_12
-//泵开关引脚
-#define  BSP_GPIOC_PUMP_PWR_CTRL_PORT                               GPIOB
-#define  BSP_GPIOC_PUMP_PWR_CTRL_PORT_NMB                           DEF_BIT_10
-//进液电磁阀二控制引脚
-#define  BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT             GPIOC
-#define  BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB         DEF_BIT_14
-//进液电磁阀一控制引脚
-#define  BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT             GPIOB
-#define  BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB         DEF_BIT_07
-
-/* -------------------- GPIOB PINS -------------------- */
-#define  BSP_GPIOB_PIN_00                        DEF_BIT_00
-#define  BSP_GPIOB_PIN_01                        DEF_BIT_01
-#define  BSP_GPIOB_PIN_02                        DEF_BIT_02
-#define  BSP_GPIOB_TDO_SWO                       DEF_BIT_03
-#define  BSP_GPIOB_TRST                          DEF_BIT_04
-#define  BSP_GPIOB_I2C_SMB                       DEF_BIT_05
-#define  BSP_GPIOB_I2C1_SCK                      DEF_BIT_06
-#define  BSP_GPIOB_I2C1_DATA                     DEF_BIT_07
-#define  BSP_GPIOB_MII_TXD3                      DEF_BIT_08
-#define  BSP_GPIOB_PIN_09                        DEF_BIT_09
-#define  BSP_GPIOB_MII_RX_ERR                    DEF_BIT_10
-#define  BSP_GPIOB_MII_TX_ERR                    DEF_BIT_11
-#define  BSP_GPIOB_MII_TXD0                      DEF_BIT_12
-#define  BSP_GPIOB_MII_TXD1                      DEF_BIT_13
-#define  BSP_GPIOB_PIN_14                        DEF_BIT_14
-#define  BSP_GPIOB_PIN_15                        DEF_BIT_15
-
-#define  BSP_GPIOB_RSVD_ANA_SIGNAL_THREE_PORT                   GPIOB
-#define  BSP_GPIOB_RSVD_ANA_SIGNAL_THREE_PORT_NMB               DEF_BIT_00
-
-//液位传感器
-#define  BSP_GPIOA_LIQUID_LEVEL_ANA_SIGNAL_PORT                 GPIOA
-#define  BSP_GPIOA_LIQUID_LEVEL_ANA_SIGNAL_PORT_NMB             DEF_BIT_00
-
-//液压传感器
-#define  BSP_GPIOA_LIQUID_PRESS_ANA_SIGNAL_PORT                 GPIOA
-#define  BSP_GPIOA_LIQUID_PRESS_ANA_SIGNAL_PORT_NMB             DEF_BIT_01
-
-//热电偶相关管脚
-#define  BSP_GPIOC_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT             GPIOD
-#define  BSP_GPIOC_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB         DEF_BIT_13
-
-#define  BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT                    GPIOD
-#define  BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT_NMB                DEF_BIT_10
-
-#define  BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT                      GPIOD
-#define  BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT_NMB                  DEF_BIT_11
-
-#define  BSP_GPIOC_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT             GPIOD
-#define  BSP_GPIOC_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB         DEF_BIT_12
-
-//电堆风机速度控制引脚
-#define  BSP_GPIOB_STACK_FAN_SPD_CTRL_PORT                      GPIOB
-#define  BSP_GPIOB_STACK_FAN_SPD_CTRL_PORT_NMB                  DEF_BIT_07
-
-//点火器控制引脚
-#define  BSP_GPIOC_IGNITER_PWR_CTRL_PORT                        GPIOC
-#define  BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB                    DEF_BIT_15
-
-//保温加热器控制引脚
-#define  BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT                         GPIOB
-#define  BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB                     DEF_BIT_08
+/* ------------------------------------------ GPIOC PINS ---------------------------------------- */
+#define  BSP_GPIOC_GROUP                                                        GPIOC
+        
+#define  BSP_GPIOC_HYDROGRN_CONCENTRATION_DETECTION_PORT_NMB                    DEF_BIT_00//氢气浓度监测引脚
+#define  BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB                                DEF_BIT_06//水泵自动加液引脚控制开关
+#define  BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB                  DEF_BIT_07//电堆进气控制阀
+#define  BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB                 DEF_BIT_08//电堆出气控制阀
+#define  BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT_NMB                                  DEF_BIT_09//电堆风机开关引脚控制
+#define  BSP_GPIOC_UART4_TX_PORT_NMB                                            DEF_BIT_10
+#define  BSP_GPIOC_UART4_RX_PORT_NMB                                            DEF_BIT_11
+#define  BSP_GPIOC_UART5_TX_PORT_NMB                                            DEF_BIT_12
+#define  BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB                                DEF_BIT_13//快速加热器控制引脚
+#define  BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB                     DEF_BIT_14//进液电磁阀二控制引脚
+#define  BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB                                    DEF_BIT_15//点火器控制引脚
 
 
-//快速加热器控制引脚
-#define  BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT                         GPIOC
-#define  BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB                     DEF_BIT_13
+/* ------------------------------------------ GPIOD PINS ---------------------------------------- */
+#define  BSP_GPIOD_GROUP                                                        GPIOD
+        
+#define  BSP_GPIOD_UART5_RX_PORT_NMB                                            DEF_BIT_02
+#define  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB                               DEF_BIT_07
+#define  BSP_GPIOD_MAX6675_CHIPS_SELECT_PORT_NMB                                DEF_BIT_10
+#define  BSP_GPIOD_MAX6675_CHIPS_SCLK_PORT_NMB                                  DEF_BIT_11
+#define  BSP_GPIOD_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB                         DEF_BIT_12
+#define  BSP_GPIOD_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB                         DEF_BIT_13//热电偶相关管脚                 
+#define  BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB                               DEF_BIT_14
+#define  BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB                               DEF_BIT_15
 
 
-//#define  BSP_GPIOB_EMERGENCY_DIG_SIGNAL_INPUT_PORT              GPIOB
-//#define  BSP_GPIOB_EMERGENCY_DIG_SIGNAL_INPUT_PORT_NMB          DEF_BIT_11
-
-
-/* -------------------- GPIOC PINS -------------------- */
-#define  BSP_GPIOC_PIN_00                        DEF_BIT_00
-#define  BSP_GPIOC_MII_MDC                       DEF_BIT_01
-#define  BSP_GPIOC_MII_TXD2                      DEF_BIT_02
-#define  BSP_GPIOC_MII_TX_CLK                    DEF_BIT_03
-#define  BSP_GPIOC_PIN_04                        DEF_BIT_04
-#define  BSP_GPIOC_PIN_05                        DEF_BIT_05
-#define  BSP_GPIOC_PIN_06                        DEF_BIT_06
-#define  BSP_GPIOC_PIN_07                        DEF_BIT_07
-#define  BSP_GPIOC_PIN_08                        DEF_BIT_08
-#define  BSP_GPIOC_PIN_09                        DEF_BIT_09
-#define  BSP_GPIOC_PIN_10                        DEF_BIT_10
-#define  BSP_GPIOC_PIN_11                        DEF_BIT_11
-#define  BSP_GPIOC_PIN_12                        DEF_BIT_12
-#define  BSP_GPIOC_PIN_13                        DEF_BIT_13
-//电堆温度传感器
-#define  BSP_GPIOC_STACK_TEMP_ANA_SIGNAL_PORT                       GPIOA
-#define  BSP_GPIOC_STACK_TEMP_ANA_SIGNAL_PORT_NMB                   DEF_BIT_02
-//电堆进气控制阀
-#define  BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT          GPIOC
-#define  BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB      DEF_BIT_07
-//电堆出气控制阀
-#define  BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT         GPIOC
-#define  BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB     DEF_BIT_08
-//直流接触器控制引脚
-#define  BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT                       GPIOB
-#define  BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB                   DEF_BIT_12
-
-//泵速检测引脚
-#define  BSP_GPIOC_PUMP_SPEED_CHECK_PORT                            GPIOE
-#define  BSP_GPIOC_PUMP_SPEED_CHECK_PORT_NMB                        DEF_BIT_09
-
-//制氢风机速度检测引脚
-#define  BSP_GPIOC_HYDRG_FAN_SPEED_CHECK_PORT                       GPIOE
-#define  BSP_GPIOC_HYDRG_FAN_SPEED_CHECK_PORT_NMB                   DEF_BIT_11
-////电堆风机1速度检测引脚
-//#define  BSP_GPIOC_STACK_FAN1_SPEED_CHECK_PORT                      GPIOC
-//#define  BSP_GPIOC_STACK_FAN1_SPEED_CHECK_PORT_NMB                  DEF_BIT_08
-////电堆风机2速度检测引脚
-//#define  BSP_GPIOC_STACK_FAN2_SPEED_CHECK_PORT                      GPIOC
-//#define  BSP_GPIOC_STACK_FAN2_SPEED_CHECK_PORT_NMB                  DEF_BIT_09
-
-#define  BSP_GPIOC_UART4_TX_PORT                                    GPIOC
-#define  BSP_GPIOC_UART4_TX_PORT_NMB                                DEF_BIT_10
-#define  BSP_GPIOC_UART4_RX_PORT                                    GPIOC
-#define  BSP_GPIOC_UART4_RX_PORT_NMB                                DEF_BIT_11
-
-#define  BSP_GPIOC_BUZZER_CTRL_PORT                                 GPIOB
-#define  BSP_GPIOC_BUZZER_CTRL_PORT_NMB                             DEF_BIT_02
-//电堆风机开关引脚控制
-#define  BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT                          GPIOC
-#define  BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT_NMB                      DEF_BIT_09
- 
-//水泵自动加液引脚控制开关
-#define  BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT                        GPIOC
-#define  BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB                    DEF_BIT_06
-
-//预留口5/6/7/8 (抽真空电磁阀2/3/4/5)
-#define  BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT                        GPIOE
-#define  BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB                    DEF_BIT_15
-
-#define  BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT                        GPIOD
-#define  BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB                    DEF_BIT_14
-
-#define  BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT                        GPIOD
-#define  BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB                    DEF_BIT_15
-
-#define  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT                        GPIOD
-#define  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB                    DEF_BIT_07
-
-
-
-
-/* -------------------- GPIOD PINS -------------------- */
-#define  BSP_GPIOD_CAN1_RX                       DEF_BIT_00
-#define  BSP_GPIOD_CAN1_TX                       DEF_BIT_01
-#define  BSP_GPIOD_PIN_02                        DEF_BIT_02
-#define  BSP_GPIOD_USART2_CTS                    DEF_BIT_03
-#define  BSP_GPIOD_USART2_RTS                    DEF_BIT_04
-#define  BSP_GPIOD_USART2_TX                     DEF_BIT_05
-#define  BSP_GPIOD_USART2_RX                     DEF_BIT_06
-#define  BSP_GPIOD_PIN_07                        DEF_BIT_07
-#define  BSP_GPIOD_MII_RX_DV                     DEF_BIT_08
-#define  BSP_GPIOD_MII_RXD0                      DEF_BIT_09
-#define  BSP_GPIOD_MII_RXD1                      DEF_BIT_10
-#define  BSP_GPIOD_MII_RXD2                      DEF_BIT_11
-#define  BSP_GPIOD_MII_RXD3                      DEF_BIT_12
-#define  BSP_GPIOD_LED1                          DEF_BIT_13
-#define  BSP_GPIOD_LED2                          DEF_BIT_14
-#define  BSP_GPIOD_LED3                          DEF_BIT_15
-
-
-/* -------------------- GPIOE PINS -------------------- */
-#define  BSP_GPIOE_PIN_00                        DEF_BIT_00
-#define  BSP_GPIOE_USB_PWR_SW_ON                 DEF_BIT_01
-#define  BSP_GPIOE_PIN_02                        DEF_BIT_02
-#define  BSP_GPIOE_PIN_03                        DEF_BIT_03
-#define  BSP_GPIOE_PIN_04                        DEF_BIT_04
-#define  BSP_GPIOE_MII_INT                       DEF_BIT_05
-#define  BSP_GPIOE_SD_CARD_DETECT                DEF_BIT_06
-#define  BSP_GPIOE_PIN_07                        DEF_BIT_07
-#define  BSP_GPIOE_PIN_08                        DEF_BIT_08
-#define  BSP_GPIOE_PIN_09                        DEF_BIT_09
-#define  BSP_GPIOE_PIN_10                        DEF_BIT_10
-#define  BSP_GPIOE_PIN_11                        DEF_BIT_11
-#define  BSP_GPIOE_PIN_12                        DEF_BIT_12
-#define  BSP_GPIOE_PIN_13                        DEF_BIT_13
-#define  BSP_GPIOE_PIN_14                        DEF_BIT_14
-#define  BSP_GPIOE_PIN_15                        DEF_BIT_15
-
-
-
+/* ------------------------------------------ GPIOE PINS ---------------------------------------- */
+#define  BSP_GPIOE_GROUP                                                            GPIOE
+/*诊断检测引脚*/
+#define  BSP_GPIOE_HEATER_AND_IGNITER_DIAGNOSTIC_FEEDBACK_PORT_NMB                  DEF_BIT_00//加热器和点火器诊断监测引脚
+#define  BSP_GPIOE_RVD1_AND_DC_OUTPUT_DIAGNOSTIC_FEEDBACK_PORT_NMB                  DEF_BIT_01//预留1和直流接触器诊断
+#define  BSP_GPIOE_HYDROGEN_OUTPUT_AND_INPUT_VALVE_DIAGNOSTIC_FEEDBACK_PORT_NMB     DEF_BIT_02//进气电磁阀和出气电磁阀诊断监测引脚
+#define  BSP_GPIOE_RVD4_CTRL_AND_RVD3_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB             DEF_BIT_03//预留控制点4和预留控制点3诊断监测引脚
+#define  BSP_GPIOE_RVD2_CTRL_AND_WATER_INPUT_VALVE2_DIAGNOSTIC_FEEDBACK_PORT_NMB    DEF_BIT_04//预留控制点2和进液电磁阀2诊断监测引脚
+#define  BSP_GPIOE_RVD7_CTRL_AND_RVD8_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB             DEF_BIT_05
+#define  BSP_GPIOE_RVD5_CTRL_AND_RVD6_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB             DEF_BIT_06
+#define  BSP_GPIOE_FIRE_STATUS_FEEDBACK_PORT_NMB                                    DEF_BIT_07//点火状态监测引脚
+#define  BSP_GPIOE_PUMP_SPEED_CHECK_PORT_NMB                                        DEF_BIT_09//泵速检测引脚
+#define  BSP_GPIOE_PD_PULSE1_PORT_NMB                                               DEF_BIT_10//外部电位脉冲1
+#define  BSP_GPIOE_HYDRG_FAN_SPEED_CHECK_PORT_NMB                                   DEF_BIT_11//制氢风机速度检测引脚
+#define  BSP_GPIOE_PD_PULSE2_PORT_NMB                                               DEF_BIT_12//外部电位脉冲2
+#define  BSP_GPIOE_STACK_FAN1_SPEED_CHECK_PORT_NMB                                  DEF_BIT_13//电堆风机速度检测引脚
+#define  BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB                                   DEF_BIT_14
+#define  BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB                                   DEF_BIT_15//预留口5/6/7/8 (抽真空电磁阀2/3/4/5)
 
 /*
 *********************************************************************************************************
@@ -665,11 +508,18 @@ void  BSP_OutsidePumpPwrOff(void);
 *                                              SPEED CONTROL DEVICE SERVICES
 *********************************************************************************************************
 */
-void  BSP_SetPumpSpd(uint8_t);
+void  BSP_SetPumpSpd(uint16_t);
 void  BSP_SetHydrgFanSpd(uint16_t);
-void  Set_PWM(u8 channr, u16 duc);
-//void  BSP_SetStackFanSpd(uint8_t);
+void  BSP_SetStackFanSpd(uint16_t);
+/*
+***************************************************************************************************
+*                                              Running Venting SERVICES
+***************************************************************************************************
+*/
 
+void BSP_VentingIntervalRecordTimerInit(void);
+void BSP_StartRunningVentingTimeRecord(void);
+void BSP_StopRunningVentingTimeRecord(void);
 /*
 *********************************************************************************************************
 *                                              STATUS INPUTS

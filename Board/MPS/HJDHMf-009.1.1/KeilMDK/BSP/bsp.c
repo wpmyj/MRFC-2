@@ -27,8 +27,7 @@
 #include "app_wireness_communicate_task.h"
 #include "bsp_speed_adjust_device.h"
 #include <app_speed_control_device_monitor_task.h>
-#include "bsp_pvd.h"
-
+#include "app_stack_manager.h"
 /*
 *********************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -41,20 +40,21 @@
 #define MAX6675_DATA_CLK_DELAY_SYSTEM_CYCLES    (BSP_CPU_ClkFreq()/10000000 + 1)    //读MAX6675数据时，读取时钟需要保持的系统时钟周期数
 #define MAX6675_DATA_READ_DELAY_SYSTEM_CYCLES   ((MAX6675_DATA_CLK_DELAY_SYSTEM_CYCLES + 1) / 2) //读MAX6675数据时，读取时钟就绪后，为保证准确而将读取动作延后的系统时钟数
 
-#define MAX6675_CS_YES   GPIO_ResetBits(BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT, BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT_NMB);   //MAX6675片选选中
-#define MAX6675_CS_NO    GPIO_SetBits(BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT, BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT_NMB);
-#define MAX6675_SCK_UP   GPIO_SetBits(BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT, BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT_NMB);
-#define MAX6675_SCK_DOWN GPIO_ResetBits(BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT, BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT_NMB);
+#define MAX6675_CS_YES   GPIO_ResetBits(BSP_GPIOD_GROUP, BSP_GPIOD_MAX6675_CHIPS_SELECT_PORT_NMB);   //MAX6675片选选中
+#define MAX6675_CS_NO    GPIO_SetBits(BSP_GPIOD_GROUP, BSP_GPIOD_MAX6675_CHIPS_SELECT_PORT_NMB);
+#define MAX6675_SCK_UP   GPIO_SetBits(BSP_GPIOD_GROUP, BSP_GPIOD_MAX6675_CHIPS_SCLK_PORT_NMB);
+#define MAX6675_SCK_DOWN GPIO_ResetBits(BSP_GPIOD_GROUP, BSP_GPIOD_MAX6675_CHIPS_SCLK_PORT_NMB);
 
-#define GET_REFORMER_TEMP_DATA_BY_BIT   GPIO_ReadInputDataBit(BSP_GPIOC_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT,BSP_GPIOC_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB)
-#define GET_FIRE_TEMP_DATA_BY_BIT       GPIO_ReadInputDataBit(BSP_GPIOC_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT,BSP_GPIOC_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB)
+#define GET_REFORMER_TEMP_DATA_BY_BIT   GPIO_ReadInputDataBit(BSP_GPIOD_GROUP,BSP_GPIOD_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB)
+#define GET_FIRE_TEMP_DATA_BY_BIT       GPIO_ReadInputDataBit(BSP_GPIOD_GROUP,BSP_GPIOD_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB)
 
-#define NUMBER_OF_THE_PUMP_SPEED_GRADES     (200u)
+#define NUMBER_OF_THE_PUMP_SPEED_GRADES     (2000u)
 #define DAC_DELT_LSB_PER_PUMP_SPEED         (4095 / ((float)NUMBER_OF_THE_PUMP_SPEED_GRADES))      //    4095/ 200
 
-#define NUMBER_OF_THE_HYDROGEN_FAN_SPEED_GRADES     (200)
-
-#define NUMBER_OF_THE_STACK_FAN_SPEED_GRADES        (200)
+#define NUMBER_OF_THE_HYDROGEN_FAN_SPEED_GRADES     (2000u)
+#define DAC_DELT_LSB_PER_HYDROGEN_FAN_SPEED         (4095 / ((float)NUMBER_OF_THE_HYDROGEN_FAN_SPEED_GRADES))
+    
+#define NUMBER_OF_THE_STACK_FAN_SPEED_GRADES        (2000)
 #define TIMER_UPDATE_NUMBER                         (999)
 
 #define TIMER_CMP_DELT_NUMBER_PER_STACK_FAN_SPEED   ((TIMER_UPDATE_NUMBER + 1) / ((float)NUMBER_OF_THE_STACK_FAN_SPEED_GRADES))
@@ -83,7 +83,7 @@ SWITCH_TYPE_VARIABLE_Typedef g_eSpdCaptureWorkSwitch[4] = {OFF};
 uint8_t  g_eSpdCaptureTriggersCrossCycleNmb[4] = {0};
 uint16_t g_u16SpdCaptureLastTimeCounter[4] = {0};
 uint16_t g_u16SpdCaptureFrequency[4] = {0};
-
+uint8_t  g_u8DecompressCountPerMinute = 0; //每分钟排气次数
 /*
 *********************************************************************************************************
 *                                           LOCAL VARIABLES
@@ -140,7 +140,7 @@ static  void  BSP_StackFanPwrOff(void);
 
 static  void  BSP_DeviceSpdCheckPortInit(void);
 static void BSP_DevSpdCaptureFinishedHandler(void);
-
+static void BSP_VentingTimeRecordHandler(void);
 /*
 *********************************************************************************************************
 *                                             REGISTERS
@@ -277,11 +277,7 @@ void  BSP_Init(void)
     BSP_SpdCtrlDevicesInit();       // 调速设备
     BSP_DeviceSpdCheckPortInit();   // 测速引脚初始化
     BSP_SwTypePwrDeviceStatuInit(); // 开关型输出设备
-
-
-//    Bsp_PVD_Configuration();        // 掉电保护开关引脚初始化，默认开启
-//    BSP_BuzzerInit();               // 蜂鸣器
- //   BSP_CmdButtonInit();            // 硬件按钮
+    BSP_CmdButtonInit();            // 硬件按钮
 
 #ifdef TRACE_EN                                                 /* See project / compiler preprocessor options.         */
     DBGMCU_CR |=  DBGMCU_CR_TRACE_IOEN_MASK;                    /* Enable tracing (see Note #2).                        */
@@ -367,25 +363,25 @@ static  void  BSP_AnaSensorPortsInit(void)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);//使能GPIO口A/B/C的时钟
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_ADC1, ENABLE);
 
-    gpio_init.GPIO_Pin   = BSP_GPIOB_STACK_VOLTAGE_ANA_SIGNAL_PORT_NMB; // 电堆电压传感器
+    gpio_init.GPIO_Pin  = BSP_GPIOA_STACK_VOLETAGE_ANA_SIGNAL_PORT_NMB; // 电堆电压传感器
     gpio_init.GPIO_Speed = GPIO_Speed_50MHz;
     gpio_init.GPIO_Mode  = GPIO_Mode_AIN;
-    GPIO_Init(BSP_GPIOB_STACK_VOLTAGE_ANA_SIGNAL_PORT, &gpio_init);
+    GPIO_Init(BSP_GPIOA_GROUP, &gpio_init);
 
     gpio_init.GPIO_Pin   = BSP_GPIOA_STACK_CURRENT_ANA_SIGNAL_PORT_NMB; //电堆电流传感器
-    GPIO_Init(BSP_GPIOA_STACK_CURRENT_ANA_SIGNAL_PORT, &gpio_init);
+    GPIO_Init(BSP_GPIOA_GROUP, &gpio_init);
 
     gpio_init.GPIO_Pin   = BSP_GPIOB_STACK_HYDROGEN_PRESS_ONE_ANA_SIGNAL_PORT_NMB;  //气压1传感器
-    GPIO_Init(BSP_GPIOB_STACK_HYDROGEN_PRESS_ONE_ANA_SIGNAL_PORT, &gpio_init);
+    GPIO_Init(BSP_GPIOB_GROUP, &gpio_init);
 
     gpio_init.GPIO_Pin   = BSP_GPIOA_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT_NMB;  //气压2传感器
-    GPIO_Init(BSP_GPIOA_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT, &gpio_init);
+    GPIO_Init(BSP_GPIOA_GROUP, &gpio_init);
 
     gpio_init.GPIO_Pin   = BSP_GPIOA_LIQUID_LEVEL_ANA_SIGNAL_PORT_NMB;  // 液位传感器
-    GPIO_Init(BSP_GPIOA_LIQUID_LEVEL_ANA_SIGNAL_PORT, &gpio_init);
+    GPIO_Init(BSP_GPIOA_GROUP, &gpio_init);
 
     gpio_init.GPIO_Pin   = BSP_GPIOA_LIQUID_PRESS_ANA_SIGNAL_PORT_NMB;  //液压传感器
-    GPIO_Init(BSP_GPIOA_LIQUID_PRESS_ANA_SIGNAL_PORT, &gpio_init);
+    GPIO_Init(BSP_GPIOA_GROUP, &gpio_init);
 
 //    gpio_init.GPIO_Pin   = BSP_GPIOA_RSVD_ANA_SIGNAL_TWO_PORT_NMB;  //预留模拟输入2传感器
 //    GPIO_Init(BSP_GPIOA_RSVD_ANA_SIGNAL_TWO_PORT, &gpio_init);
@@ -393,8 +389,8 @@ static  void  BSP_AnaSensorPortsInit(void)
 //    gpio_init.GPIO_Pin   = BSP_GPIOB_RSVD_ANA_SIGNAL_THREE_PORT_NMB;    //预留模拟输入3传感器
 //    GPIO_Init(BSP_GPIOB_RSVD_ANA_SIGNAL_THREE_PORT, &gpio_init);
 
-    gpio_init.GPIO_Pin   = BSP_GPIOC_STACK_TEMP_ANA_SIGNAL_PORT_NMB;    //电堆温度传感器
-    GPIO_Init(BSP_GPIOC_STACK_TEMP_ANA_SIGNAL_PORT, &gpio_init);
+    gpio_init.GPIO_Pin   = BSP_GPIOA_STACK_TEMP_ANA_SIGNAL_PORT_NMB;    //电堆温度传感器
+    GPIO_Init(BSP_GPIOA_GROUP, &gpio_init);
 }
 
 void BSP_AnaSensorADCNVIC_Init(void)
@@ -531,14 +527,57 @@ static void BSP_AdcNormalConvertStart(vu16 *i_pBuffAddr, uint8_t i_u8ChUsedNmb)
 void BSP_AnaSigConvertFinishHandler(void)
 {
     OS_ERR      err;
+    static uint8_t u8OccupyFlag = NO;
+    float fStackHydrogenPress = 0.0;
 
-    if(DMA_GetITStatus(DMA1_IT_TC1) != RESET)
-    {
+    if(DMA_GetITStatus(DMA1_IT_TC1) != RESET) {
+
+        //更新模拟量采样值,暂对气压值不滤波
+        UpdateAnaSigDigValue();
         //发送信号量，告知ADC的DMA转换已经完成
         OSSemPost(&g_stAnaSigConvertFinishSem,
                   OS_OPT_POST_1,
                   &err);
+
+        if(DEF_DISABLED == GetStackStartPurifySwitchStatus()) { //不在净化阶段
+            if(DEF_ENABLED == GetStackProgramControlAirPressureReleaseTaskSwitch()) { //程控泄压开关打开
+                //气压监测在中断中监测,提高实时性
+                fStackHydrogenPress = GetSrcAnaSig(HYDROGEN_PRESS_1);
+
+                if(DEF_OFF == GetStackNeedVentByAmpIntegralSumSwitch()){//程控泄压排气
+                    if((fStackHydrogenPress > 50.0) && (OFF == GetStackOutAirValveStatus()) && (u8OccupyFlag == NO)) { //50.0
+                        OSTaskSemPost(&StackProgramControlAirPressureReleaseTaskTCB,
+                                      OS_OPT_POST_1,
+                                      &err);
+                        u8OccupyFlag = YES;
+                    } else if((fStackHydrogenPress < 36.0) && (ON == GetStackOutAirValveStatus()) && (u8OccupyFlag == YES)) { //36.0
+                        OSTaskSemPost(&StackProgramControlAirPressureReleaseTaskTCB,
+                                      OS_OPT_POST_1,
+                                      &err);
+                        u8OccupyFlag = NO;
+                    } else {}
+                } else {//安培秒排气,此处不记录排气时间
+                    if(((fStackHydrogenPress > 52.0) || (GetStackAmpIntegralSum() >= 900.0)) && (OFF == GetStackOutAirValveStatus()) && (u8OccupyFlag == NO)) { //52.0
+                        BSP_HydrgOutValvePwrOn();
+                        SetStackOutAirValveStatus(ON);
+                        SetStackAmpIntegralSum(0.0);//清零安培时间积分累加和
+                        u8OccupyFlag = YES;
+                    } else if((fStackHydrogenPress < 30.0) && (ON == GetStackOutAirValveStatus()) && (u8OccupyFlag == YES)) { //30.0
+                        BSP_HydrgOutValvePwrOff();
+                        SetStackOutAirValveStatus(OFF);
+                        u8OccupyFlag = NO;
+                        //一个流程后才关闭,开+关表示一个流程
+                        SetStackNeedVentByAmpIntegralSumSwitch(DEF_OFF);
+                    } else {}
+                    
+                }
+                    
+                
+            }
+        }
+
         DMA_ClearITPendingBit(DMA1_IT_TC1);
+        AnaSigSampleStart(); //AD采样完成后立即进行下一次采样
     }
 }
 /*
@@ -573,14 +612,14 @@ static void  BSP_DigSensorInit(void)
 
     /******配置GPIOB口引脚*********/
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOC_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB | BSP_GPIOC_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB | BSP_GPIOD_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOD, &GPIO_InitStructure);
 
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT_NMB | BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_MAX6675_CHIPS_SELECT_PORT_NMB | BSP_GPIOD_MAX6675_CHIPS_SCLK_PORT_NMB;
     GPIO_Init(GPIOD, &GPIO_InitStructure);
-    GPIO_ResetBits(GPIOD, BSP_GPIOC_MAX6675_CHIPS_SELECT_PORT_NMB | BSP_GPIOC_MAX6675_CHIPS_SCLK_PORT_NMB);
+    GPIO_ResetBits(GPIOD, BSP_GPIOD_MAX6675_CHIPS_SELECT_PORT_NMB | BSP_GPIOD_MAX6675_CHIPS_SCLK_PORT_NMB);
 }
 /*
 *********************************************************************************************************
@@ -732,11 +771,11 @@ void  BSP_BuzzerInit(void)
     PWR_BackupAccessCmd(DISABLE);//禁止修改后备寄存器
 
 
-    gpio_init.GPIO_Pin   = BSP_GPIOC_BUZZER_CTRL_PORT_NMB;
+    gpio_init.GPIO_Pin   = BSP_GPIOB_BUZZER_CTRL_PORT_NMB;
     gpio_init.GPIO_Speed = GPIO_Speed_2MHz;
     gpio_init.GPIO_Mode  = GPIO_Mode_Out_PP;
-    GPIO_Init(BSP_GPIOC_BUZZER_CTRL_PORT, &gpio_init);
-    GPIO_ResetBits(BSP_GPIOC_BUZZER_CTRL_PORT, BSP_GPIOC_BUZZER_CTRL_PORT_NMB);
+    GPIO_Init(BSP_GPIOB_GROUP, &gpio_init);
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_BUZZER_CTRL_PORT_NMB);
 
 }
 
@@ -759,7 +798,7 @@ void  BSP_BuzzerInit(void)
 
 void  BSP_BuzzerOn()
 {
-    GPIO_SetBits(BSP_GPIOC_BUZZER_CTRL_PORT, BSP_GPIOC_BUZZER_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOB_GROUP, BSP_GPIOB_BUZZER_CTRL_PORT_NMB);
 }
 
 
@@ -781,7 +820,7 @@ void  BSP_BuzzerOn()
 
 void  BSP_BuzzerOff()
 {
-    GPIO_ResetBits(BSP_GPIOC_BUZZER_CTRL_PORT, BSP_GPIOC_BUZZER_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_BUZZER_CTRL_PORT_NMB);
 }
 
 
@@ -803,9 +842,9 @@ void  BSP_BuzzerOff()
 
 void  BSP_BuzzerTurnover()
 {
-    GPIO_ReadOutputDataBit(BSP_GPIOC_BUZZER_CTRL_PORT, BSP_GPIOC_BUZZER_CTRL_PORT_NMB)\
-    ? GPIO_ResetBits(BSP_GPIOC_BUZZER_CTRL_PORT, BSP_GPIOC_BUZZER_CTRL_PORT_NMB)\
-    : GPIO_SetBits(BSP_GPIOC_BUZZER_CTRL_PORT, BSP_GPIOC_BUZZER_CTRL_PORT_NMB);
+    GPIO_ReadOutputDataBit(BSP_GPIOB_GROUP, BSP_GPIOB_BUZZER_CTRL_PORT_NMB)\
+    ? GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_BUZZER_CTRL_PORT_NMB)\
+    : GPIO_SetBits(BSP_GPIOB_GROUP, BSP_GPIOB_BUZZER_CTRL_PORT_NMB);
 }
 
 /*
@@ -836,57 +875,63 @@ static void BSP_SwTypePwrDeviceStatuInit(void)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
     GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);//部分引脚占用了SW调试口或JTAG口，需要将其先关闭
 
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_BUZZER_CTRL_PORT_NMB;//蜂鸣器
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_Init(BSP_GPIOB_GROUP, &GPIO_InitStructure);
+    
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_BUZZER_CTRL_PORT_NMB);
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB;  // 进液电磁阀1控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT, &GPIO_InitStructure);
-    GPIO_ResetBits(BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT, BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB);
+    GPIO_Init(BSP_GPIOB_GROUP, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB);
 
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB;  // 进液电磁阀2控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_Init(BSP_GPIOC_GROUP, &GPIO_InitStructure);
 //  GPIO_PinLockConfig(BSP_GPIOA_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT, BSP_GPIOA_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB);
-    GPIO_ResetBits(BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT, BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB);
 
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB;             // 点火器控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOC_IGNITER_PWR_CTRL_PORT, &GPIO_InitStructure);
-    GPIO_ResetBits(BSP_GPIOC_IGNITER_PWR_CTRL_PORT, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
+    GPIO_Init(BSP_GPIOC_GROUP, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
 
 
 
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB;              // 保温加热器控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT, &GPIO_InitStructure);
-    GPIO_ResetBits(BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT, BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB);
+    GPIO_Init(BSP_GPIOB_GROUP, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB);
 
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB;              // 快速加热器控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT, &GPIO_InitStructure);
-    GPIO_ResetBits(BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
+    GPIO_Init(BSP_GPIOC_GROUP, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
 
 
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB; // 电堆进气阀控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT, &GPIO_InitStructure);
-    GPIO_ResetBits(BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT, BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB);
+    GPIO_Init(BSP_GPIOC_GROUP, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB);
 
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB;// 电堆出气阀控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT, &GPIO_InitStructure);
-    GPIO_ResetBits(BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT, BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB);
+    GPIO_Init(BSP_GPIOC_GROUP, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB);
 
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB;             // 直流接触器控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT, &GPIO_InitStructure);
-    GPIO_ResetBits(BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT, BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB);
+    GPIO_Init(BSP_GPIOB_GROUP, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB);
 
     PWR_BackupAccessCmd(ENABLE);//允许修改RTC 和后备寄存器
     RCC_LSEConfig(RCC_LSE_OFF);//关闭外部低速外部时钟信号功能 后，PC13 PC14 PC15 才可以当普通IO用。
@@ -896,34 +941,34 @@ static void BSP_SwTypePwrDeviceStatuInit(void)
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB;             // 自动加液外置甲醇泵
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-    GPIO_Init(BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT, &GPIO_InitStructure);
-    GPIO_ResetBits(BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_Init(BSP_GPIOC_GROUP, &GPIO_InitStructure);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
 
 
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;        //推挽输出        预留输出8
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;       //IO口速度为50MHz  不配置时钟LED也亮。
     GPIO_InitStructure.GPIO_Pin =  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB ;             //输出控制端口配置,
-    GPIO_Init(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT, &GPIO_InitStructure);                  //推挽输出 ，IO口速度为50MHz
-    GPIO_ResetBits(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT,  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);                     //输出低  
+    GPIO_Init(BSP_GPIOD_GROUP, &GPIO_InitStructure);                  //推挽输出 ，IO口速度为50MHz
+    GPIO_ResetBits(BSP_GPIOD_GROUP,  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);                     //输出低  
     
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;        //推挽输出          预留输出6
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;       //IO口速度为50MHz  不配置时钟LED也亮。
     GPIO_InitStructure.GPIO_Pin =  BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB ;             //输出控制端口配置,
-    GPIO_Init(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT, &GPIO_InitStructure);                  //推挽输出 ，IO口速度为50MHz
-    GPIO_ResetBits(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT,  BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);                     //输出低  
+    GPIO_Init(BSP_GPIOD_GROUP, &GPIO_InitStructure);                  //推挽输出 ，IO口速度为50MHz
+    GPIO_ResetBits(BSP_GPIOD_GROUP,  BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);                     //输出低  
     
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;        //推挽输出          预留输出7
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;       //IO口速度为50MHz  不配置时钟LED也亮。
     GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB  ;             //输出控制端口配置,
-    GPIO_Init(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT, &GPIO_InitStructure);                  //推挽输出 ，IO口速度为50MHz
-    GPIO_ResetBits(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT,  BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB );                     //输出低  
+    GPIO_Init(BSP_GPIOD_GROUP, &GPIO_InitStructure);                  //推挽输出 ，IO口速度为50MHz
+    GPIO_ResetBits(BSP_GPIOD_GROUP,  BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB );                     //输出低  
 
 //
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;        //推挽输出           预留输出5   
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;       //IO口速度为50MHz  不配置时钟LED也亮。
     GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB;             //输出控制端口配置,
-    GPIO_Init(BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT, &GPIO_InitStructure);                  //推挽输出 ，IO口速度为50MHz
-    GPIO_ResetBits(BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);                     //输出低  
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);                  //推挽输出 ，IO口速度为50MHz
+    GPIO_ResetBits(BSP_GPIOE_GROUP, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);                     //输出低  
    
 }
 /*
@@ -936,33 +981,17 @@ static void BSP_SwTypePwrDeviceStatuInit(void)
 *
 * Return(s)   : none.
 *
-* Caller(s)   : application.
-*
 * Note(s)     : none.
 *********************************************************************************************************
 */
 void  BSP_LqdValve1_PwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT, BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOB_GROUP, BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB);
 }
-/*
-*********************************************************************************************************
-*                                            BSP_LqdValve1_PwrOff()
-*
-* Description : Close the power switch of the liquid valve one.
-*                               关进液电磁阀1
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : application.
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
+
 void  BSP_LqdValve1_PwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT, BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB);
 }
 /*
 *********************************************************************************************************
@@ -974,33 +1003,17 @@ void  BSP_LqdValve1_PwrOff(void)
 *
 * Return(s)   : none.
 *
-* Caller(s)   : application.
-*
 * Note(s)     : none.
 *********************************************************************************************************
 */
 void  BSP_LqdValve2_PwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT, BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOC_GROUP, BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB);
 }
-/*
-*********************************************************************************************************
-*                                            BSP_LqdValve2_PwrOff()
-*
-* Description : Close the power switch of the liquid valve two.
-*               关进液电磁阀2
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : application.
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
+
 void  BSP_LqdValve2_PwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT, BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_LIQUID_INPUT_VALVE_TWO_PWR_CTRL_PORT_NMB);
 }
 /*
 *********************************************************************************************************
@@ -1019,64 +1032,34 @@ void  BSP_LqdValve2_PwrOff(void)
 */
 void  BSP_IgniterPwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOC_IGNITER_PWR_CTRL_PORT, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOC_GROUP, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
 }
-/*
-*********************************************************************************************************
-*                                            BSP_IgniterPwrOff()
-*
-* Description : Close the power switch of the igniter.
-*               关点火器
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : application.
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
+
 void  BSP_IgniterPwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOC_IGNITER_PWR_CTRL_PORT, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
 }
 /*
 *********************************************************************************************************
 *                                            BSP_KeepWarmHeaterPwrOn()
 *
-* Description : Open the power switch of the heater.
+* Description : 开电磁加热器.
 *
 * Argument(s) : none.
 *
 * Return(s)   : none.
-*
-* Caller(s)   : application.
 *
 * Note(s)     : none.
 *********************************************************************************************************
 */
 void  BSP_KeepWarmHeaterPwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT, BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOB_GROUP, BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB);
 }
-/*
-*********************************************************************************************************
-*                                            BSP_KeepWarmHeaterPwrOff()
-*
-* Description : Close the power switch of the heater.
-*               关电磁加热器
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : application.
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
+
 void  BSP_KeepWarmHeaterPwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT, BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB);
 }
 
 
@@ -1090,34 +1073,17 @@ void  BSP_KeepWarmHeaterPwrOff(void)
 *
 * Return(s)   : none.
 *
-* Caller(s)   : application.
-*
 * Note(s)     : none.
 *********************************************************************************************************
 */
 void  BSP_FastHeaterPwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOC_GROUP, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
 }
 
-/*
-*********************************************************************************************************
-*                                            BSP_FastHeaterPwrOff()
-*
-* Description : Open the power switch of the heater.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : application.
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
 void  BSP_FastHeaterPwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
 }
 
 /*
@@ -1130,34 +1096,17 @@ void  BSP_FastHeaterPwrOff(void)
 *
 * Return(s)   : none.
 *
-* Caller(s)   : application.
-*
 * Note(s)     : none.
 *********************************************************************************************************
 */
 void  BSP_HydrgInValvePwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT, BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOC_GROUP, BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB);
 }
 
-/*
-*********************************************************************************************************
-*                                            BSP_HydrgInValvePwrOff()
-*
-* Description : Close the power switch of the hydrogen input valve.
-*               电堆进气电磁阀关
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : application.
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
 void  BSP_HydrgInValvePwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT, BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB);
 }
 /*
 *********************************************************************************************************
@@ -1169,33 +1118,17 @@ void  BSP_HydrgInValvePwrOff(void)
 *
 * Return(s)   : none.
 *
-* Caller(s)   : application.
-*
 * Note(s)     : none.
 *********************************************************************************************************
 */
 void  BSP_HydrgOutValvePwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT, BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOC_GROUP, BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB);
 }
-/*
-*********************************************************************************************************
-*                                            BSP_HydrgOutValvePwrOff()
-*
-* Description : Close the power switch of the hydrogen output valve.
-*               电堆出气阀关
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : application.
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
+
 void  BSP_HydrgOutValvePwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT, BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB);
 }
 /*
 *********************************************************************************************************
@@ -1207,33 +1140,17 @@ void  BSP_HydrgOutValvePwrOff(void)
 *
 * Return(s)   : none.
 *
-* Caller(s)   : application.
-*
 * Note(s)     : none.
 *********************************************************************************************************
 */
 void  BSP_DCConnectValvePwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT, BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOB_GROUP, BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB);
 }
-/*
-*********************************************************************************************************
-*                                            BSP_DCConnectValvePwrOff()
-*
-* Description : Close the power switch of the DC connect.
-*               关直流接触器
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : application.
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
+
 void  BSP_DCConnectValvePwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT, BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB);
 }
 
 /*
@@ -1253,27 +1170,12 @@ void  BSP_DCConnectValvePwrOff(void)
 */
 void  BSP_OutsidePumpPwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOC_GROUP, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
 }
-/*
-*********************************************************************************************************
-*                                            BSP_OutsidePumpPwrOff()
-*
-* Description : Close the power switch of the the outside pump.
-*              自动加液水泵开关
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : application.
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
 
 void  BSP_OutsidePumpPwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 
 /*
@@ -1293,46 +1195,157 @@ void  BSP_OutsidePumpPwrOff(void)
 */
 void  BSP_RSVD5PwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOE_GROUP, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 void  BSP_RSVD5PwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOE_GROUP, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 
 
 
 void  BSP_RSVD6PwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT, BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOD_GROUP, BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 void  BSP_RSVD6PwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT, BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOD_GROUP, BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 
 
 
 void  BSP_RSVD7PwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT, BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOD_GROUP, BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 void  BSP_RSVD7PwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT, BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOD_GROUP, BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 
 
 
 void  BSP_RSVD8PwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT, BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOD_GROUP, BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 void  BSP_RSVD8PwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT, BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOD_GROUP, BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 
+
+/*
+***************************************************************************************************
+*                                            BSP_GetPassiveGpioStatu()
+*
+* Description : 获取泄压阀输入脉冲状态.
+*                               
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+uint8_t BSP_GetPassiveGpioStatu(void)
+{
+    return GPIO_ReadInputDataBit(BSP_GPIOE_GROUP, BSP_GPIOE_PD_PULSE1_PORT_NMB);
+}
+//每分钟泄压次数加1
+void DecompressNumPerMinuteInc(void)
+{
+    if(EN_IN_WORK == GetStackWorkStatu()) {
+        g_u8DecompressCountPerMinute ++;
+    }
+}
+//获取每分钟泄压次数
+uint8_t GetPassiveDecompressCountPearStackPurifyCycle()
+{
+    return g_u8DecompressCountPerMinute;
+}
+/*
+***************************************************************************************************
+*                                            BSP_VentingIntervalRecordTimerInit()
+*
+* Description : 初始化电堆排气时间记录硬件定时器.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+void BSP_VentingIntervalRecordTimerInit(void)
+{
+    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
+
+    TIM_DeInit(TIM5);
+    /* 时基参数配置*/
+    TIM_TimeBaseStructure.TIM_Period = 10 - 1;     //重载值:当定时器从0计数到10，1ms产生一次更新事件
+    TIM_TimeBaseStructure.TIM_Prescaler = 7199;     //设置预分频系数 72MHz/7200 = 10KHz
+    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1; //
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;  //向上计数模式
+
+    TIM_TimeBaseInit(TIM5, &TIM_TimeBaseStructure);
+
+    TIM_ARRPreloadConfig(TIM5, ENABLE);                                 // 使能TIM5重载寄存器
+    TIM_GenerateEvent(TIM5, TIM_EventSource_Update);    // 定时器事件由软件更新事件产生，立即更新数据
+    TIM_ClearFlag(TIM5, TIM_FLAG_Update);               //清除标志位。定时器一打开便产生更新事件，若不清除，将会直接进入中断
+    TIM_ITConfig(TIM5, TIM_IT_Update, DISABLE);                 //禁能更新中断
+
+    BSP_IntVectSet(BSP_INT_ID_TIM5, BSP_VentingTimeRecordHandler);//更新中断产生进入中断服务函数
+    BSP_IntEn(BSP_INT_ID_TIM5);
+}
+
+/*
+***************************************************************************************************
+*                                            BSP_StartRunningVentingTimeRecord()
+*
+* Description : 开始电堆排气时间记录.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+void BSP_StartRunningVentingTimeRecord()
+{
+    TIM_ITConfig(TIM5, TIM_IT_Update, ENABLE);                  //使能更新中断
+    TIM_Cmd(TIM5, ENABLE);                                      //使能定时器5
+}
+
+void BSP_StopRunningVentingTimeRecord()
+{
+    TIM_ITConfig(TIM5, TIM_IT_Update, DISABLE); //禁能更新中断
+    TIM_Cmd(TIM5, DISABLE);                   //禁能定时器5
+}
+/*
+***************************************************************************************************
+*                                            PassiveDecompressCurrentNmbInc()
+*
+* Description : The Passive decompress time record.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+static void BSP_VentingTimeRecordHandler(void)
+{
+    if(TIM_GetITStatus(TIM5, TIM_IT_Update) != RESET) {
+
+        StackVentAirTimeParameter.u32_TimeRecordNum++;    //排气时间参数计数,加一次加0.001s
+        TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
+    }
+}
 /*
 *********************************************************************************************************
 *********************************************************************************************************
@@ -1369,7 +1382,7 @@ static  void  BSP_DeviceSpdCheckPortInit(void)
 *                                            BSP_HydrgProducerPumpSpdCheckPortInit()
 *
 * Description : Initialize the Pump speed check port
-*                               初始化水泵速度检测引脚
+*               初始化水泵速度检测引脚
 * Argument(s) : none.
 *
 * Return(s)   : none.
@@ -1388,10 +1401,10 @@ static  void BSP_HydrgProducerPumpSpdCheckPortInit(void)
     
     GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);                    //SWJ完全失能
 
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_PUMP_SPEED_CHECK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_PUMP_SPEED_CHECK_PORT_NMB;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;//或者上拉输入    GPIO_Mode_IPU
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOC_PUMP_SPEED_CHECK_PORT, &GPIO_InitStructure);
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
 }
 
 
@@ -1467,10 +1480,10 @@ static  void BSP_HydrgProducerFanSpdCheckPortInit(void)
     GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);            //SWJ完全失能
 
     /*初始化IO口*/
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_HYDRG_FAN_SPEED_CHECK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_HYDRG_FAN_SPEED_CHECK_PORT_NMB;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOC_HYDRG_FAN_SPEED_CHECK_PORT, &GPIO_InitStructure);
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
 }
 
 /*
@@ -1544,10 +1557,10 @@ void BSP_HydrgProducerFanMonitorStart(void)
 ////    GPIO_PinRemapConfig(GPIO_FullRemap_TIM3, ENABLE);   //定时器三完全重映射
 ////    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);    //SWJ完全失能
 
-////    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_STACK_FAN1_SPEED_CHECK_PORT_NMB;
+////    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_STACK_FAN1_SPEED_CHECK_PORT_NMB;
 ////    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
 ////    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-////    GPIO_Init(BSP_GPIOC_STACK_FAN1_SPEED_CHECK_PORT, &GPIO_InitStructure);
+////    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
 //}
 
 
@@ -1950,15 +1963,15 @@ static void  BSP_PumpCtrlInit(void)
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PUMP_SPD_ANA_SIGNAL_CTRL_PORT_NMB;   //水泵速度控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOA_PUMP_SPD_ANA_SIGNAL_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_Init(BSP_GPIOA_GROUP, &GPIO_InitStructure);
 
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;                           //水泵供电开关控制引脚
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;        //水泵供电开关控制引脚
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOC_PUMP_PWR_CTRL_PORT_NMB;
-    GPIO_Init(BSP_GPIOC_PUMP_PWR_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOB_PUMP_PWR_CTRL_PORT_NMB;
+    GPIO_Init(BSP_GPIOB_GROUP, &GPIO_InitStructure);
 
 //  GPIO_PinLockConfig(BSP_GPIOA_PUMP_PWR_CTRL_PORT, BSP_GPIOA_PUMP_PWR_CTRL_PORT_NMB);
-    GPIO_ResetBits(BSP_GPIOC_PUMP_PWR_CTRL_PORT, BSP_GPIOC_PUMP_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_PUMP_PWR_CTRL_PORT_NMB);
 
     DAC_InitType.DAC_Trigger = DAC_Trigger_None;    //不使用触发功能 TEN1=0
     DAC_InitType.DAC_WaveGeneration = DAC_WaveGeneration_None;//不使用波形发生
@@ -1993,7 +2006,7 @@ static void  BSP_PumpCtrlInit(void)
 */
 static void  BSP_PumpPwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOC_PUMP_PWR_CTRL_PORT, BSP_GPIOC_PUMP_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOB_GROUP, BSP_GPIOB_PUMP_PWR_CTRL_PORT_NMB);
 }
 /*
 *********************************************************************************************************
@@ -2012,7 +2025,7 @@ static void  BSP_PumpPwrOn(void)
 */
 static void  BSP_PumpPwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOC_PUMP_PWR_CTRL_PORT, BSP_GPIOC_PUMP_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_PUMP_PWR_CTRL_PORT_NMB);
 }
 /*
 *********************************************************************************************************
@@ -2029,16 +2042,16 @@ static void  BSP_PumpPwrOff(void)
 * Note(s)     : none.
 *********************************************************************************************************
 */
-void BSP_SetPumpSpd(u8 i_u8SpdValue)
+void BSP_SetPumpSpd(u16 i_u16HydrgFanSpdValue)
 {
     uint16_t u16DAC1_Value;
 
-    if(i_u8SpdValue >= NUMBER_OF_THE_PUMP_SPEED_GRADES)
+    if(i_u16HydrgFanSpdValue >= NUMBER_OF_THE_PUMP_SPEED_GRADES)
     {
-        i_u8SpdValue = NUMBER_OF_THE_PUMP_SPEED_GRADES;
+        i_u16HydrgFanSpdValue = NUMBER_OF_THE_PUMP_SPEED_GRADES;
     }
 
-    if(i_u8SpdValue > 0)
+    if(i_u16HydrgFanSpdValue > 0)
     {
         BSP_PumpPwrOn();
     }
@@ -2047,7 +2060,7 @@ void BSP_SetPumpSpd(u8 i_u8SpdValue)
         BSP_PumpPwrOff();
     }
 
-    u16DAC1_Value = (uint16_t)(i_u8SpdValue * DAC_DELT_LSB_PER_PUMP_SPEED);
+    u16DAC1_Value = (uint16_t)(i_u16HydrgFanSpdValue * DAC_DELT_LSB_PER_PUMP_SPEED);
 
     if(u16DAC1_Value >= 4095)
     {
@@ -2074,8 +2087,6 @@ void BSP_SetPumpSpd(u8 i_u8SpdValue)
 static void  BSP_HydrgFanCtrInit(void)
 {
     GPIO_InitTypeDef  GPIO_InitStructure;
-//    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-//    TIM_BDTRInitTypeDef TIM_BDTRInitStructure;
 
     /*时钟使能*/
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
@@ -2083,35 +2094,17 @@ static void  BSP_HydrgFanCtrInit(void)
     GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
 
     /*GPIO使能*/
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_HYDROGEN_FAN_SPD_PWM_SIGNAL_CTRL_PORT_NMB;   //制氢风机速度PWM控制引脚
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_HYDROGEN_FAN_SPD_ANA_SIGNAL_CTRL_PORT_NMB;//制氢风机速度控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOA_HYDROGEN_FAN_SPD_PWM_SIGNAL_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_Init(BSP_GPIOA_GROUP, &GPIO_InitStructure);
 
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;                           //制氢风机电源控制引脚
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Pin = BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB;
-    GPIO_Init(BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_Init(BSP_GPIOB_GROUP, &GPIO_InitStructure);
 
-    //GPIO_PinLockConfig(BSP_GPIOA_PUMP_PWR_CTRL_PORT, BSP_GPIOA_PUMP_PWR_CTRL_PORT_NMB);
-    GPIO_ResetBits(BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT, BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB);
-
-//    TIM_DeInit(TIM1);
-//    TIM_TimeBaseStructure.TIM_Period = TIMER_UPDATE_NUMBER;       //当定时器从0计数到999，即为1000次，为一个定时周期50ms
-//    TIM_TimeBaseStructure.TIM_Prescaler = 3599;                   //设置预分频：72MHz/3600 = 20KHz
-//    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;       //设置时钟分频系数：不分频
-//    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;   //向上计数模式
-//    TIM_TimeBaseInit(TIM1, &TIM_TimeBaseStructure);
-
-//    //设置OSSR/OSSI状态、锁电平、死区时间、刹车特性、自动输出
-//    TIM_BDTRInitStructure.TIM_OSSRState = TIM_OSSRState_Disable;
-//    TIM_BDTRInitStructure.TIM_OSSIState = TIM_OSSIState_Disable;
-//    TIM_BDTRInitStructure.TIM_LOCKLevel = TIM_LOCKLevel_OFF;
-//    TIM_BDTRInitStructure.TIM_DeadTime = 0x90;
-//    TIM_BDTRInitStructure.TIM_Break = TIM_Break_Disable;
-//    TIM_BDTRInitStructure.TIM_BreakPolarity = TIM_BreakPolarity_Low;
-//    TIM_BDTRInitStructure.TIM_AutomaticOutput = TIM_AutomaticOutput_Disable;
-//    TIM_BDTRConfig(TIM1, &TIM_BDTRInitStructure);
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB);
 
     DAC_InitTypeDef DAC_InitType;
     DAC_InitType.DAC_Trigger = DAC_Trigger_None;                         //不使用触发功能 TEN1=0
@@ -2129,45 +2122,29 @@ static void  BSP_HydrgFanCtrInit(void)
 *                                            BSP_HydrgFanPwrOn()
 *
 * Description : Open the power switch of the hydrogen fan.
-*                               开制氢风机
+*                               
 * Argument(s) : none.
 *
 * Return(s)   : none.
-*
-* Caller(s)   : BSP_SetHydrgFanSpd().
 *
 * Note(s)     : none.
 *********************************************************************************************************
 */
 static void  BSP_HydrgFanPwrOn(void)
 {
-    GPIO_SetBits(BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT, BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOB_GROUP, BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB);
 }
-/*
-*********************************************************************************************************
-*                                            BSP_HydorgenFanPwrOff()
-*
-* Description : Close the power switch of the hydrogen fan.
-*                               关制氢风机
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : BSP_SetHydrgFanSpd().
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
+
 static void  BSP_HydrgFanPwrOff(void)
 {
-    GPIO_ResetBits(BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT, BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOB_GROUP, BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB);
 }
 /*
 *********************************************************************************************************
 *                                            BSP_SetHydrgFanSpd()
 *
 * Description : Control the speed of the hydrogen fan.
-*                               PWM控制风机速度
+*                               
 * Argument(s) : none.
 *
 * Return(s)   : none.
@@ -2180,73 +2157,30 @@ static void  BSP_HydrgFanPwrOff(void)
 void BSP_SetHydrgFanSpd(u16 i_u16HydrgFanSpdValue)
 {
 
-    uint16_t temp = i_u16HydrgFanSpdValue;
+    uint16_t u16DAC2_Value;
 
-    if(temp > 0)
+    if(i_u16HydrgFanSpdValue >= NUMBER_OF_THE_HYDROGEN_FAN_SPEED_GRADES)
+    {
+        i_u16HydrgFanSpdValue = NUMBER_OF_THE_HYDROGEN_FAN_SPEED_GRADES;
+    }
+
+    if(i_u16HydrgFanSpdValue > 0)
     {
         BSP_HydrgFanPwrOn();
-
-        if(temp <= 200)
-        {
-            temp = 4095 * temp / 200;
-        }
-        else
-        {
-            temp = 4095;
-        }
-
-        DAC_SetChannel2Data(DAC_Align_12b_R, temp); //12位右对齐数据格式设置DAC值
     }
     else
     {
         BSP_HydrgFanPwrOff();
-        DAC_SetChannel2Data(DAC_Align_12b_R, 0); //12位右对齐数据格式设置DAC值
     }
 
-//    uint16_t u16TIM1_CMP_Value;
-//    TIM_OCInitTypeDef  TIM_OCInitStructure;
+    u16DAC2_Value = (uint16_t)(i_u16HydrgFanSpdValue * DAC_DELT_LSB_PER_HYDROGEN_FAN_SPEED);
 
-//    if(i_u8HydrgFanSpdValue >= NUMBER_OF_THE_HYDROGEN_FAN_SPEED_GRADES)
-//    {
-//        i_u8HydrgFanSpdValue = NUMBER_OF_THE_HYDROGEN_FAN_SPEED_GRADES;
-//    }
+    if(u16DAC2_Value >= 4095)
+    {
+        u16DAC2_Value = 4095;
+    }
 
-//    if(i_u8HydrgFanSpdValue > 0)
-//    {
-//        BSP_HydrgFanPwrOn();
-//    }
-//    else
-//    {
-//        BSP_HydrgFanPwrOff();
-//    }
-
-//    u16TIM1_CMP_Value = (uint16_t)(i_u8HydrgFanSpdValue * TIMER_CMP_DELT_NUMBER_PER_HYDROGEN_FAN_SPEED);
-
-//    if(u16TIM1_CMP_Value >= TIMER_UPDATE_NUMBER)//&& PULSE >= 0.0)//占空比为小数时需要判断是否大于0
-//    {
-//        u16TIM1_CMP_Value = TIMER_UPDATE_NUMBER;
-//    }
-
-//    TIM_Cmd(TIM1, DISABLE);
-//    /* PWM1 Mode configuration: Channel1 */
-//    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;                   //选择定时器1模式:TIM脉冲宽度调制模式1
-//    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-//    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;        //有效电平为低
-//    TIM_OCInitStructure.TIM_Pulse = i_u8HydrgFanSpdValue;               // m_PULSE 设置待装入输出比较寄存器的脉冲值
-//    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
-//    TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
-//    TIM_OCInitStructure.TIM_OCNIdleState = TIM_OCIdleState_Reset;
-
-//    TIM_OC1Init(TIM1, &TIM_OCInitStructure);
-
-//    TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Enable);           //使能TIM1在CCR1上的预装载寄存器,即TIM1_CCR1的预装载值在更新事件到来时才能被传送至当前寄存器中。
-//    TIM_ARRPreloadConfig(TIM1, ENABLE);                                         // 使能TIM1重载寄存器ARR
-//    TIM_GenerateEvent(TIM1, TIM_EventSource_Update);            // 产生软件更新事件，立即更新数据,使重载寄存器中的数据立即生效
-//    TIM_ClearFlag(TIM1, TIM_FLAG_Update);                       //清除标志位,定时器一打开便产生更新事件，若不清除，将会进入中断
-//    TIM_ITConfig(TIM1, TIM_IT_Update | TIM_IT_CC1, DISABLE); //允许更新中断
-
-//    TIM_Cmd(TIM1, ENABLE);
-//    TIM_CtrlPWMOutputs(TIM1, ENABLE);
+    DAC_SetChannel2Data(DAC_Align_12b_R, u16DAC2_Value);
 }
 /*
 *********************************************************************************************************
@@ -2269,44 +2203,44 @@ static void  BSP_StackFanCtrInit(void)
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
     TIM_OCInitTypeDef  TIM_OCInitStructure;
 
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE); //使能TIMx外设
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE); //使能GPIOB外设时钟使能
-    //设置该引脚为复用输出功能,输出TIM4 CH1的PWM脉冲波形
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
 
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT_NMB;   //制氢风机速度PWM控制引脚
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOB_STACK_FAN_SPD_CTRL_PORT_NMB;//TIM4_CH1，控制电堆风机速度的引脚
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;  //复用推挽输出
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT, &GPIO_InitStructure);
+    GPIO_Init(BSP_GPIOB_GROUP, &GPIO_InitStructure); //初始化GPIO
+
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT_NMB;        //控制电堆风机电源的引脚
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;  //推挽输出
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(BSP_GPIOC_GROUP, &GPIO_InitStructure);   //初始化GPIO
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT_NMB);
+
+    TIM_DeInit(TIM4);
+    /* Time base configuration */
+    TIM_TimeBaseStructure.TIM_Period = TIMER_UPDATE_NUMBER;       //当定时器从0计数到999，即为1000次，为一个定时周期50ms
+    TIM_TimeBaseStructure.TIM_Prescaler = 3599;     //设置预分频：72MHz/3600 = 20KHz
+    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1; //设置时钟分频系数：不分频
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;  //向上计数模式
+
+    TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
     
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6; //TIM_CH1、CH2
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;  //复用功能输出
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOB, &GPIO_InitStructure); //初始化GPIO
+    TIM_Cmd(TIM4, DISABLE);  //失能TIM4
+    /* PWM1 Mode configuration: Channel 1 */
+    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1; //脉冲宽度调制模式1，计数值小于比较值为有效电平
+    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low; //有效电平为低
+    TIM_OCInitStructure.TIM_Pulse = 0; //设置待装入输出比较寄存器的脉冲值
 
+    TIM_OC1Init(TIM4, &TIM_OCInitStructure);
+    TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable); //使能TIM4在CCR2上的预装载寄存器,即TIM4_CCR2的预装载值在更新事件到来时才能被传送至当前寄存器中。
 
-    TIM_TimeBaseStructure.TIM_Period = 40000; //设置自动重装载周期值
-    TIM_TimeBaseStructure.TIM_Prescaler = 0; //设置预分频值 不分频
-    TIM_TimeBaseStructure.TIM_ClockDivision = 0; //设置时钟分割:TDTS = Tck_tim
-    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;  //TIM向上计数模式
-    TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure); //根据指定的参数初始化TIMx
+    TIM_ARRPreloadConfig(TIM4, ENABLE);          // 使能TIM4重载寄存器ARR
+    TIM_GenerateEvent(TIM4, TIM_EventSource_Update);   // 产生软件更新事件，立即更新数据,使重载寄存器中的数据立即生效
+    TIM_ClearFlag(TIM4, TIM_FLAG_Update);             //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
+    TIM_ITConfig(TIM4, TIM_IT_Update | TIM_IT_CC1, DISABLE); //允许更新中断
 
-    //PWM1
-    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2; //CH1 PWM2模式    电平方向不一样！
-    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable; //比较输出使能
-    TIM_OCInitStructure.TIM_Pulse = 0; //设置待装入捕获比较寄存器的脉冲值
-    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low; //OC1 逆向
-    TIM_OC1Init(TIM4, &TIM_OCInitStructure);  //根据指定的参数初始化外设TIMx
-    TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable);  //CH1 预装载使能
-
-    TIM_ARRPreloadConfig(TIM4, ENABLE); //使能TIMx在ARR上的预装载寄存器
-    //PWM2
-    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2; //选择定时器模式:TIM脉冲宽度调制模式2
-    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable; //比较输出使能
-    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low; //输出极性:TIM输出比较极性高
-    TIM_OC2Init(TIM4, &TIM_OCInitStructure);  //根据T指定的参数初始化外设TIM4 OC2
-    TIM_OC2PreloadConfig(TIM4, TIM_OCPreload_Enable);  //使能TIM4在CCR2上的预装载寄存器
-
-    TIM_Cmd(TIM4, ENABLE);  //使能TIMx
+    TIM_Cmd(TIM4, ENABLE);  //使能TIM4
 }
 /*
 *********************************************************************************************************
@@ -2326,28 +2260,12 @@ static void  BSP_StackFanCtrInit(void)
 
 static void  BSP_StackFanPwrOn(void)
 {
-
-    GPIO_SetBits(BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT, BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(BSP_GPIOC_GROUP, BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT_NMB);
 }
-/*
-*********************************************************************************************************
-*                                            BSP_HydorgenFanPwrOff()
-*
-* Description : Close the power switch of the hydrogen fan.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : BSP_SetHydrgFanSpd().
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
+
 static void  BSP_StackFanPwrOff(void)
 {
-
-    GPIO_ResetBits(BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT, BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(BSP_GPIOC_GROUP, BSP_GPIOC_STACK_FAN_PWR_CTRL_PORT_NMB);
 }
 /*
 *********************************************************************************************************
@@ -2364,86 +2282,54 @@ static void  BSP_StackFanPwrOff(void)
 * Note(s)     : none.
 *********************************************************************************************************
 */
-//void BSP_SetStackFanSpd(u8 i_u8StackFanSpdValue)
-//{
-//    uint16_t u16TIM4_CMP_Value;
-//    TIM_OCInitTypeDef  TIM_OCInitStructure;
-
-//    if(i_u8StackFanSpdValue >= NUMBER_OF_THE_STACK_FAN_SPEED_GRADES)
-//    {
-//        i_u8StackFanSpdValue = NUMBER_OF_THE_STACK_FAN_SPEED_GRADES;
-//    }
-
-//    if(i_u8StackFanSpdValue > 0)
-//    {
-//        BSP_StackFanPwrOn();
-//    }
-//    else
-//    {
-//        BSP_StackFanPwrOff();
-//    }
-
-//    u16TIM4_CMP_Value = (uint16_t)(i_u8StackFanSpdValue * TIMER_CMP_DELT_NUMBER_PER_STACK_FAN_SPEED);
-
-//    if(u16TIM4_CMP_Value >= TIMER_UPDATE_NUMBER)//&& PULSE >= 0.0)//占空比为小数时需要判断是否大于0
-//    {
-//        u16TIM4_CMP_Value = TIMER_UPDATE_NUMBER;
-//    }
-
-//    TIM_Cmd(TIM4, DISABLE);  //失能TIM4
-//    /* PWM1 Mode configuration: Channel2 */
-//    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1; //选择定时器模式:TIM脉冲宽度调制模式1
-//    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-//    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low; //有效电平为低
-//    TIM_OCInitStructure.TIM_Pulse = u16TIM4_CMP_Value; // m_PULSE设置待装入输出比较寄存器的脉冲值
-
-//    TIM_OC2Init(TIM4, &TIM_OCInitStructure);
-//    TIM_OC2PreloadConfig(TIM4, TIM_OCPreload_Enable); //使能TIM4在CCR2上的预装载寄存器,即TIM4_CCR2的预装载值在更新事件到来时才能被传送至当前寄存器中。
-
-//    TIM_ARRPreloadConfig(TIM4, ENABLE);          // 使能TIM4重载寄存器ARR
-//    TIM_GenerateEvent(TIM4, TIM_EventSource_Update);   // 产生软件更新事件，立即更新数据,使重载寄存器中的数据立即生效
-//    TIM_ClearFlag(TIM4, TIM_FLAG_Update);             //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
-//    TIM_ITConfig(TIM4, TIM_IT_Update | TIM_IT_CC1, DISABLE); //允许更新中断
-
-//    TIM_Cmd(TIM4, ENABLE);  //使能TIM4
-//}
-void Set_PWM(u8 channr, u16 duc)
+void BSP_SetStackFanSpd(u16 i_u16StackFanSpdValue)
 {
-    u16 dd;
-//  dd=10000*duc/200;   //PB6  PB7 改tim3改tim4后变递减PWM了 TIM_OCPolarity_Low  这个
-    
-    if(  duc < 200 )
+    uint16_t u16TIM4_CMP_Value;
+
+
+    if(i_u16StackFanSpdValue >= NUMBER_OF_THE_STACK_FAN_SPEED_GRADES)
+    {
+        i_u16StackFanSpdValue = NUMBER_OF_THE_STACK_FAN_SPEED_GRADES;
+    }
+
+    if(i_u16StackFanSpdValue > 0)
     {
         BSP_StackFanPwrOn();
     }
-    
     else
     {
         BSP_StackFanPwrOff();
     }
-    switch(channr)
+
+    u16TIM4_CMP_Value = (uint16_t)(i_u16StackFanSpdValue * TIMER_CMP_DELT_NUMBER_PER_STACK_FAN_SPEED);
+
+    if(u16TIM4_CMP_Value >= TIMER_UPDATE_NUMBER)
     {
-        case 0:
-            dd = 40000 * duc / 200;
-            TIM_SetCompare1(TIM4, dd);  //电堆风扇设置PWM占空比
-            break;
-
-        case 1:
-            dd = 40000 * duc / 200;
-            TIM_SetCompare2(TIM4, dd);  //制氢机发送设置PWM占空比
-            break;
-
-        default:
-            break;
+        u16TIM4_CMP_Value = TIMER_UPDATE_NUMBER;
     }
+    
+    TIM_SetCompare1(TIM4, u16TIM4_CMP_Value);  //电堆风扇设置PWM占空比
 }
 
 /*
 *********************************************************************************************************
 *********************************************************************************************************
-*                                           OS PROBE FUNCTIONS
+*                                            EXTI 
 *********************************************************************************************************
 *********************************************************************************************************
+*/
+/*
+***************************************************************************************************
+*                                            BSP_CmdButtonInit()
+*
+* Description : 外部按键中断初始化.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
 */
 void BSP_CmdButtonInit(void)
 {
@@ -2453,8 +2339,8 @@ void BSP_CmdButtonInit(void)
 
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOB_EXTERNEL_SWITCH_INPUT_PORT_NMB;
+    GPIO_Init(BSP_GPIOB_GROUP, &GPIO_InitStructure);
 
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource13);
     EXTI_InitStructure.EXTI_Line = EXTI_Line13;
@@ -2467,12 +2353,75 @@ void BSP_CmdButtonInit(void)
     BSP_IntEn(BSP_INT_ID_EXTI15_10);
 }
 
+/*
+***************************************************************************************************
+*                                            BSP_CmdButtonInit()
+*
+* Description : 脉冲输入引脚初始化.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+void BSP_ImpulseInputPortInit(void)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    EXTI_InitTypeDef EXTI_InitStructure;
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOE, ENABLE); //使能复用功能时钟
+
+    //松下泄压阀脉冲输入引脚1
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PD_PULSE1_PORT_NMB;
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
+
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource10);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line10;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    EXTI_Init(&EXTI_InitStructure);  //根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+    
+    //脉冲输入引脚2
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PD_PULSE2_PORT_NMB;
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
+
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource12);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line12;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    EXTI_Init(&EXTI_InitStructure);
+
+    BSP_IntVectSet(BSP_INT_ID_EXTI15_10, EXTI15_10_IRQHandler);
+    BSP_IntEn(BSP_INT_ID_EXTI15_10);
+}
+
 void EXTI15_10_IRQHandler(void)
 {
-    CmdButtonFuncDisable();
-    StartCmdButtonActionCheckDly(); //定时器定时0.5后的中断中判断按钮按下，然后执行相应流程
-    EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE10上的中断标志位
+    if(EXTI_GetITStatus(EXTI_Line10) != RESET) {
+        if(0 == BSP_GetPassiveGpioStatu()) {
+            DecompressNumPerMinuteInc();
+        }
+        EXTI_ClearITPendingBit(EXTI_Line10);  //清除LINE10上的中断标志位
+    }
+    
+    if(EXTI_GetITStatus(EXTI_Line12) != RESET) {
+        EXTI_ClearITPendingBit(EXTI_Line10);  //清除LINE12上的中断标志位
+    }
+    
+    if(EXTI_GetITStatus(EXTI_Line13) != RESET) {
+        CmdButtonFuncDisable();
+        StartCmdButtonActionCheckDly(); //定时器定时0.5后的中断中判断按钮按下，然后执行相应流程
+        EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE10上的中断标志位
+    }   
 }
+
 void CmdButtonFuncDisable(void)
 {
     EXTI_InitTypeDef EXTI_InitStructure;
@@ -2541,21 +2490,276 @@ void CmdButtonStatuCheck(void)
     if(GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13) == 0)
     {
         eSysRunningStatu = GetSystemWorkStatu();
-
-        if((EN_WAITTING_COMMAND == eSysRunningStatu) || (eSysRunningStatu == EN_ALARMING))
-        {
+        if((EN_WAITTING_COMMAND == eSysRunningStatu) || (eSysRunningStatu == EN_ALARMING)){
             CmdStart();
-        }
-        else
-        {
+        }else{
             CmdShutDown();
         }
     }
-
     CmdButtonFuncEnable();
     TIM_ITConfig(TIM7, TIM_IT_Update, DISABLE);
     TIM_ClearITPendingBit(TIM7, TIM_IT_Update); //清除中断标志位
 }
+
+
+/*
+***************************************************************************************************
+*                                            BSP_CmdButtonInit()
+*
+* Description : 开关型设备自检流程，进行过程不能被打断.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+void SwitchTypeDevicesSelfCheck()
+{
+    OS_ERR      err;
+    BSP_LqdValve1_PwrOn();
+    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
+    BSP_LqdValve1_PwrOff();
+    
+    BSP_LqdValve2_PwrOn();
+    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
+    BSP_LqdValve2_PwrOff();
+    
+    BSP_IgniterPwrOn();
+    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
+    BSP_IgniterPwrOff();
+    
+    BSP_HydrgInValvePwrOn();
+    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
+    BSP_HydrgInValvePwrOff();
+    
+    BSP_HydrgOutValvePwrOn();
+    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
+    BSP_HydrgOutValvePwrOff();
+    
+    BSP_DCConnectValvePwrOn();
+    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
+    BSP_DCConnectValvePwrOff();   
+}
+
+/*
+***************************************************************************************************
+*                                            BSP_CmdButtonInit()
+*
+* Description : 脉冲输入引脚初始化.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+void DiagnosticFeedBack_0_IRQHandler(void);
+void DiagnosticFeedBack_1_IRQHandler(void);
+void DiagnosticFeedBack_2_IRQHandler(void);
+void DiagnosticFeedBack_3_IRQHandler(void);
+void DiagnosticFeedBack_4_IRQHandler(void);
+void DiagnosticFeedBack_9_5_IRQHandler(void);
+
+
+//诊断检测引脚初始化
+void BSP_DiagnosticFeedBackPortInit(void)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+    EXTI_InitTypeDef EXTI_InitStructure;
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOE, ENABLE); //使能复用功能时钟
+    
+    //加热器和点火器诊断检测
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_HEATER_AND_IGNITER_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
+    
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource0);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line0;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    
+    //预留1和直流接触器诊断
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_RVD1_AND_DC_OUTPUT_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
+    
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource1);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line1;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    
+    //进气电磁阀和出气电磁阀诊断监测引脚
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_HYDROGEN_OUTPUT_AND_INPUT_VALVE_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
+    
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource2);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line2;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    
+    //预留控制点4和预留控制点3诊断监测引脚
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_RVD4_CTRL_AND_RVD3_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
+    
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource3);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line3;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    
+    //预留控制点2和进液电磁阀2诊断监测引脚
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_RVD2_CTRL_AND_WATER_INPUT_VALVE2_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
+    
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource4);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line4;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    
+    //预留控制点7和预留控制点8诊断监测引脚
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_RVD7_CTRL_AND_RVD8_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
+    
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource5);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line5;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    
+    //预留控制点5和预留控制点6诊断监测引脚
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_RVD5_CTRL_AND_RVD6_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
+    
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource6);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line6;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    
+    //点火状态监测引脚
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_FIRE_STATUS_FEEDBACK_PORT_NMB;
+    GPIO_Init(BSP_GPIOE_GROUP, &GPIO_InitStructure);
+    
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource7);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line7;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    EXTI_Init(&EXTI_InitStructure);    
+    
+    //泵和进液电磁阀1诊断检测
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOB_PUMP_AND_WATER_INPUT_VALVE_ONE_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_Init(BSP_GPIOB_GROUP, &GPIO_InitStructure);
+    
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource9);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line9;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    
+    BSP_IntVectSet(BSP_INT_ID_EXTI0, DiagnosticFeedBack_0_IRQHandler);
+    BSP_IntEn(BSP_INT_ID_EXTI0);
+    
+    BSP_IntVectSet(BSP_INT_ID_EXTI1, DiagnosticFeedBack_1_IRQHandler);
+    BSP_IntEn(BSP_INT_ID_EXTI1);
+    
+    BSP_IntVectSet(BSP_INT_ID_EXTI2, DiagnosticFeedBack_2_IRQHandler);
+    BSP_IntEn(BSP_INT_ID_EXTI2);
+    
+    BSP_IntVectSet(BSP_INT_ID_EXTI3, DiagnosticFeedBack_3_IRQHandler);
+    BSP_IntEn(BSP_INT_ID_EXTI3);
+    
+    BSP_IntVectSet(BSP_INT_ID_EXTI4, DiagnosticFeedBack_4_IRQHandler);
+    BSP_IntEn(BSP_INT_ID_EXTI4);    
+    
+    BSP_IntVectSet(BSP_INT_ID_EXTI9_5, DiagnosticFeedBack_9_5_IRQHandler);
+    BSP_IntEn(BSP_INT_ID_EXTI9_5); 
+    
+}
+
+
+void DiagnosticFeedBack_0_IRQHandler(void)
+{
+    if((GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13) == 0)){
+        if(1 == GPIO_ReadOutputDataBit(GPIOB,GPIO_Pin_7)){//输出控制脚为高
+            SetSelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
+        }else
+        
+        if(1 == GPIO_ReadOutputDataBit(GPIOB,GPIO_Pin_7)){
+            SetSelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
+        }
+    }
+    EXTI_ClearITPendingBit(EXTI_Line0);  
+}
+
+void DiagnosticFeedBack_1_IRQHandler(void)
+{
+    if((GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13) == 0)){
+        if(1 == GPIO_ReadOutputDataBit(GPIOB,GPIO_Pin_7)){//输出控制脚为高
+            SetSelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
+        }else 
+        
+        if(1 == GPIO_ReadOutputDataBit(GPIOB,GPIO_Pin_7)){
+            SetSelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
+        }
+    }
+    EXTI_ClearITPendingBit(EXTI_Line1);  
+}
+
+void DiagnosticFeedBack_2_IRQHandler(void)
+{
+    
+    EXTI_ClearITPendingBit(EXTI_Line2);  
+}
+
+void DiagnosticFeedBack_3_IRQHandler(void)
+{
+    
+    EXTI_ClearITPendingBit(EXTI_Line3);  
+}
+
+void DiagnosticFeedBack_4_IRQHandler(void)
+{
+    
+    EXTI_ClearITPendingBit(EXTI_Line4);  
+}
+
+void DiagnosticFeedBack_9_5_IRQHandler(void)
+{
+    
+    EXTI_ClearITPendingBit(EXTI_Line5);
+
+    EXTI_ClearITPendingBit(EXTI_Line5);  
+    
+    EXTI_ClearITPendingBit(EXTI_Line5);  
+    
+    EXTI_ClearITPendingBit(EXTI_Line5);  
+    
+}
+
 /*
 *********************************************************************************************************
 *                                           OSProbe_TmrInit()

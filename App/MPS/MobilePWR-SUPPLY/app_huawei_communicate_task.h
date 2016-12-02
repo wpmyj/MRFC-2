@@ -1,4 +1,5 @@
-/*********************************************************************************************************
+/*
+***************************************************************************************************
 *                                         APPLICATION CODE
 *
 *                      (c) Copyright 2016; Guangdong ENECO Science And Technology Co.,Ltd
@@ -8,21 +9,24 @@
 ***************************************************************************************************
 */
 
-/*
-*******************************************************************************************************
-* Filename      :  app_analog_signal_monitor_task.h
+/********************************************************************************************************
+* Filename      :  app_huawei_communicate_task.h
 * Programmer(s) :  Fanjun
 * Version       :  V1.0
-* data          :  2016.5.8
+* data          :  2016.4.4
 * brief         :  This file contains all the functions prototypes for the system run
 *                  config parameters firmware library.
-********************************************************************************************************
+*********************************************************************************************************/
+#ifndef __APP_HUAWWEI_COMMUNICATE_H__
+#define __APP_HUAWWEI_COMMUNICATE_H__
+/*
+***************************************************************************************************
+*                                                 MODULE
+*
+* Note(s) : (1) This header file is protected from multiple pre-processor inclusion through use of the
+*               BSP present pre-processor macro definition.
+***************************************************************************************************
 */
-
-#ifndef __APP_ANALOG_SIGNAL_MONITOR_TASK_H__
-#define __APP_ANALOG_SIGNAL_MONITOR_TASK_H__
-
-
 /*
 ***************************************************************************************************
 *                                           INCLUDE FILES
@@ -34,26 +38,20 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-/*
-***************************************************************************************************
-*                                    EXTERNAL OS VARIABLE DECLARATIONS
-***************************************************************************************************
-*/
-extern      OS_SEM      g_stAnaSigConvertFinishSem;
-/*
-***************************************************************************************************
-*                                           EXPORTED TYPE
-***************************************************************************************************
-*/
-/*
-***************************************************************************************************
-*                                           EXPORTED CONSTANTS
-***************************************************************************************************
-*/
+#define VOLTAGE_LIMIT_MAX  53.50
+
+#define CURRENT_LIMIT_MAX  33.00
+#define CURRENT_LIMIT_MIN  20.00
 
 /*
 ***************************************************************************************************
-*                                           EXPORTED MACRO
+*                                    EXPORTED OS VARIABLE DECLARATIONS
+***************************************************************************************************
+*/
+extern      OS_TCB      HuaWeiModuleAdjustTaskTCB;
+/*
+***************************************************************************************************
+*                                   EXPORTED GLOABLE VARIABLE DECLARATIONS
 ***************************************************************************************************
 */
 
@@ -62,12 +60,14 @@ extern      OS_SEM      g_stAnaSigConvertFinishSem;
 *                                           EXPORTED FUNCTION
 ***************************************************************************************************
 */
-void    AnaSigMonitorTaskCreate(void);
 
+void HuaWeiModuleAdjustTaskCreate(void);
 
-void    SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(unsigned char);
-void    SetHydrgProducerAnaSigRunningStartAutoAdjHookSwitch(unsigned char);
-void    SetHydrgProducerFansSpeedAutoIncreaseHookSwitch(unsigned char);
+void SetHuaWeiModuleCurrentLimitingPointImproveFlag(uint8_t i_NewStatu);
+uint8_t GetHuaWeiModuleCurrentLimitingPointImproveFlagStatus(void);
+
+void SetHuaWeiModuleCurrentLimitingPointReduceFlag(uint8_t i_NewStatu);
+uint8_t GetHuaWeiModuleCurrentLimitingPointReduceFlagStatus(void);
 
 /*
 ***************************************************************************************************

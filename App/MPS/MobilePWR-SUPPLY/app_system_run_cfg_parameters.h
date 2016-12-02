@@ -2,7 +2,7 @@
 #define __APP_SYSTEM_RUN_CFG_PARAMETERS_H__
 
 #ifndef __INTERNAL_TEST_FLAG
-    #define __INTERNAL_TEST_FLAG    1u
+    #define __INTERNAL_TEST_FLAG    0u
 #endif
 
 //重整室参数表
