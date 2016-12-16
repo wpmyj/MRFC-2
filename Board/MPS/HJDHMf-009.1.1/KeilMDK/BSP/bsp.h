@@ -1,50 +1,62 @@
 /*
-*********************************************************************************************************
-*                                     MICIRUM BOARD SUPPORT PACKAGE
+***************************************************************************************************
+*                                         APPLICATION CODE
 *
-*                             (c) Copyright 2013; Micrium, Inc.; Weston, FL
+*                      (c) Copyright 2016; Guangdong ENECO Science And Technology Co.,Ltd
 *
 *               All rights reserved.  Protected by international copyright laws.
-*               Knowledge of the source code may NOT be used to develop a similar product.
-*               Please help us continue to provide the Embedded community with the finest
-*               software available.  Your honesty is greatly appreciated.
-*********************************************************************************************************
+*               Knowledge of the source code may NOT be used without authorization.
+***************************************************************************************************
 */
-
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *
 *                                        BOARD SUPPORT PACKAGE
 *
 *                                     ST Microelectronics STM32
 *                                              on the
 *
-*                                     Micrium uC-Eval-STM32F107
-*                                        Evaluation Board
-*
-* Filename      : bsp.h
-* Version       : V1.00
-* Programmer(s) : EHS
-*********************************************************************************************************
+*                                         ENECO MRFC-2-001.0 board
+***************************************************************************************************
 */
+/********************************************************************************
+  * @file    bsp_ans_senor.h
+  * @author  Fanjun
+  * @version V1.0
+  * @date    6-December-2016
+  * @brief   This file contains all the functions prototypes for the analog sensor
+  *          firmware library.
+*********************************************************************************/
 
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef  BSP_PRESENT
+#define  BSP_PRESENT
 /*
-*********************************************************************************************************
+***************************************************************************************************
+* Note(s) : 定时器使用情况
+*   1)定时器1：调速设备速度监测
+*   2)定时器2：
+*   3)定时器3：调速设备速度监测
+*   4)定时器4：电堆风机速度控制
+*   5)定时器5：电堆排气时间参数计时
+*   6)定时器6:
+*   7)定时器7：硬件按钮按下时间检测
+*   8)
+***************************************************************************************************
+*/
+/*
+***************************************************************************************************
 *                                                 MODULE
 *
 * Note(s) : (1) This header file is protected from multiple pre-processor inclusion through use of the
 *               BSP present pre-processor macro definition.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
-#ifndef  BSP_PRESENT
-#define  BSP_PRESENT
-
-
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                                 EXTERNS
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 #ifdef   BSP_MODULE
@@ -55,9 +67,9 @@
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                              INCLUDE FILES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 #include  <stdarg.h>
@@ -85,38 +97,35 @@
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          GPIO PIN DEFINITIONS
-*********************************************************************************************************
+***************************************************************************************************
 */
 //管脚定义分为:组别+管脚号
 /* ------------------------------------------ GPIOA PINS ---------------------------------------- */
-#define  BSP_GPIOA_GROUP                                                        GPIOA
-        
-#define  BSP_GPIOA_LIQUID_LEVEL_ANA_SIGNAL_PORT_NMB                             DEF_BIT_00//液位传感器
-#define  BSP_GPIOA_LIQUID_PRESS_ANA_SIGNAL_PORT_NMB                             DEF_BIT_01//液压传感器
-#define  BSP_GPIOA_STACK_TEMP_ANA_SIGNAL_PORT_NMB                               DEF_BIT_02//电堆温度传感器
-#define  BSP_GPIOA_STACK_CURRENT_ANA_SIGNAL_PORT_NMB                            DEF_BIT_03//电堆电流传感器
-#define  BSP_GPIOA_PUMP_SPD_ANA_SIGNAL_CTRL_PORT_NMB                            DEF_BIT_04//泵速控制引脚
-#define  BSP_GPIOA_HYDROGEN_FAN_SPD_ANA_SIGNAL_CTRL_PORT_NMB                    DEF_BIT_05//制氢风机速度控制引脚
-#define  BSP_GPIOA_STACK_VOLETAGE_ANA_SIGNAL_PORT_NMB                           DEF_BIT_06//电堆电压传感器
-#define  BSP_GPIOA_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT_NMB                 DEF_BIT_07//气压传感器2
-#define  BSP_GPIOA_STACK_220_VOLATAGE_MONITOR_PORT_NMB                          DEF_BIT_08//交流220V电压监测
-#define  BSP_GPIOA_USART1_TX_PORT_NMB                                           DEF_BIT_09
-#define  BSP_GPIOA_USART1_RX_PORT_NMB                                           DEF_BIT_10
+#define  BSP_GPIOA_PIN_0_LIQUID_LEVEL_ANA_SIGNAL_PORT_NMB                             DEF_BIT_00//液位传感器
+#define  BSP_GPIOA_PIN_1_LIQUID_PRESS_ANA_SIGNAL_PORT_NMB                             DEF_BIT_01//液压传感器
+#define  BSP_GPIOA_PIN_2_STACK_TEMP_ANA_SIGNAL_PORT_NMB                               DEF_BIT_02//电堆温度传感器
+#define  BSP_GPIOA_PIN_3_STACK_CURRENT_ANA_SIGNAL_PORT_NMB                            DEF_BIT_03//电堆电流传感器
+#define  BSP_GPIOA_PIN_4_PUMP_SPD_ANA_SIGNAL_CTRL_PORT_NMB                            DEF_BIT_04//泵速控制引脚
+#define  BSP_GPIOA_PIN_5_HYDROGEN_FAN_SPD_ANA_SIGNAL_CTRL_PORT_NMB                    DEF_BIT_05//制氢风机速度控制引脚
+#define  BSP_GPIOA_PIN_6_BATTERY_VOLETAGE_ANA_SIGNAL_PORT_NMB                         DEF_BIT_06//电池电压传感器
+#define  BSP_GPIOA_PIN_7_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT_NMB                 DEF_BIT_07//气压传感器2
+#define  BSP_GPIOA_PIN_8_STACK_220_VOLATAGE_MONITOR_PORT_NMB                          DEF_BIT_08//交流220V电压监测
+#define  BSP_GPIOA_PIN_9_USART1_TX_PORT_NMB                                           DEF_BIT_09
+#define  BSP_GPIOA_PIN_10_USART1_RX_PORT_NMB                                           DEF_BIT_10
 #define  BSP_GPIOA_USB_DM_PORT_NMB                                              DEF_BIT_11
 #define  BSP_GPIOA_USB_DP_PORT_NMB                                              DEF_BIT_12
 #define  BSP_GPIOA_STM_SPI_NSS_PORT_NMB                                         DEF_BIT_15
 
 /* ------------------------------------------ GPIOB PINS ---------------------------------------- */
-#define  BSP_GPIOB_GROUP                                                        GPIOB
         
 #define  BSP_GPIOB_STACK_HYDROGEN_PRESS_ONE_ANA_SIGNAL_PORT_NMB                 DEF_BIT_00//气压传感器1
 #define  BSP_GPIOB_STACK_VOLETAGE_ANA_SIGNAL_PORT_NMB                           DEF_BIT_01//电堆电压传感器
 #define  BSP_GPIOB_BUZZER_CTRL_PORT_NMB                                         DEF_BIT_02
-#define  BSP_GPIOB_STM_SPI_CLK_PORT_NMB                                         DEF_BIT_3
-#define  BSP_GPIOB_STM_SPI_MISO_PORT_NMB                                        DEF_BIT_4
-#define  BSP_GPIOB_STM_SPI_MOSI_PORT_NMB                                        DEF_BIT_5
+#define  BSP_GPIOB_STM_SPI_CLK_PORT_NMB                                         DEF_BIT_03
+#define  BSP_GPIOB_STM_SPI_MISO_PORT_NMB                                        DEF_BIT_04
+#define  BSP_GPIOB_STM_SPI_MOSI_PORT_NMB                                        DEF_BIT_05
 #define  BSP_GPIOB_STACK_FAN_SPD_CTRL_PORT_NMB                                  DEF_BIT_06//电堆风机速度控制引脚
 #define  BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB                     DEF_BIT_07//进液电磁阀一电源控制引脚
 #define  BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB                            DEF_BIT_08//保温加热器控制引脚
@@ -129,9 +138,13 @@
 #define  BSP_GPIOB_USB_BUS_PWR_OVRCR_CTRL_PORT_NMB                              DEF_BIT_15//USB BUS PWR OVRCR
 
 /* ------------------------------------------ GPIOC PINS ---------------------------------------- */
-#define  BSP_GPIOC_GROUP                                                        GPIOC
         
 #define  BSP_GPIOC_HYDROGRN_CONCENTRATION_DETECTION_PORT_NMB                    DEF_BIT_00//氢气浓度监测引脚
+#define  BSP_GPIOC_BATTERY_CURRENT_ANA_SIGNAL_PORT_NMB                          DEF_BIT_01//电池电流
+#define  BSP_GPIOC_RAPID_HEATER_CURRETN_ANA_SIGNAL_PORT_NMB                     DEF_BIT_02//快速加热器电流
+#define  BSP_GPIOC_NEGATIVE_PRESSURE_ANA_SIGNAL_PORT_NMB                        DEF_BIT_03//负压传感器
+#define  BSP_GPIOC_RSVD1_ANA_SIGNAL_PORT_NMB                                    DEF_BIT_04//预留模拟信号传感器1
+#define  BSP_GPIOC_RSVD2_ANA_SIGNAL_PORT_NMB                                    DEF_BIT_05//预留模拟信号传感器2
 #define  BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB                                DEF_BIT_06//水泵自动加液引脚控制开关
 #define  BSP_GPIOC_HYDROGEN_INTO_STACK_VALVE_PWR_CTRL_PORT_NMB                  DEF_BIT_07//电堆进气控制阀
 #define  BSP_GPIOC_HYDROGEN_OUTOF_STACK_VALVE_PWR_CTRL_PORT_NMB                 DEF_BIT_08//电堆出气控制阀
@@ -145,7 +158,6 @@
 
 
 /* ------------------------------------------ GPIOD PINS ---------------------------------------- */
-#define  BSP_GPIOD_GROUP                                                        GPIOD
         
 #define  BSP_GPIOD_UART5_RX_PORT_NMB                                            DEF_BIT_02
 #define  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB                               DEF_BIT_07
@@ -158,7 +170,6 @@
 
 
 /* ------------------------------------------ GPIOE PINS ---------------------------------------- */
-#define  BSP_GPIOE_GROUP                                                            GPIOE
 /*诊断检测引脚*/
 #define  BSP_GPIOE_HEATER_AND_IGNITER_DIAGNOSTIC_FEEDBACK_PORT_NMB                  DEF_BIT_00//加热器和点火器诊断监测引脚
 #define  BSP_GPIOE_RVD1_AND_DC_OUTPUT_DIAGNOSTIC_FEEDBACK_PORT_NMB                  DEF_BIT_01//预留1和直流接触器诊断
@@ -172,14 +183,14 @@
 #define  BSP_GPIOE_PD_PULSE1_PORT_NMB                                               DEF_BIT_10//外部电位脉冲1
 #define  BSP_GPIOE_HYDRG_FAN_SPEED_CHECK_PORT_NMB                                   DEF_BIT_11//制氢风机速度检测引脚
 #define  BSP_GPIOE_PD_PULSE2_PORT_NMB                                               DEF_BIT_12//外部电位脉冲2
-#define  BSP_GPIOE_STACK_FAN1_SPEED_CHECK_PORT_NMB                                  DEF_BIT_13//电堆风机速度检测引脚
+#define  BSP_GPIOE_STACK_FAN_SPEED_CHECK_PORT_NMB                                   DEF_BIT_13//电堆风机速度检测引脚
 #define  BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB                                   DEF_BIT_14
 #define  BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB                                   DEF_BIT_15//预留口5/6/7/8 (抽真空电磁阀2/3/4/5)
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                               INT DEFINES
-*********************************************************************************************************
+***************************************************************************************************
 */
 //板级中断向量编号
 #define  BSP_INT_ID_WWDG                                   0    /* Window WatchDog Interrupt                            */
@@ -248,9 +259,9 @@
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                             PERIPH DEFINES
-*********************************************************************************************************
+***************************************************************************************************
 */
 //外部设备ID
 #define  BSP_PERIPH_ID_DMA1                                0
@@ -297,30 +308,30 @@
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                               DATA TYPES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                            GLOBAL VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                                 MACRO'S
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           FUNCTION PROTOTYPES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 void         BSP_Init(void);
@@ -331,9 +342,9 @@ CPU_INT32U   BSP_CPU_ClkFreq(void);
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           INTERRUPT SERVICES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 void         BSP_IntInit(void);
@@ -417,9 +428,9 @@ void         BSP_IntHandlerOTG(void);
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                     PERIPHERAL POWER/CLOCK SERVICES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 CPU_INT32U   BSP_PeriphClkFreqGet(CPU_DATA       pwr_clk_id);
@@ -430,9 +441,9 @@ void         BSP_PeriphDis(CPU_DATA       pwr_clk_id);
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                              LED SERVICES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 void         BSP_LED_On(CPU_INT08U     led);
@@ -442,35 +453,31 @@ void         BSP_LED_Off(CPU_INT08U     led);
 void         BSP_LED_Toggle(CPU_INT08U     led);
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                              ANALOG SENSOR SERVICES
-*********************************************************************************************************
+***************************************************************************************************
 */
 void  BSP_AnaSensorConvertStart(vu16 *, uint8_t);
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                              DIGLOG SENSOR SERVICES
-*********************************************************************************************************
+***************************************************************************************************
 */
 void  DigTempSensorConvertStart(void);
 void  BSP_MAX6675ConvertStart(void);
 void  BSP_MAX6675_Temp_Read(float *, uint8_t *);
 
-void BSP_HydrgProducerPumpMonitorStart(void);
-void BSP_HydrgProducerFanMonitorStart(void);
-//void BSP_StackFan1SpdMonitorStart(void);
-//void BSP_StackFan2SpdMonitorStart(void);
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                              SWITCH-TYPE DEVICE SERVICES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
-void         BSP_BuzzerOn(void);
+void  BSP_BuzzerOn(void);
 
-void         BSP_BuzzerOff(void);
+void  BSP_BuzzerOff(void);
 
-void         BSP_BuzzerTurnover(void);
+void  BSP_BuzzerTurnover(void);
 
 void  BSP_LqdValve1_PwrOn(void);
 void  BSP_LqdValve1_PwrOff(void);
@@ -504,9 +511,9 @@ void  BSP_OutsidePumpPwrOff(void);
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                              SPEED CONTROL DEVICE SERVICES
-*********************************************************************************************************
+***************************************************************************************************
 */
 void  BSP_SetPumpSpd(uint16_t);
 void  BSP_SetHydrgFanSpd(uint16_t);
@@ -520,18 +527,34 @@ void  BSP_SetStackFanSpd(uint16_t);
 void BSP_VentingIntervalRecordTimerInit(void);
 void BSP_StartRunningVentingTimeRecord(void);
 void BSP_StopRunningVentingTimeRecord(void);
+
 /*
-*********************************************************************************************************
+***************************************************************************************************
+*                                              Others
+***************************************************************************************************
+*/
+void  BSP_BuzzerInit(void);
+
+void  BSP_CmdButtonInit(void);
+void  EXTI15_10_IRQHandler(void);
+void  CmdButtonFuncDisable(void);
+void  CmdButtonFuncEnable(void);
+void  TIM7_DlyMilSecondsInit(u16 i_u16DlyMilSeconds);
+void  CmdButtonStatuCheck(void);
+void  StartCmdButtonActionCheckDly(void);
+void  TIM7_DlyMilSecondsInit(u16 i_u16DlyMilSeconds);
+/*
+***************************************************************************************************
 *                                              STATUS INPUTS
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 CPU_BOOLEAN  BSP_StatusRd(CPU_INT08U  id);
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                             MODULE END
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 

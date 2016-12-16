@@ -10,15 +10,15 @@
 */
 
 /********************************************************************************************************
-* Filename      :  app_huawei_communicate_task.h
+* Filename      :  app_dc_module_communicate_task.h
 * Programmer(s) :  Fanjun
 * Version       :  V1.0
-* data          :  2016.4.4
+* data          :  2016.12.10
 * brief         :  This file contains all the functions prototypes for the system run
 *                  config parameters firmware library.
 *********************************************************************************************************/
-#ifndef __APP_HUAWWEI_COMMUNICATE_H__
-#define __APP_HUAWWEI_COMMUNICATE_H__
+#ifndef __APP_DC_MODULE_COMMUNICATE_H__
+#define __APP_DC_MODULE_COMMUNICATE_H__
 /*
 ***************************************************************************************************
 *                                                 MODULE
@@ -38,17 +38,17 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define VOLTAGE_LIMIT_MAX  53.50
+#define VOLTAGE_LIMIT_MAX  (53.50)
 
-#define CURRENT_LIMIT_MAX  33.00
-#define CURRENT_LIMIT_MIN  20.00
+#define CURRENT_LIMIT_MAX  (33.00)
+#define CURRENT_LIMIT_MIN  (20.00)
 
 /*
 ***************************************************************************************************
 *                                    EXPORTED OS VARIABLE DECLARATIONS
 ***************************************************************************************************
 */
-extern      OS_TCB      HuaWeiModuleAdjustTaskTCB;
+extern      OS_TCB      DcModuleAdjustTaskTCB;
 /*
 ***************************************************************************************************
 *                                   EXPORTED GLOABLE VARIABLE DECLARATIONS
@@ -61,13 +61,13 @@ extern      OS_TCB      HuaWeiModuleAdjustTaskTCB;
 ***************************************************************************************************
 */
 
-void HuaWeiModuleAdjustTaskCreate(void);
+void DcModuleAdjustTaskCreate(void);
 
-void SetHuaWeiModuleCurrentLimitingPointImproveFlag(uint8_t i_NewStatu);
-uint8_t GetHuaWeiModuleCurrentLimitingPointImproveFlagStatus(void);
+void SetDcModuleCurrentLimitingPointImproveFlag(uint8_t i_NewStatu);
+uint8_t GetDcModuleCurrentLimitingPointImproveFlagStatus(void);
 
-void SetHuaWeiModuleCurrentLimitingPointReduceFlag(uint8_t i_NewStatu);
-uint8_t GetHuaWeiModuleCurrentLimitingPointReduceFlagStatus(void);
+void SetDcModuleCurrentLimitingPointReduceFlag(uint8_t i_NewStatu);
+uint8_t GetDcModuleCurrentLimitingPointReduceFlagStatus(void);
 
 /*
 ***************************************************************************************************

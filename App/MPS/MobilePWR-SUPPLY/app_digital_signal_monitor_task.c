@@ -1,24 +1,24 @@
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                              APPLICATION CODE
 *
 *                          (c) Copyright 2015; Guangdong Hydrogen Energy Science And Technology Co.,Ltd
 *
 *               All rights reserved.  Protected by international copyright laws.
 *               Knowledge of the source code may NOT be used without authorization.
-*********************************************************************************************************
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 * Filename      : app_thermocouple_temp.c
 * Version       : V1.00
 * Programmer(s) : SunKing.Yun
-*********************************************************************************************************
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                             INCLUDE FILES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 #include <includes.h>
@@ -28,17 +28,17 @@
 #include "app_top_task.h"
 #include "app_stack_manager.h"
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           MACRO DEFINITIONS
-*********************************************************************************************************
+***************************************************************************************************
 */
 #define     NMB_OF_AVERAGE_TEMPERATURE_SAMPLE           4   //平均温度采样样本数
 #define     DIG_SIGNAL_MONITOR_TASK_STK_SIZE            1024
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
 */
 extern      OS_SEM      IgniteFirstBehindWaitSem;
 
@@ -48,9 +48,9 @@ OS_TCB      DigSigMonitorTaskTCB;
 static      CPU_STK_8BYTE_ALIGNED     AnaSigMonitorTaskStk[DIG_SIGNAL_MONITOR_TASK_STK_SIZE];
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                       LOCAL GLOBAL VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
 */
 extern          REFORMER_TEMP_CMP_LINES_Typedef             g_stReformerTempCmpTbl;
 
@@ -63,9 +63,9 @@ static  uint8_t  g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw = DEF
 static  uint8_t  g_u8HydrgProducerDigSigRunningMonitorAlarmHookSw = DEF_DISABLED;            //制氢机运行数字信号监测警报开关
 static  uint8_t  g_u8StackExhaustTimesCountPerMinutesMonitorHookSw = DEF_DISABLED;//电堆每分钟排气次数监测开关
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
-*********************************************************************************************************
+***************************************************************************************************
 */
 static   void   UpdateThermocoupleTemp(uint8_t *i_TempErr);
 static   void   DigSigMonitorTask(void *p_arg);
@@ -73,7 +73,7 @@ static   void   HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook(void);
 static   void   HydrgProducerDigSigAlarmRunningMonitorHook(void);
 static   void   SetStackExhaustTimesCountPerMinutesMonitorHook(void);
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                                UpdateThermocoupleTemp()
 *
 * Description : 1.average filter the digtal value.                          数字量平均滤波
@@ -83,7 +83,7 @@ static   void   SetStackExhaustTimesCountPerMinutesMonitorHook(void);
 * Arguments   : the address to store the thermocouple broken error information.
 *               TempErr[0]-重整室温度错误标志，TempErr[1]-点火温度错误标志
 * Returns     : none
-*********************************************************************************************************
+***************************************************************************************************
 */
 static void UpdateThermocoupleTemp(uint8_t *i_TempErr)
 {
@@ -131,7 +131,7 @@ static void UpdateThermocoupleTemp(uint8_t *i_TempErr)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          GetReformerTemp()
 *
 * Description : get the temperature of the reformer.
@@ -141,7 +141,7 @@ static void UpdateThermocoupleTemp(uint8_t *i_TempErr)
 * Returns     : the reformer temperature.
 *
 * Notes       : none
-*********************************************************************************************************
+***************************************************************************************************
 */
 float GetReformerTemp(void)
 {
@@ -149,7 +149,7 @@ float GetReformerTemp(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         GetFireOrRodTemp()
 *
 * Description : get the temperature of the fire or rod.
@@ -159,7 +159,7 @@ float GetReformerTemp(void)
 * Returns     : the fire of rod temperature.
 *
 * Notes       : none
-*********************************************************************************************************
+***************************************************************************************************
 */
 float GetFireOrRodTemp(void)
 {
@@ -167,7 +167,7 @@ float GetFireOrRodTemp(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          DigSigMonitorTaskCreate()
 *
 * Description : create the task that monitor the digital signal.
@@ -177,7 +177,7 @@ float GetFireOrRodTemp(void)
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void  DigSigMonitorTaskCreate(void)
 {
@@ -200,7 +200,7 @@ void  DigSigMonitorTaskCreate(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          DigSigMonitorTask()
 *
 * Description : 1.the task monitor the digital signal.
@@ -211,7 +211,7 @@ void  DigSigMonitorTaskCreate(void)
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 static void  DigSigMonitorTask(void *p_arg)
 {
@@ -230,20 +230,20 @@ static void  DigSigMonitorTask(void *p_arg)
         //根据采样错误位设置自检码指定位
         if(TempErr[0] == 1)
         {
-            SetSelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
+            SetMachinePartASelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
         }
         else
         {
-            ResetSelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
+            ResetMachinePartASelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
         }
 
         if(TempErr[1] == 1)
         {
-            SetSelfCheckCodeBit(SelfCheckCodeGrpHydrgFireThermocoupleBit);
+            SetMachinePartASelfCheckCodeBit(SelfCheckCodeGrpHydrgFireThermocoupleBit);
         }
         else
         {
-            ResetSelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
+            ResetMachinePartASelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
         }
 
         //开启监测任务
@@ -264,7 +264,7 @@ static void  DigSigMonitorTask(void *p_arg)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                     SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch()
 *
 * Description : En/Disable the digital signal wait for the ignite first time to behind switchover.
@@ -274,7 +274,7 @@ static void  DigSigMonitorTask(void *p_arg)
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(u8 i_NewStatu)
 {
@@ -282,7 +282,7 @@ void SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(u8 i_NewStatu)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                     HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook()
 *
 * Description : wait for the ignite first time to behind switchover.
@@ -292,7 +292,7 @@ void SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(u8 i_NewStatu)
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 static void HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook(void)
@@ -341,7 +341,7 @@ static void SetStackExhaustTimesCountPerMinutesMonitorHook()
     }
 }
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                     SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch()
 *
 * Description : En/Disable the digital signal concerned alarms.
@@ -351,7 +351,7 @@ static void SetStackExhaustTimesCountPerMinutesMonitorHook()
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
 {
@@ -359,7 +359,7 @@ void SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                     HydrgProducerDigSigAlarmRunningMonitorHook()
 *
 * Description : manager the digital signal concerned alarms.
@@ -369,7 +369,7 @@ void SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 static void HydrgProducerDigSigAlarmRunningMonitorHook(void)

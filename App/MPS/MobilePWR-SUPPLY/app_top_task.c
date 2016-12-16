@@ -1,24 +1,24 @@
 /*
-*********************************************************************************************************
-*                                              APPLICATION CODE
+***************************************************************************************************
+*                                         APPLICATION CODE
 *
-*                          (c) Copyright 2015; Guangdong Hydrogen Energy Science And Technology Co.,Ltd
+*                      (c) Copyright 2016; Guangdong ENECO Science And Technology Co.,Ltd
 *
 *               All rights reserved.  Protected by international copyright laws.
 *               Knowledge of the source code may NOT be used without authorization.
-*********************************************************************************************************
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 * Filename      : app_top_task.c
 * Version       : V1.00
-* Programmer(s) : SunKing.Yun
-*********************************************************************************************************
+* Programmer(s) : FanJun
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                             INCLUDE FILES
-*********************************************************************************************************
+***************************************************************************************************
 */
 #include <includes.h>
 #include "bsp_speed_adjust_device.h"
@@ -26,65 +26,53 @@
 #include "app_system_run_cfg_parameters.h"
 #include "app_system_real_time_parameters.h"
 #include "app_hydrg_producer_manager.h"
+#include "app_stack_manager.h"
+#include "app_wireness_communicate_task.h"
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
 */
-extern  OS_TCB   AppTaskStartTCB;
-extern  OS_TCB   WirenessCommTaskTCB;
-
-extern  OS_TCB   HydrgProducerManagerTaskTCB;
-extern  OS_TCB   StackManagerTaskTCB;
-
-extern  OS_TCB   HydrgProducerManagerDlyStopTaskTCB;
-extern  OS_TCB   StackManagerDlyStopTaskTCB;
-
 OS_SEM   IgniteFirstBehindWaitSem;
-
-OS_SEM  IgniteSecondBehindWaitSem;
+OS_SEM   IgniteSecondBehindWaitSem;
 OS_SEM   MannualSelcetWorkModeSem;
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           LOCAL VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
 */
-extern  REFORMER_TEMP_CMP_LINES_Typedef             g_stReformerTempCmpTbl;
 
 static  SWITCH_TYPE_VARIABLE_Typedef                g_eDeviceFaultAlarm = OFF;
-
 static  SYSTEM_SHUT_DOWN_ACTION_FLAG_Typedef        g_eShutDownActionFlag = EN_DELAY_STOP_BOTH_PARTS;
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           GLOBAL VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
 */
 u16 g_u16StartRemainSecond = 15 * 60;
 
-
-
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
-*********************************************************************************************************
+***************************************************************************************************
 */
 static  void    ShutDown(void);
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          CheckAuthorization()
 *
 * Description : The use of this funciton is to check the authorization of the system.
-*               检查权限
+*               s
 * Arguments   : none.
 *
 * Returns     : none
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 VERIFY_RESULT_TYPE_VARIABLE_Typedef CheckAuthorization(void)
 {
@@ -92,7 +80,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef CheckAuthorization(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          DeviceFaultAlarm()
 *
 * Description : The funciton is the device alarm process.
@@ -102,7 +90,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef CheckAuthorization(void)
 * Returns     : none
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void DeviceFaultAlarm(void)
 {
@@ -128,7 +116,7 @@ void DeviceFaultAlarm(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          ResetDeviceAlarmStatu()
 *
 * Description : The use of the funciton is to exit the device alarm process.
@@ -138,7 +126,7 @@ void DeviceFaultAlarm(void)
 * Returns     : none
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void ResetDeviceAlarmStatu(void)
 {
@@ -146,7 +134,7 @@ void ResetDeviceAlarmStatu(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          DeviceSelfCheck()
 *
 * Description : The use of the funciton is to self-check the devices.
@@ -156,105 +144,108 @@ void ResetDeviceAlarmStatu(void)
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 VERIFY_RESULT_TYPE_VARIABLE_Typedef DeviceSelfCheck(void)
 {
-    uint64_t TempSelfCheckCode;
     VERIFY_RESULT_TYPE_VARIABLE_Typedef MachineSelfCheckResult;
+    SELF_CHECK_CODE_Typedef stSelfCheckCode;
     SYSTEM_WORK_MODE_Typedef    eWorkMode;
 
-    APP_TRACE_INFO(("Self-checking...\n\r"));
+    APP_TRACE_DEBUG(("Self-checking...\r\n"));
     ResetAllAlarms();
     AnaSensorSelfCheck();   //模拟信号传感器自检
-    
-    TempSelfCheckCode = GetSelfCheckCode();
+
+    stSelfCheckCode = GetSysSelfCheckCode();
+    SendRealTimeAssistInfo();   //向上位机发送自检信息,30S一次
 
     eWorkMode = GetWorkMode();
 
-    switch((u8)eWorkMode)
-    {
+    switch((u8)eWorkMode) {
         case EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL:
-            APP_TRACE_INFO(("Both parts of the machine are expected to work...\n\r"));
+            APP_TRACE_DEBUG(("Both parts of the machine are expected to work...\r\n"));
 
-            if((TempSelfCheckCode & (0x201ll << 47)) == 0ll)//制氢组设备正常
-            {
-                APP_TRACE_INFO(("Device of hydrogen producer group is at right statu...\n\r"));
-
-                if((TempSelfCheckCode & (0xFll << 18)) == 0ll)//发电组设备正常
-                {
-                    APP_TRACE_INFO(("Device of stack group is at right statu, the machine can work normal...\n\r"));
+            if(stSelfCheckCode.DevSelfCheckSensorStatusCode == 0) { //设备自检传感器正常
+                if((stSelfCheckCode.MachinePartASelfCheckCode == 0) && (stSelfCheckCode.MachinePartBSelfCheckCode == 0)) {  //制氢组设备正常,只进行模拟输入组设备自检
+                    APP_TRACE_DEBUG(("Device of hydrogen producer group and stack group is at right statu...\r\n"));
                     MachineSelfCheckResult = EN_THROUGH;
+                } else {
+                    if(stSelfCheckCode.MachinePartASelfCheckCode != 0) { //发电组设备正常
+                        APP_TRACE_DEBUG(("Device of hydrogen producer group is not at right statu,can not work...\r\n"));
+
+                    } else {
+                        APP_TRACE_DEBUG(("Device of stack group is not at right statu,can not work...\r\n"));
+                        MachineSelfCheckResult = EN_NOT_THROUGH;
+                    }
                 }
-                else
-                {
-                    APP_TRACE_INFO(("Device of stack group is not at right statu,can not work...\n\r"));
-                    MachineSelfCheckResult = EN_NOT_THROUGH;
-                }
-            }
-            else
-            {
-                APP_TRACE_INFO(("Device of hydrogen producer group is not at right statu,can not work...\n\r"));
+            } else {
+                APP_TRACE_DEBUG(("Device of device selfcheck sensor is not at right statu,can not work...\r\n"));
                 MachineSelfCheckResult = EN_NOT_THROUGH;
+
             }
 
             break;
 
         case EN_WORK_MODE_HYDROGEN_PRODUCER:
-            APP_TRACE_INFO(("Hydrogen producer of the machine is expected to work...\n\r"));
+            APP_TRACE_DEBUG(("hydrogen producer of the machine is expected to work...\r\n"));
 
-            if((TempSelfCheckCode & (0x201ll << 47)) == 0ll)//制氢组设备正常
-            {
-                APP_TRACE_INFO(("Device of hydrogen producer group is at right statu,can work normal...\n\r"));
-                MachineSelfCheckResult = EN_THROUGH;        //手动控制下，制氢模式自检通过
-            }
-            else
-            {
-                APP_TRACE_INFO(("Device of hydrogen producer group is not at right statu,can not work...\n\r"));
+            if(stSelfCheckCode.DevSelfCheckSensorStatusCode == 0) { //设备自检传感器正常
+                if(stSelfCheckCode.MachinePartASelfCheckCode == 0) { //制氢组设备正常,只进行模拟输入组设备自检
+                    APP_TRACE_DEBUG(("Device of hydrogen producer group is at right statu...\r\n"));
+                    MachineSelfCheckResult = EN_THROUGH;
+                } else {
+                    APP_TRACE_DEBUG(("Device of hydrogen producer group is not at right statu,can not work...\r\n"));
+                    MachineSelfCheckResult = EN_NOT_THROUGH;
+                }
+            } else {
+                APP_TRACE_DEBUG(("Device of device selfcheck sensor is not at right statu,can not work...\r\n"));
                 MachineSelfCheckResult = EN_NOT_THROUGH;
             }
 
             break;
 
         case EN_WORK_MODE_FUEL_CELL:
-            APP_TRACE_INFO(("Stack of the machine is expected to work...\n\r"));
+            APP_TRACE_DEBUG(("Stack of the machine is expected to work...\r\n"));
 
-            if((TempSelfCheckCode & (0xFll << 18)) == 0ll)//发电组设备正常
-            {
-                APP_TRACE_INFO(("Device of stack group is at right statu,can work normal...\n\r"));
-                MachineSelfCheckResult = EN_THROUGH;        //手动控制下，发电模式自检通过
-            }
-            else
-            {
-                APP_TRACE_INFO(("Device of stack group is not at right statu,can not work...\n\r"));
+            if(stSelfCheckCode.DevSelfCheckSensorStatusCode == 0) { //设备自检传感器正常
+                if(stSelfCheckCode.MachinePartBSelfCheckCode == 0) { //发电组设备正常
+                    APP_TRACE_DEBUG(("Device of stack group is at right statu, the machine can work normal...\r\n"));
+                    MachineSelfCheckResult = EN_THROUGH;
+                } else {
+                    APP_TRACE_DEBUG(("Device of stack group is not at right statu,can not work...\r\n"));
+                    MachineSelfCheckResult = EN_NOT_THROUGH;
+                }
+            } else {
+                APP_TRACE_DEBUG(("Device of device selfcheck sensor is not at right statu,can not work...\r\n"));
                 MachineSelfCheckResult = EN_NOT_THROUGH;
             }
 
             break;
 
-        case EN_WORK_MODE_MALFUNCTION:
+        case EN_WORK_MODE_MALFUNCTION:  //故障模式
+            APP_TRACE_DEBUG(("Device of machine is not at right statu,can not work...\r\n"));
 
         default:
-            APP_TRACE_INFO(("Fault: System expected to work on the malfunction mode...\n\r"));
+            APP_TRACE_DEBUG(("Fault: System expected to work on the malfunction mode...\r\n"));
             MachineSelfCheckResult = EN_NOT_THROUGH;
             break;
     }
 
-    //  return MachineSelfCheckResult;
+//  return MachineSelfCheckResult;
     return EN_THROUGH;//暂时关闭自检
 }
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          WaittingCommand()
 *
 * Description : The use of the funciton is to wait the command and cyclic self-check.
-*                               待机状态，等待上位机命令并周期自检
+*                              
 * Arguments   : none.
 *
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
 {
@@ -277,8 +268,12 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
 
     eWorkMode = GetWorkMode();
     APP_TRACE_INFO(("Receive the mannual work mode %d...\n\r", eWorkMode));
+#elif __HYDROGEN_GENERATOR_MODULE
+    SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER);
+#elif __FUEL_CELL_MODULE
+    SetWorkMode(EN_WORK_MODE_FUEL_CELL);
 #else
-    SetWorkMode(EN_WORK_MODE_FUEL_CELL);//发电半机模式
+    SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL);
 #endif
 
     while(DEF_TRUE)
@@ -322,7 +317,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          Starting()
 *
 * Description : The use of the funciton is to start the system.
@@ -332,7 +327,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void Starting(void)
 {
@@ -376,14 +371,14 @@ void Starting(void)
     if(( eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL ) || ( eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER ))
     {  
         OS_ERR err;
-        HydrgProducerWorkTimesInc();                             //开始制氢计算时间      
+        HydrgProducerWorkTimesInc();               //开始制氢计算时间      
         SetSystemWorkStatu(EN_START_PRGM_ONE_FRONT);  
         
         APP_TRACE_INFO(("Fast heat control...\n\r"));
         SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(DEF_ENABLED);
-        BSP_FastHeaterPwrOn();                                //打开快速加热器
-        OSSemPend(&IgniteFirstBehindWaitSem,                      //  因有多个之一的条件满足即可，且有多处等待点，故使用信号量传递信息，而非任务信号量。
-                  ( OS_CFG_TICK_RATE_HZ * 60 * 3 ),                 //三分钟时间
+        BSP_FastHeaterPwrOn();  //打开快速加热器
+        OSSemPend(&IgniteFirstBehindWaitSem,   
+                  ( OS_CFG_TICK_RATE_HZ * 60 * 3 ), //三分钟时间
                   OS_OPT_PEND_BLOCKING,
                   NULL,
                   &err);
@@ -391,7 +386,7 @@ void Starting(void)
         if( err == OS_ERR_NONE )                             
         {
             APP_TRACE_INFO(("Fast heat control finish...\n\r"));
-            SetSystemWorkStatu(EN_START_PRGM_ONE_FRONT);            //直接跳到准备运行前的第二次点火
+            SetSystemWorkStatu(EN_START_PRGM_ONE_FRONT);//直接跳到准备运行前的第二次点火
             return;
         }
         else if( err == OS_ERR_TIMEOUT )
@@ -476,7 +471,7 @@ void Starting(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          KeepingWarm()
 *
 * Description : The use of the funciton is to keep the system warm.
@@ -486,7 +481,7 @@ void Starting(void)
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void    KeepingWarm(void)
 {
@@ -497,7 +492,7 @@ void    KeepingWarm(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          Running()
 *
 * Description : The use of the funciton is to keep the system run.
@@ -507,7 +502,7 @@ void    KeepingWarm(void)
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void Running()
 {
@@ -565,7 +560,7 @@ void Running()
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          SetShutDownActionFlag()
 *
 * Description : The use of the funciton is to select the shut down action flag.
@@ -575,7 +570,7 @@ void Running()
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void SetShutDownActionFlag(SYSTEM_SHUT_DOWN_ACTION_FLAG_Typedef i_eNewActionStatu)
 {
@@ -583,7 +578,7 @@ void SetShutDownActionFlag(SYSTEM_SHUT_DOWN_ACTION_FLAG_Typedef i_eNewActionStat
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                                   ShutDown()
 *
 * Description : The use of the funciton is to shut down the system.
@@ -593,7 +588,7 @@ void SetShutDownActionFlag(SYSTEM_SHUT_DOWN_ACTION_FLAG_Typedef i_eNewActionStat
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void ShutDown()
 {
@@ -709,7 +704,7 @@ void ShutDown()
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         UpdateBuzzerStatuInCruise()
 *
 * Description : The use of the funciton is to update the buzzer statu when running.
@@ -719,7 +714,7 @@ void ShutDown()
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void UpdateBuzzerStatuInCruise(void)
 {
@@ -738,7 +733,7 @@ void UpdateBuzzerStatuInCruise(void)
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         u16 GetStartRemainSencond(void)
 *
 * Description : The use of the funciton is to get the start remain sencond.
@@ -748,7 +743,7 @@ void UpdateBuzzerStatuInCruise(void)
 * Returns     : none.
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 u16 GetStartRemainSencond(void)
 {

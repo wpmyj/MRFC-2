@@ -21,7 +21,7 @@
 *                                             INCLUDE FILES
 ***************************************************************************************************
 */
-#include "bsp_huawei_485_adjust.h"
+#include "bsp_dc_module_adjust.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -61,7 +61,7 @@ static void RS485Rx_IRQHandler(void);
 
 /*
 ***************************************************************************************************
-*                                     Bsp_HuaWeiDCConmunicateInit()
+*                                     Bsp_DcModuleConmunicateInit()
 *
 * Description : UART5 Init.
 *
@@ -72,11 +72,11 @@ static void RS485Rx_IRQHandler(void);
 * Note(s)     : none.
 ***************************************************************************************************
 */
-void Bsp_HuaWeiDCConmunicateInit(void)
+void Bsp_DcModuleConmunicateInit(void)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
     USART_InitTypeDef USART_InitStructure;
-    NVIC_InitTypeDef NVIC_InitStructure;
+
     //时钟使能
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, ENABLE);   //使能UART5时钟
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD | RCC_APB2Periph_AFIO, ENABLE);  //使能GPIOC、D口时钟和AFIO复用功能模块时钟
@@ -158,7 +158,7 @@ static void RS485Rx_IRQHandler(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                              Bsp_RS485_Send_Data()
 *
 * Description : RS485向buf地址发送Len个字节数据.
@@ -169,7 +169,7 @@ static void RS485Rx_IRQHandler(void)
 *
 * Notes       : none.
 *
-*********************************************************************************************************
+***************************************************************************************************
 */
 void Bsp_RS485_Send_Data(u16 *buf, u8 len)
 {
@@ -187,7 +187,7 @@ void Bsp_RS485_Send_Data(u16 *buf, u8 len)
             while(USART_GetFlagStatus(UART5, USART_FLAG_TC) == RESET);
 
             USART_SendData(UART5, buf[i]);
-            APP_TRACE_INFO(("Rs485TxBuf[%d]: = %X...\r\n",i,buf[i]));
+//            APP_TRACE_INFO(("Rs485TxBuf[%d]: = %X...\r\n",i,buf[i]));
         }
         while(USART_GetFlagStatus(UART5,USART_FLAG_TC) == RESET);
     } else {
@@ -200,7 +200,7 @@ void Bsp_RS485_Send_Data(u16 *buf, u8 len)
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                              Bsp_RS485_Receive_Data()
 *
 * Description : RS485接收数据,获得数据和数据长度.
@@ -211,7 +211,7 @@ void Bsp_RS485_Send_Data(u16 *buf, u8 len)
 *
 * Notes       : none.
 *
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 void Bsp_RS485_Receive_Data(u16 *buf, u8 *len)
@@ -269,7 +269,7 @@ void Bsp_SendAddressByDifferentCmdType(uint8_t i_u8CmdType)
 
 /*
 ***************************************************************************************************
-*                           Bsp_SendRequestCmdToHuaWeiDC()
+*                           Bsp_SendRequestCmdToDcModule()
 *
 * Description :发送转发指令.
 *
@@ -319,7 +319,7 @@ void Bsp_GetReportInformationAfterTransportCmd(void)
 }
 /*
 ***************************************************************************************************
-*                           Bsp_SendRequestCmdToHuaWeiDC()
+*                           Bsp_SendRequestCmdToDcModule()
 ) 
 *
 * Description : 发送指令让华为模块开关机.
@@ -331,7 +331,7 @@ void Bsp_GetReportInformationAfterTransportCmd(void)
 * Notes       : none.
 ***************************************************************************************************
 */
-void Bsp_SendCmdControlHuaWeiDCPowerOnOrDown(uint8_t i_u8PowerStatus,uint8_t i_u8StatusChangeDly)
+void Bsp_SendCmdControlDcModulePowerOnOrDown(uint8_t i_u8PowerStatus,uint8_t i_u8StatusChangeDly)
 {
     uint8_t i = 0;
     uint8_t u8CheckSumValue = 0;
@@ -350,7 +350,7 @@ void Bsp_SendCmdControlHuaWeiDCPowerOnOrDown(uint8_t i_u8PowerStatus,uint8_t i_u
 
 /*
 ***************************************************************************************************
-*                           Bsp_SetHWmoduleOutPutVIvalue() 
+*                           Bsp_SetDcModuleOutPutVIvalue() 
 *
 * Description : set hua wei module current voletage and current.
 *
@@ -361,14 +361,14 @@ void Bsp_SendCmdControlHuaWeiDCPowerOnOrDown(uint8_t i_u8PowerStatus,uint8_t i_u
 * Notes       : none.
 ***************************************************************************************************
 */
-void Bsp_SetHWmoduleOutPutVIvalue(float i_fVvalue, float i_fIvalue) 
+void Bsp_SetDcModuleOutPutVIvalue(float i_fVvalue, float i_fIvalue) 
 {
     uint8_t i = 0;
     uint8_t u8CheckSumValue = 0;
     uint16_t Value_temp = 0,Ivalue_temp = 0;
     uint16_t HuaWeiModuleTxBuf[11] = {0x00,0x08,0xC8,0x42,0x55,0x55,0x00,0x00,0x00,0x00,0x00};
     
-    APP_TRACE_INFO(("Set Hua Wei module Out Put VI value...\n\r"));
+    APP_TRACE_INFO(("Set DC module Out Put VI value...\n\r"));
     Value_temp = (uint16_t)(i_fVvalue * 100);
     Ivalue_temp = (uint16_t)(i_fIvalue * 100);
     
@@ -389,7 +389,7 @@ void Bsp_SetHWmoduleOutPutVIvalue(float i_fVvalue, float i_fIvalue)
 
 /*
 ***************************************************************************************************
-*                           Bsp_SetHWmoduleOutPutVIvalue() 
+*                           Bsp_SetDcModuleOutPutVIvalue() 
 *
 * Description : set hua wei module current voletage and current.
 *

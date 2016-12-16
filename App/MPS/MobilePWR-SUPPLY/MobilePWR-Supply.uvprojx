@@ -453,34 +453,14 @@
               <FilePath>.\app_hydrg_producer_manager.c</FilePath>
             </File>
             <File>
-              <FileName>app_speed_control_device_montior_task.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\app_speed_control_device_montior_task.c</FilePath>
-            </File>
-            <File>
-              <FileName>app_screen_display_task.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\app_screen_display_task.c</FilePath>
-            </File>
-            <File>
-              <FileName>RS485CommWithUart5TaskCreate.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\RS485CommWithUart5TaskCreate.c</FilePath>
-            </File>
-            <File>
-              <FileName>Time.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Time.c</FilePath>
-            </File>
-            <File>
               <FileName>Make_Vacuum.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Make_Vacuum.c</FilePath>
             </File>
             <File>
-              <FileName>app_huawei_communicate_task.c</FileName>
+              <FileName>app_dc_module_communicate_task.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\app_huawei_communicate_task.c</FilePath>
+              <FilePath>.\app_dc_module_communicate_task.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -538,9 +518,14 @@
               <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_speed_adjust_device.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_huawei_485_adjust.c</FileName>
+              <FileName>bsp_dc_module_adjust.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_huawei_485_adjust.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_dc_module_adjust.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_pid.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_pid.c</FilePath>
             </File>
           </Files>
         </Group>

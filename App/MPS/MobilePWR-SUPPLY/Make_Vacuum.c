@@ -10,7 +10,6 @@ static CPU_STK    MAKE_VACCUUM_TASK_STK[MAKE_VACCUUM_TASK_STK_SIZE];
 void Make_Vacuum_FunctionTaskCreate(void)
 {
     OS_ERR  err;   
-
     
     OSTaskCreate((OS_TCB *)&Make_Vaccuum_FunctionTaskTCB,                 
                  (CPU_CHAR *)"Make Vaccuum Function Task Start",
@@ -39,12 +38,7 @@ void  Make_Vacuum_FunctionTask(void *p_arg)                   //抽真空函数任务的
     {
         if( g_Make_Vaccum_Flag )
         {
-            //预留口5/6/7/8全部关闭
-            
-
-
-
-            
+            //预留口5/6/7/8全部关闭           
  
         }
         else

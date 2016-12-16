@@ -12,7 +12,7 @@ typedef struct
 
 int8_t GetSrcTemp(double Rt_Value);
 
-
+uint8_t GetSourceTemp(double Rt_Value);
 
 
 

@@ -51,17 +51,6 @@ extern      OS_TCB      StackManagerDlyStopTaskTCB;
 extern      OS_TCB      StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB;
 extern      OS_TCB      StackProgramControlAirPressureReleaseTaskTCB;
 
-/*
-***************************************************************************************************
-*                                           EXPORTED TYPE
-***************************************************************************************************
-*/
-typedef struct {
-    uint64_t u32_TimeRecordNum; //计时基数,加1为加0.001s
-    float  fVentAirTimeIntervalValue;//排气间隔
-    float  fDecompressVentTimeValue;//泄压时间
-
-} STACK_VENTING_TIME_PARAMETER_Typedef;
 
 /*
 ***************************************************************************************************

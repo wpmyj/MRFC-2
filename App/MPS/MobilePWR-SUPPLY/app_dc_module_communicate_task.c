@@ -10,7 +10,7 @@
 */
 /*
 ***************************************************************************************************
-* Filename      : app_huawei_communicate_task.c
+* Filename      : app_dc_module_485_communicate_task.c
 * Version       : V1.00
 * Programmer(s) : FanJun
 ***************************************************************************************************
@@ -21,8 +21,8 @@
 ***************************************************************************************************
 */
 #include <includes.h>
-#include "app_huawei_communicate_task.h"
-#include "bsp_huawei_485_adjust.h"
+#include "app_dc_module_communicate_task.h"
+#include "bsp_dc_module_adjust.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -34,7 +34,7 @@
 *                                         OS-RELATED    VARIABLES
 ***************************************************************************************************
 */
-            OS_TCB      HuaWeiModuleAdjustTaskTCB ;
+            OS_TCB      DcModuleAdjustTaskTCB ;
 static      CPU_STK     HUA_WEI_MODULE_ADJUST_TASK_STK[HUA_WEI_MODULE_ADJUST_TASK_SIZE];
 /*
 ***************************************************************************************************
@@ -54,30 +54,30 @@ static void HuaWeiModuleAdjustTask(void *p_arg);
 
 
 /*
-*********************************************************************************************************
-*                                      HuaWeiModuleAdjustTaskCreate()
+***************************************************************************************************
+*                                      DcModuleAdjustTaskCreate()
 *
-* Description:  Create Hua Wei Module Adjust Task .
+* Description:  Create DC Module Adjust Task .
 *
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
-void HuaWeiModuleAdjustTaskCreate(void)
+void DcModuleAdjustTaskCreate(void)
 {
     OS_ERR  err;
     uint8_t i=0;
     uint8_t u8RxLength = 0;
     uint16_t u16Rs485RxBuf[2] = {0,0};
-    Bsp_HuaWeiDCConmunicateInit();//485初始化   
-    OSTaskCreate((OS_TCB *)&HuaWeiModuleAdjustTaskTCB,                    // Create the start task
-                 (CPU_CHAR *)"Hua Wei Module Adjust Task Create",
+    Bsp_DcModuleConmunicateInit();//485初始化   
+    OSTaskCreate((OS_TCB *)&DcModuleAdjustTaskTCB,                    // Create the start task
+                 (CPU_CHAR *)"DC Module Adjust Task Create",
                  (OS_TASK_PTR) HuaWeiModuleAdjustTask,
                  (void *) 0,
-                 (OS_PRIO) HUA_WEI_MODULE_ADJUST_TASK_PRIO,
+                 (OS_PRIO) DC_MODULE_ADJUST_TASK_PRIO,
                  (CPU_STK *)&HUA_WEI_MODULE_ADJUST_TASK_STK[0],
                  (CPU_STK_SIZE) HUA_WEI_MODULE_ADJUST_TASK_SIZE / 10,
                  (CPU_STK_SIZE) HUA_WEI_MODULE_ADJUST_TASK_SIZE,
@@ -86,14 +86,14 @@ void HuaWeiModuleAdjustTaskCreate(void)
                  (void *) 0,
                  (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                  (OS_ERR *)&err);
-    APP_TRACE_INFO(("Created Hua Wei Module Adjust Task, and err code is %d...\n\r", err));
+    APP_TRACE_INFO(("Created DC Module Adjust Task, and err code is %d...\n\r", err));
     
     //485通信成功验证
     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
     Bsp_RS485_Receive_Data(u16Rs485RxBuf,&u8RxLength);                
     if(u16Rs485RxBuf[0] == 0x07){//返回地址验证成功
         APP_TRACE_INFO(("Rs485 communicate successed...\n\r"));
-        Bsp_SetHWmoduleOutPutVIvalue(VOLTAGE_LIMIT_MAX,CURRENT_LIMIT_MIN);//上电预设值，电流设置为最小值
+        Bsp_SetDcModuleOutPutVIvalue(VOLTAGE_LIMIT_MAX,CURRENT_LIMIT_MIN);//上电预设值，电流设置为最小值
     } else {
         APP_TRACE_INFO(("Rs485 communicate failed...\n\r"));
     }
@@ -102,17 +102,17 @@ void HuaWeiModuleAdjustTaskCreate(void)
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                   HuaWeiModuleAdjustTask()
 *
-* Description:  Hua Wei Module adjust Voltage and current task.
+* Description:  DC Module adjust Voltage and current task.
 *
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 static void HuaWeiModuleAdjustTask(void *p_arg)
@@ -121,8 +121,7 @@ static void HuaWeiModuleAdjustTask(void *p_arg)
     static float   fIvalueNow = CURRENT_LIMIT_MIN;
     static float   fVvalueNow = VOLTAGE_LIMIT_MAX;
 
-    OSTaskSuspend(NULL, &err);
-    APP_TRACE_INFO(("Resume hua wei module adjust task...\n\r"));   
+    OSTaskSuspend(NULL, &err);   
     
     while(DEF_TRUE)
     {
@@ -131,28 +130,30 @@ static void HuaWeiModuleAdjustTask(void *p_arg)
                       NULL,
                       &err);
         if(OS_ERR_NONE == err){
-            if(DEF_SET == GetHuaWeiModuleCurrentLimitingPointImproveFlagStatus()){
+            if(DEF_SET == GetDcModuleCurrentLimitingPointImproveFlagStatus()){
                 if(fIvalueNow < CURRENT_LIMIT_MAX){//提高限流点
                     fIvalueNow += 1.0;
                     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
-                    Bsp_SetHWmoduleOutPutVIvalue(fVvalueNow,fIvalueNow);
-                    SetHuaWeiModuleCurrentLimitingPointImproveFlag(DEF_CLR);
+                    Bsp_SetDcModuleOutPutVIvalue(fVvalueNow,fIvalueNow);
+                    SetDcModuleCurrentLimitingPointImproveFlag(DEF_CLR);
+                    APP_TRACE_INFO(("OutPut current limit point increase,the IvalueNow is %.2f ...\n\r",fIvalueNow));
                 }
             }
-            else if(DEF_SET == GetHuaWeiModuleCurrentLimitingPointImproveFlagStatus()){
+            else if(DEF_SET == GetDcModuleCurrentLimitingPointImproveFlagStatus()){
                 if(fIvalueNow >= CURRENT_LIMIT_MIN){//降低限流点
                     fIvalueNow -= 1.0;
                     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
-                    Bsp_SetHWmoduleOutPutVIvalue(fVvalueNow,fIvalueNow);
-                    SetHuaWeiModuleCurrentLimitingPointReduceFlag(DEF_CLR);
+                    Bsp_SetDcModuleOutPutVIvalue(fVvalueNow,fIvalueNow);
+                    SetDcModuleCurrentLimitingPointReduceFlag(DEF_CLR);
+                    APP_TRACE_INFO(("OutPut current limit point decrease,the IvalueNow is %.2f ...\n\r",fIvalueNow));
                 }
             } else {}
         } else if(OS_ERR_TIMEOUT){//超时说明不需要调节，保持原来设置
             Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
-            Bsp_SetHWmoduleOutPutVIvalue(fVvalueNow,fIvalueNow);
-            APP_TRACE_INFO(("Hua Wei module OutPut VIvalue stay the same...\n\r"));
+            Bsp_SetDcModuleOutPutVIvalue(fVvalueNow,fIvalueNow);
+            APP_TRACE_INFO(("DC module OutPut VIvalue stay the same,the IvalueNow is %.2f ...\n\r",fIvalueNow));
         } else {
-            APP_TRACE_INFO(("OS Task Sem Pend err code is %d...\n\r",err));   
+            APP_TRACE_INFO(("DC module Task Sem Pend err code is %d...\n\r",err));   
         }
      }   
 }
@@ -170,23 +171,22 @@ static void HuaWeiModuleAdjustTask(void *p_arg)
 * Note(s)    :  none.
 *********************************************************************************************************
 */
-void SetHuaWeiModuleCurrentLimitingPointImproveFlag(uint8_t i_NewStatu)
+void SetDcModuleCurrentLimitingPointImproveFlag(uint8_t i_NewStatu)
 {
     g_u8HuaWeiModuleCurrentLimitingPointImproveFlag = i_NewStatu;
 }
 
-uint8_t GetHuaWeiModuleCurrentLimitingPointImproveFlagStatus(void)
+uint8_t GetDcModuleCurrentLimitingPointImproveFlagStatus(void)
 {
     return g_u8HuaWeiModuleCurrentLimitingPointImproveFlag;
 }
 
-void SetHuaWeiModuleCurrentLimitingPointReduceFlag(uint8_t i_NewStatu)
+void SetDcModuleCurrentLimitingPointReduceFlag(uint8_t i_NewStatu)
 {
     g_u8HuaWeiModuleCurrentLimitingPointReduceFlag = i_NewStatu;
 }
 
-uint8_t GetHuaWeiModuleCurrentLimitingPointReduceFlagStatus(void)
+uint8_t GetDcModuleCurrentLimitingPointReduceFlagStatus(void)
 {
     return g_u8HuaWeiModuleCurrentLimitingPointReduceFlag;
 }
-

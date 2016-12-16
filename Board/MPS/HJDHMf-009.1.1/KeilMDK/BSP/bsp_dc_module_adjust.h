@@ -88,13 +88,13 @@ void Bsp_RS485_Receive_Data(u16 *buf, u8 *len);
 void Bsp_SendAddressByDifferentCmdType(uint8_t i_u8CmdType);
 void Bsp_GetReportInformationAfterTransportCmd(void);
 
-void Bsp_HuaWeiDCConmunicateInit(void);
-void Bsp_SendRequestCmdToHuaWeiDC(uint8_t i_u8CmdType);
+void Bsp_DcModuleConmunicateInit(void);
+void Bsp_SendRequestCmdToDcModule(uint8_t i_u8CmdType);
  
-void Bsp_SetHWmoduleOutPutVIvalue(float i_fVvalue, float i_fIvalue);
-void Bsp_SendCmdControlHuaWeiDCPowerOnOrDown(uint8_t i_u8PowerStatus,uint8_t i_u8StatusChangeDly);
+void Bsp_SetDcModuleOutPutVIvalue(float i_fVvalue, float i_fIvalue);
+void Bsp_SendCmdControlDcModulePowerOnOrDown(uint8_t i_u8PowerStatus,uint8_t i_u8StatusChangeDly);
 
-void SetRS485TxDateType(uint8_t i_u8Rs485TxType);
+void    SetRS485TxDateType(uint8_t i_u8Rs485TxType);
 uint8_t GetRS485TxDateType(void);
 
 #endif

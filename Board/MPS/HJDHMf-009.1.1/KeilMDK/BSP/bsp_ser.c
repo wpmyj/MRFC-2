@@ -1,70 +1,70 @@
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                              APPLICATION CODE
 *
 *                          (c) Copyright 2015; Guangdong Hydrogen Energy Science And Technology Co.,Ltd
 *
 *               All rights reserved.  Protected by international copyright laws.
 *               Knowledge of the source code may NOT be used without authorization.
-*********************************************************************************************************
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 * Filename      : bsp_ser.c
 * Version       : V1.00
 * Programmer(s) : SunKing.Yun
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                             INCLUDE FILES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 #define  BSP_SER_MODULE
 #include <bsp.h>
 #include <app_system_real_time_parameters.h>
+#include "app_wireness_communicate_task.h"
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                            LOCAL DEFINES
-*********************************************************************************************************
+***************************************************************************************************
 */
 #define UART4_DR_Address   ((uint32_t)UART4_BASE+0x04)
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           LOCAL CONSTANTS
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          LOCAL DATA TYPES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 
 /*
-*********************************************************************************************************
-*                                            LOCAL TABLES
-*********************************************************************************************************
+***************************************************************************************************
+*                                           GLOBAL VARIABLES
+***************************************************************************************************
 */
 
-
+uint8_t g_eWirenessCommandReceived;
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                       LOCAL GLOBAL VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
 */
-OS_SEM g_stWirenessCommSem;
-OS_MUTEX g_stWIFISerTxMutex;
-extern  OS_TCB   WirenessCommTaskTCB;
-extern  u8 g_eWirenessCommandReceived;
+
+OS_SEM      g_stWirenessCommSem;
+OS_MUTEX    g_stWIFISerTxMutex;
 
 static  BSP_OS_SEM   BSP_SerTxWait;
 static  BSP_OS_SEM   BSP_SerRxWait;
@@ -76,9 +76,9 @@ static  CPU_INT08U   BSP_SerRxData;
 #endif
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      LOCAL FUNCTION PROTOTYPES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 static  void        BSP_Ser_WrByteUnlocked(CPU_INT08U  c);
@@ -95,23 +95,23 @@ uint8_t *GetPrgmRxBuffAddr(void);
 uint8_t GetPrgmRxBuffLen(void);
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                     LOCAL CONFIGURATION ERRORS
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 
 /*
-*********************************************************************************************************
-*********************************************************************************************************
+***************************************************************************************************
+***************************************************************************************************
 **                                         GLOBAL FUNCTIONS
-*********************************************************************************************************
-*********************************************************************************************************
+***************************************************************************************************
+***************************************************************************************************
 */
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          BSP_Ser_Init()
 *
 * Description : Initialize a serial port for communication.
@@ -123,7 +123,7 @@ uint8_t GetPrgmRxBuffLen(void);
 * Caller(s)   : Application.
 *
 * Note(s)     : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 void  BSP_Ser_Init(CPU_INT32U  baud_rate)
@@ -191,7 +191,7 @@ void  BSP_Ser_Init(CPU_INT32U  baud_rate)
     BSP_IntEn(BSP_INT_ID_USART1);
 }
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         BSP_Ser_ISR_Handler()
 *
 * Description : Serial ISR.
@@ -203,7 +203,7 @@ void  BSP_Ser_Init(CPU_INT32U  baud_rate)
 * Caller(s)   : This is an ISR.
 *
 * Note(s)     : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 void  BSP_Ser_ISR_Handler(void)
@@ -231,7 +231,7 @@ void  BSP_Ser_ISR_Handler(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          BSP_SerToWIFI_Init()
 *
 * Description : Initialize a serial port for communication to WIFI.
@@ -243,7 +243,7 @@ void  BSP_Ser_ISR_Handler(void)
 * Caller(s)   : Application.
 *
 * Note(s)     : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 void  BSP_SerToWIFI_Init()
@@ -369,9 +369,13 @@ void BSP_SerToWIFI_TxMsgInit(u8 *TxBuffAddr, uint8_t i_u8TxBuffSize)
 
     DMA_ITConfig(DMA2_Channel5, DMA_IT_TC, ENABLE);
 
-    DMA_Cmd(DMA2_Channel5, ENABLE);
     BSP_IntVectSet(BSP_INT_ID_DMA2_CH5, WIFI_DataTx_IRQHandler);
     BSP_IntEn(BSP_INT_ID_DMA2_CH5);
+    
+//    DMA_Cmd(DMA2_Channel5, DISABLE);   //关闭USART1 TX DMA1 所指示的通道
+//    DMA_SetCurrDataCounter(DMA2_Channel5, i_u8TxBuffSize); //DMA通道的DMA缓存的大小
+    DMA_Cmd(DMA2_Channel5, ENABLE);
+    USART_DMACmd(UART4, USART_DMAReq_Tx, ENABLE);
 
 }
 
@@ -405,7 +409,7 @@ void BSP_SerToWIFI_RxMsgInit(uint8_t *i_u32RxBuffAddr, uint8_t i_u8RxBuffSize)
     BSP_IntEn(BSP_INT_ID_DMA2_CH3);
 }
 
-void BSP_PrgmDataDMASend(uint8_t *TxBuff, uint8_t i_u8TxBuffSize)
+void BSP_PrgmDataDMASend(uint8_t i_u8TxBuffSize,uint8_t *TxBuff)
 {
     OS_ERR      err;
     //获得一个互斥信号量
@@ -414,14 +418,11 @@ void BSP_PrgmDataDMASend(uint8_t *TxBuff, uint8_t i_u8TxBuffSize)
                 OS_OPT_PEND_BLOCKING,   //决定是否阻止用户，如果这个互斥锁不可用
                 NULL,                   //是一个指针指向一个时间戳当互斥锁发送时，当发送终止或互斥锁被删除
                 &err);
-
-    DMA_Cmd(DMA2_Channel5, DISABLE);   //关闭USART1 TX DMA1 所指示的通道
-    DMA_SetCurrDataCounter(DMA2_Channel5, i_u8TxBuffSize); //DMA通道的DMA缓存的大小
-    DMA_Cmd(DMA2_Channel5, ENABLE);  //使能USART1 TX DMA1 所指示的通道
-    USART_DMACmd(UART4, USART_DMAReq_Tx, ENABLE);
+    
+    BSP_SerToWIFI_TxMsgInit(TxBuff, i_u8TxBuffSize);    //发送数据地址初始化
 }
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         WIFI_DataRx_IRQHandler()
 *
 * Description : WIFI DATA receive ISR.
@@ -433,7 +434,7 @@ void BSP_PrgmDataDMASend(uint8_t *TxBuff, uint8_t i_u8TxBuffSize)
 * Caller(s)   : This is an ISR.
 *
 * Note(s)     : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void WIFI_DataRx_IRQHandler(void)
 {
@@ -445,7 +446,7 @@ void WIFI_DataRx_IRQHandler(void)
         if(g_eWirenessCommandReceived == NO)
         {
             CPU_CRITICAL_ENTER();
-            OSTimeDlyResume(&WirenessCommTaskTCB,
+            OSTimeDlyResume(&CommunicateTaskTCB,
                             &err);
             g_eWirenessCommandReceived = YES;
             CPU_CRITICAL_EXIT();
@@ -461,7 +462,7 @@ void WIFI_DataRx_IRQHandler(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         WIFI_DataTx_IRQHandler()
 *
 * Description : WIFI DATA send over ISR.
@@ -473,7 +474,7 @@ void WIFI_DataRx_IRQHandler(void)
 * Caller(s)   : This is an ISR.
 *
 * Note(s)     : 释放互斥锁.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void WIFI_DataTx_IRQHandler(void)
 {
@@ -494,7 +495,7 @@ void WIFI_DataTx_IRQHandler(void)
     DMA_ClearITPendingBit(DMA2_IT_GL5);     //清全局中断
 }
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         BSP_SerToWIFI_ISR_Handler()
 *
 * Description : WIFI DATA ISR.
@@ -506,7 +507,7 @@ void WIFI_DataTx_IRQHandler(void)
 * Caller(s)   : This is an ISR.
 *
 * Note(s)     : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void BSP_SerToWIFI_ISR_Handler(void)
 {
@@ -554,139 +555,8 @@ void BSP_SerToWIFI_ISR_Handler(void)
     }
 }
 
-
 /*
-*********************************************************************************************************
-*                                         BSP_SerToLCD_Init()
-*
-* Description : UART5 Init.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : This is an ISR.
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
-void UART5_RX_IRQHandler(void);
-void BSP_SerToRS485_Init(u16 bound)
-{
-    GPIO_InitTypeDef GPIO_InitStructure;
-    USART_InitTypeDef USART_InitStructure;
-    NVIC_InitTypeDef NVIC_InitStructure;
-
-    /*  config UART5 clock */ //在使用外设时，不仅要使能其时钟，还要调用此函数使能外设才可以正常使用
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOB, ENABLE ); // APB2Periph
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5 , ENABLE);      // APB1Periph   注意：UART5 是  APB1Periph
-
-//    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_14;                //PG9端口配置
-//  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;         //推挽输出
-//GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-//GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-// UART5 GPIO设置
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;               // TX
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;          //复用推挽输出
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;                // RX
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;    //浮空输入
-    GPIO_Init(GPIOD, &GPIO_InitStructure);
-
-    //USART 初始化设置
-    USART_InitStructure.USART_BaudRate = bound;   // 波特率设置
-    USART_InitStructure.USART_WordLength = USART_WordLength_9b ;   // 串口传输的字长:8位字长，也可以设置为9位
-    USART_InitStructure.USART_StopBits = USART_StopBits_1;    // 停止位设置为1位
-    USART_InitStructure.USART_Parity = USART_Parity_No ;      // 不设置奇偶校验位
-    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;   // 不采用硬件流
-    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;  // 配置双线全双工通讯，需要把Rx和Tx模式都开启
-    USART_Init(UART5, &USART_InitStructure);      //填充完结构体，调用库函数USART_Init()向寄存器写入配置参数
-
-    //Usart1 NVIC 配置
-//    NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;
-//    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3 ;       //抢占优先级3
-//    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;    //子优先级3
-//    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;           //IRQ通道使能
-//    NVIC_Init(&NVIC_InitStructure);                                  //根据指定的参数初始化VIC寄存器
-
-    BSP_IntVectSet(BSP_INT_ID_USART5, UART5_RX_IRQHandler);   //中断向量表设置
-    BSP_IntEn(BSP_INT_ID_USART5);
-    
-    USART_ITConfig(UART5, USART_IT_RXNE, ENABLE);//开启中断
-    USART_Cmd(UART5, ENABLE);     //调用USART_Cmd() 使能USART外设
-
-}
-
-uint8_t g_usart5_buff;
-
-//void UART5_IRQHandler(void)   
-void UART5_RX_IRQHandler(void)
-{
-//    u8 chr;
-#ifdef OS_TICKS_PER_SEC   
-    OSIntEnter();
-#endif
-
-    if(USART_GetITStatus(UART5, USART_IT_RXNE) != RESET)  //
-    {
-        USART_ClearITPendingBit(UART5,USART_IT_RXNE);
-//        uint8_t tmp_buf = USART_ReceiveData(UART5); //(USART1->DR);  
-
-//        if( tmp_buf )
-//        {
-//            g_usart5_buff = tmp_buf;
-//        }
-//        USART_SendData(USART1, g_usart5_buff);
-    }
-
-
-
-
-
-
-#ifdef OS_TICKS_PER_SEC    
-    OSIntExit();
-#endif
-}
-
-
-
-void RS485_Send_Data(u16 *buffer, u16 count)
-{
-    u16 i;
-    for(i = 0; i < count; i++)
-    {
-        USART_SendData(UART5, buffer[i]);
-
-        while(USART_GetFlagStatus(UART5, USART_FLAG_TC) != SET); 
-    }
-     
-}
-
-void RS485_Send_Data1(u16 *buffer, u16 count)
-{
-    u16 i;
-    for(i = 0; i < count; i++)
-    {
-        USART_SendData(UART5, buffer[i]);
-        while(USART_GetFlagStatus(UART5, USART_FLAG_TC) != SET); 
-    }
-}
-
-
-
-
-
-
-
-
-
-
-/*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           BSP_Ser_Printf()
 *
 * Description : Print formatted data to the output serial port.
@@ -700,7 +570,7 @@ void RS485_Send_Data1(u16 *buffer, u16 count)
 * Note(s)     : (1) This function output a maximum of BSP_SER_PRINTF_STR_BUF_SIZE number of bytes to the
 *                   serial port.  The calling function hence has to make sure the formatted string will
 *                   be able fit into this string buffer or hence the output string will be truncated.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 void  BSP_Ser_Printf(CPU_CHAR  *format, ...)
@@ -721,7 +591,7 @@ void  BSP_Ser_Printf(CPU_CHAR  *format, ...)
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                                BSP_Ser_RdByte()
 *
 * Description : Receive a single byte.
@@ -735,7 +605,7 @@ void  BSP_Ser_Printf(CPU_CHAR  *format, ...)
 * Note(s)     : (1) This functions blocks until a data is received.
 *
 *               (2) It can not be called from an ISR.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 CPU_INT08U  BSP_Ser_RdByte(void)
@@ -754,7 +624,7 @@ CPU_INT08U  BSP_Ser_RdByte(void)
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                       BSP_Ser_RdByteUnlocked()
 *
 * Description : Receive a single byte.
@@ -767,7 +637,7 @@ CPU_INT08U  BSP_Ser_RdByte(void)
 *               BSP_Ser_RdStr()
 *
 * Note(s)     : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 CPU_INT08U  BSP_Ser_RdByteUnlocked(void)
@@ -788,7 +658,7 @@ CPU_INT08U  BSP_Ser_RdByteUnlocked(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                                BSP_Ser_RdStr()
 *
 * Description : This function reads a string from a UART.
@@ -802,7 +672,7 @@ CPU_INT08U  BSP_Ser_RdByteUnlocked(void)
 * Caller(s)   : Application
 *
 * Note(s)     : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 void  BSP_Ser_RdStr(CPU_CHAR    *p_str,
@@ -901,7 +771,7 @@ void  BSP_Ser_RdStr(CPU_CHAR    *p_str,
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          BSP_Ser_WrByteUnlocked()
 *
 * Description : Writes a single byte to a serial port.
@@ -914,7 +784,7 @@ void  BSP_Ser_RdStr(CPU_CHAR    *p_str,
 *               BSP_Ser_WrByteUnlocked()
 *
 * Note(s)     : (1) This function blocks until room is available in the UART for the byte to be sent.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 void  BSP_Ser_WrByteUnlocked(CPU_INT08U c)
@@ -927,7 +797,7 @@ void  BSP_Ser_WrByteUnlocked(CPU_INT08U c)
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                                BSP_Ser_WrByte()
 *
 * Description : Writes a single byte to a serial port.
@@ -939,7 +809,7 @@ void  BSP_Ser_WrByteUnlocked(CPU_INT08U c)
 * Caller(s)   : Application.
 *
 * Note(s)     : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 void  BSP_Ser_WrByte(CPU_INT08U  c)
@@ -953,7 +823,7 @@ void  BSP_Ser_WrByte(CPU_INT08U  c)
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                                BSP_Ser_WrStr()
 *
 * Description : Transmits a string.
@@ -965,7 +835,7 @@ void  BSP_Ser_WrByte(CPU_INT08U  c)
 * Return(s)   : none.
 *
 * Note(s)     : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 void  BSP_Ser_WrStr(CPU_CHAR  *p_str)

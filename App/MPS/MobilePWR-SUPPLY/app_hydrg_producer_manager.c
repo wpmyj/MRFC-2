@@ -1,25 +1,25 @@
 /*
-*********************************************************************************************************
-*                                              APPLICATION CODE
+***************************************************************************************************
+*                                         APPLICATION CODE
 *
-*                          (c) Copyright 2015; Guangdong Hydrogen Energy Science And Technology Co.,Ltd
+*                      (c) Copyright 2016; Guangdong ENECO Science And Technology Co.,Ltd
 *
 *               All rights reserved.  Protected by international copyright laws.
 *               Knowledge of the source code may NOT be used without authorization.
-*********************************************************************************************************
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 * Filename      : app_hydrg_producer_manager.c
 * Version       : V1.00
-* Programmer(s) : EHS
-*                 DC
-*********************************************************************************************************
+* Programmer(s) : Fanjun
+*
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                             INCLUDE FILES
-*********************************************************************************************************
+***************************************************************************************************
 */
 #include <includes.h>
 #include <app_top_task.h>
@@ -28,30 +28,24 @@
 #include "bsp_speed_adjust_device.h"
 #include "app_hydrg_producer_manager.h"
 #include "app_analog_signal_monitor_task.h"
-#include "app_speed_control_device_monitor_task.h"
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           MACRO DEFINITIONS
-*********************************************************************************************************
+***************************************************************************************************
 */
 #define HYDROGEN_PRODUCER_MANAGER_TASK_STK_SIZE                 100
 #define HYDROGEN_PRODUCER_MANAGER_DLY_STOP_TASK_STK_SIZE        100
 #define IGNITER_WORK_TASK_STK_SIZE                              100
 
 /*
-*********************************************************************************************************
-*                                         OS-RELATED    VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
+*                                  OS-RELATED    VARIABLES
+***************************************************************************************************
 */
-extern      OS_SEM      IgniteFirstBehindWaitSem;
-
-extern      OS_SEM      IgniteSecondBehindWaitSem;
-extern      OS_TCB      AppTaskStartTCB;
-
-OS_TCB      HydrgProducerManagerTaskTCB;
-OS_TCB      HydrgProducerManagerDlyStopTaskTCB;
-OS_TCB      IgniterWorkTaskTCB;
-
+            OS_TCB      HydrgProducerManagerTaskTCB;
+            OS_TCB      HydrgProducerManagerDlyStopTaskTCB;
+            OS_TCB      IgniterWorkTaskTCB;
+                       
 static      OS_SEM      HydrgProducerManagerStopSem;
 
 static      CPU_STK     HydrgProducerManagerTaskStk[HYDROGEN_PRODUCER_MANAGER_TASK_STK_SIZE];
@@ -59,23 +53,28 @@ static      CPU_STK     HydrgProducerManagerDlyStopTaskStk[HYDROGEN_PRODUCER_MAN
 static      CPU_STK     IgniterWorkStk[IGNITER_WORK_TASK_STK_SIZE];
 
 /*
-*********************************************************************************************************
-*                                           LOCAL VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
+*                                           GLOBAL VARIABLES
+***************************************************************************************************
 */
+
+/*
+***************************************************************************************************
+*                                           LOCAL VARIABLES
+***************************************************************************************************
+*/
+static  uint16_t                        g_u16IgniterDelayOffSeconds = 0;
 static  SWITCH_TYPE_VARIABLE_Typedef    g_eHydrgProducerManagerStopDlyStatu = OFF;
-static          u16                     g_u16IgniterDelayOffSeconds = 0;
 static  SWITCH_TYPE_VARIABLE_Typedef    g_eIgniterWorkStatu = OFF;
 static  WHETHER_TYPE_VARIABLE_Typedef   g_eIgniterDirectWork = NO;
 static  WHETHER_TYPE_VARIABLE_Typedef   enAheadRunningFlag = NO;    //响应安卓指令，在第一次点火后，提前启动发电
 
 static              void                IgniterWorkTask(uint16_t *);
-
 static              void                HydrgProducerManagerTask(void);
 static              void                HydrgProducerManagerDlyStopTask(void);
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      IgniteFirstTime()
 *
 * Description:  execute the first time ignite.
@@ -86,7 +85,7 @@ static              void                HydrgProducerManagerDlyStopTask(void);
 *               m_CheckDelayMinute      - the delay minute that wait for check whether the ignite if success    点火结果检查延时
 *
 * Returns    :  the information of whether the ignite process is success
-*********************************************************************************************************
+***************************************************************************************************
 */
 IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_GoToNextStepTempTable1, uint8_t MaxTryTimes, uint8_t m_CheckDelayMinute)
 {
@@ -102,8 +101,8 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
         {
             APP_TRACE_INFO(("Ignite first time behind...\n\r"));
             BSP_LqdValve1_PwrOn();
-            SetPumpCtlSpd(19);
-            SetHydrgFanCtlSpd(200);
+            SetPumpCtlSpd(190);
+            SetHydrgFanCtlSpd(2000);
             IgniterWorkForSeconds(240);
 
             SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(DEF_ENABLED);
@@ -165,67 +164,36 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      IgniteSecondTime()
 *
 * Description:  execute the second time ignite.
-*               第二次点火
+*              
 * Arguments  :  m_IgniteCheckTable1 - the compare level that whether the ignite is success
 *               m_GoToNextStepTempTable1 - the internal jump point of the process
 *               MaxTryTimes    - the maximal retry time if the ignite if failed
 *               m_CheckDelayMinute      - the delay minute that wait for check whethe the ignite if success
 *
 * Returns    :  the information of whether the ignite process is success
-*********************************************************************************************************
+***************************************************************************************************
 */
 IGNITE_CHECK_STATU_Typedef IgniteSecondTime(float m_IgniteCheckTable2, float m_GoToNextStepTempTable2, uint8_t maxtrytime, uint8_t m_CheckDelayTimeFlag)
 {
-//    OS_ERR      err;
     IGNITE_CHECK_STATU_Typedef m_eIgniteStatu;
 
     APP_TRACE_INFO(("Ignite second time...\n\r"));
     BSP_FastHeaterPwrOff();  
     BSP_LqdValve2_PwrOn();
-    SetPumpCtlSpd(40);
-    SetHydrgFanCtlSpd(200);
+    SetPumpCtlSpd(400);
+    SetHydrgFanCtlSpd(2000);
     IgniterWorkForSeconds(120);
-    
-//    SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(DEF_ENABLED);
-//    OSSemPend(&IgniteSecondBehindWaitSem,                        //  因有多个之一的条件满足即可，且有多处等待点，故使用信号量传递信息，而非任务信号量。
-//              (OS_CFG_TICK_RATE_HZ * 60 * 2),                 //三十分钟后点火检查时间
-//              OS_OPT_PEND_BLOCKING,
-//              NULL,
-//              &err);
-//    
-//    
-//    if(err == OS_ERR_NONE)                            //正常得到信号
-//    {
-//        
-//        APP_TRACE_INFO(("The temperature meets the requirement...\n\r"));
-//        m_eIgniteStatu = EN_PASS;
-//       
-//    }
-//    else  if(err == OS_ERR_TIMEOUT)                   //达到延时时间
-//    {
-//        APP_TRACE_INFO(("Ignite first time behind wait timeout...\n\r"));
-//        m_eIgniteStatu = EN_NOT_PASS ;//;
-//        BSP_LqdValve2_PwrOff();
-//        SetPumpCtlSpd(0);
-//    }
-//    else                                             //其他
-//    {
-//        APP_TRACE_INFO(("Ignite second time behind wait err...\n\r"));
-//        IgniterWorkForSeconds(0);
-//        m_eIgniteStatu = EN_NOT_PASS ;//;
-//        BSP_LqdValve2_PwrOff();
-//        SetPumpCtlSpd(0);
-//    }
+
     m_eIgniteStatu = EN_PASS;
     return m_eIgniteStatu;
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      SetAheadRunningFlag()
 *
 * Description:  set the flag the the system need to start early.
@@ -233,7 +201,7 @@ IGNITE_CHECK_STATU_Typedef IgniteSecondTime(float m_IgniteCheckTable2, float m_G
 * Arguments  :  new statu
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void SetAheadRunningFlag(WHETHER_TYPE_VARIABLE_Typedef m_NEW_STATU)
 {
@@ -241,7 +209,7 @@ void SetAheadRunningFlag(WHETHER_TYPE_VARIABLE_Typedef m_NEW_STATU)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetAheadRunningFlag()
 *
 * Description:  获取提前启动标志
@@ -249,7 +217,7 @@ void SetAheadRunningFlag(WHETHER_TYPE_VARIABLE_Typedef m_NEW_STATU)
 * Arguments  :  none
 *
 * Returns    :  the statu
-*********************************************************************************************************
+***************************************************************************************************
 */
 WHETHER_TYPE_VARIABLE_Typedef GetAheadRunningFlag(void)
 {
@@ -257,7 +225,7 @@ WHETHER_TYPE_VARIABLE_Typedef GetAheadRunningFlag(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      HydrgProducerManagerTaskCreate()
 *
 * Description:  create the hydrogen producer manager task.
@@ -265,7 +233,7 @@ WHETHER_TYPE_VARIABLE_Typedef GetAheadRunningFlag(void)
 * Arguments  :  none
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void HydrgProducerManagerTaskCreate(void)
 {
@@ -289,7 +257,7 @@ void HydrgProducerManagerTaskCreate(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      HydrgProducerManagerTask()
 *
 * Description:  the hydrogen producer manager task.
@@ -297,7 +265,7 @@ void HydrgProducerManagerTaskCreate(void)
 * Arguments  :  none
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void HydrgProducerManagerTask()
 {
@@ -310,8 +278,6 @@ void HydrgProducerManagerTask()
         SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);//开启运行数字信号警报监测开关
         SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);//开启运行模拟信号警报监测开关
         SetHydrgProducerAnaSigRunningStartAutoAdjHookSwitch(DEF_ENABLED);//允許自動減泵速,在泵速降到30以后会自动失能
-        SetHydrgProducerFanRunningSpeedMonitorHookSwitch(DEF_ENABLED);   //开启泵和风机的速度监测
-        SetHydrgProducerPumpRunningSpeedMonitorHookSwitch(DEF_ENABLED);
 
         while(DEF_TRUE)
         {
@@ -325,14 +291,12 @@ void HydrgProducerManagerTask()
 
         SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);//停止数字信号监控任务中运行阶段信号监测
         SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);//停止模拟信号监控任务中运行阶段信号监测
-        SetHydrgProducerFanRunningSpeedMonitorHookSwitch(DEF_DISABLED);         //停止泵和风机的速度监测
-        SetHydrgProducerPumpRunningSpeedMonitorHookSwitch(DEF_DISABLED);
         APP_TRACE_INFO(("Hydrogen producer manager stop...\n\r"));
     }
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      HydrgProducerDlyStopTaskCreate()
 *
 * Description:  create the hydrogen producer delay stop task.
@@ -340,7 +304,7 @@ void HydrgProducerManagerTask()
 * Arguments  :  none
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void HydrgProducerDlyStopTaskCreate()
 {
@@ -362,15 +326,15 @@ void HydrgProducerDlyStopTaskCreate()
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      HydrgProducerManagerDlyStopTask()
 *
 * Description:  the hydrogen producer delay stop task.
-*               制氢机延时停止任务(5分钟)
+*              
 * Arguments  :  none
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void HydrgProducerManagerDlyStopTask(void)
 {
@@ -381,15 +345,15 @@ void HydrgProducerManagerDlyStopTask(void)
         OSTaskSuspend(NULL, &err);
 
         OSSemPost(&HydrgProducerManagerStopSem,     //结束制氢机管理任务的本次运行，进入阻塞，等待下一次启动
-         OS_OPT_POST_1,
-        &err);
+                 OS_OPT_POST_1,
+                 &err);
           
         g_eHydrgProducerManagerStopDlyStatu = ON;
         APP_TRACE_INFO(("The Hydrogen producer manager start to delay stop...\n\r"));
         IgniterWorkForSeconds(0);                   //防止关机时，点火器因未到定时时间而继续运行，故将其关闭
         SetPumpCtlSpd(0);
         BSP_LqdValve2_PwrOff();
-        SetHydrgFanCtlSpd(200);
+        SetHydrgFanCtlSpd(2000);
         OSTimeDlyHMSM(0, 5, 0, 0, OS_OPT_TIME_HMSM_STRICT, &err);    
         OSTaskSemPost(&AppTaskStartTCB, OS_OPT_POST_NO_SCHED, &err);
         SetHydrgFanCtlSpd(0);
@@ -400,7 +364,7 @@ void HydrgProducerManagerDlyStopTask(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetHydrgProducerStopDlyStatu()
 *
 * Description:  get the statu of whether the hydrogen producer delay stop is finish.
@@ -408,7 +372,7 @@ void HydrgProducerManagerDlyStopTask(void)
 * Arguments  :  none
 *
 * Returns    :  the statu
-*********************************************************************************************************
+***************************************************************************************************
 */
 uint8_t GetHydrgProducerStopDlyStatu(void)
 {
@@ -416,7 +380,7 @@ uint8_t GetHydrgProducerStopDlyStatu(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      IgniterWorkTaskCreate()
 *
 * Description:  create the igniter work task.
@@ -424,7 +388,7 @@ uint8_t GetHydrgProducerStopDlyStatu(void)
 * Arguments  :  none
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void    IgniterWorkTaskCreate()
 {
@@ -447,7 +411,7 @@ void    IgniterWorkTaskCreate()
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      IgniterWorkForSeconds()
 *
 * Description:  set the igniter work time.
@@ -455,7 +419,7 @@ void    IgniterWorkTaskCreate()
 * Arguments  :  work seconds
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void  IgniterWorkForSeconds(uint16_t i_WorkSeconds)
 {
@@ -493,7 +457,7 @@ void  IgniterWorkForSeconds(uint16_t i_WorkSeconds)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      IgniterWorkForSeconds()
 *
 * Description:  the igniter work task.
@@ -501,7 +465,7 @@ void  IgniterWorkForSeconds(uint16_t i_WorkSeconds)
 * Arguments  :  none
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void IgniterWorkTask(uint16_t *p_arg)
 {

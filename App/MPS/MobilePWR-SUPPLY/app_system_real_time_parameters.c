@@ -1,24 +1,24 @@
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                              APPLICATION CODE
 *
 *                          (c) Copyright 2015; Guangdong Hydrogen Energy Science And Technology Co.,Ltd
 *
 *               All rights reserved.  Protected by international copyright laws.
 *               Knowledge of the source code may NOT be used without authorization.
-*********************************************************************************************************
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 * Filename      : app_system_real_time_parameters.c
 * Version       : V1.00
 * Programmer(s) : SunKing.Yun
-*********************************************************************************************************
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           INCLUDE FILES
-*********************************************************************************************************
+***************************************************************************************************
 */
 #include "stm32f10x.h"
 #include "stm32f10x_conf.h"
@@ -31,16 +31,16 @@
 #include <bsp_ana_sensor.h>
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           MACRO DEFINITIONS
-*********************************************************************************************************
+***************************************************************************************************
 */
 #define SYSTEM_TIME_STATISTIC_TASK_STK_SIZE     64
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
 */
 static      OS_TCB      SysTimeStatTaskTCB;
 
@@ -49,60 +49,89 @@ OS_SEM      g_stSystemTimeUpdateSem;
 static      CPU_STK     SysTimeStatTaskStk[SYSTEM_TIME_STATISTIC_TASK_STK_SIZE];
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           LOCAL VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
 */
-static  SYSTEM_CONTROL_MODE_Typedef     g_eSystemControlMode = EN_CONTROL_MODE_AUTO;
+static  SYSTEM_CONTROL_MODE_Typedef     g_eSystemControlMode = EN_CONTROL_MODE_MANNUAL;
 static  SYSTEM_WORK_MODE_Typedef        g_eSystemWorkMode = EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL;
 
-// 系统时间变量
-static  SYSTEM_TIME_Typedef             g_stSystemTime = {0, 0, 0};                     //系统运行时间
+/* The system time variable */
+static  SYSTEM_TIME_Typedef             g_stSystemTime = {0, 0, 0};
 
-static  SYSTEM_TIME_Typedef             g_stHydrgProduceTimeThisTime = {0, 0, 0};        //本次制氢时间
-static  SYSTEM_TIME_Typedef             g_stHydrgProduceTimeTotal = {0, 0, 0};          //累计制氢时间
+static  SYSTEM_TIME_Typedef             g_stHydrgProduceTimeThisTime = {0, 0, 0};
+static  SYSTEM_TIME_Typedef             g_stHydrgProduceTimeTotal = {0, 0, 0};
 
-static  SYSTEM_TIME_Typedef             g_stStackProductTimeThisTime = {0, 0, 0};       //本次发电时间
-static  SYSTEM_TIME_Typedef             g_stStackProductTimeTotal = {0, 0, 0};       //累计发电时间
+static  SYSTEM_TIME_Typedef             g_stStackProductTimeThisTime = {0, 0, 0};
+static  SYSTEM_TIME_Typedef             g_stStackProductTimeTotal = {0, 0, 0};
 
-//系统累计次数
-static          u16                     g_u16SystemWorkTimes = 0;                   //系统累计运行次数
-static          u16                     g_u16HydrgProducerWorkTimes = 0;   //制氢机运行次数
-static          u16                     g_u16StackWorkTimes = 0;            //电堆运行次数
+/* Statistics run number */
+static          uint16_t                g_u16SystemWorkTimes = 0;
+static          uint16_t                g_u16HydrgProducerWorkTimes = 0;
+static          uint16_t                g_u16StackWorkTimes = 0;
 
-//系统实时警报
-//  SELF_CHECK_CODE_Typedef             g_stSysSelfCheckCode;
-static          uint64_t                g_u64SysSelfCheckCode = 0;
-
-//系统实时警报
+static        SELF_CHECK_CODE_Typedef   g_stSelfCheckCode;
 static  RUNNING_ALARM_STATUS_Typedef    g_stSystemAlarmsInf;    //报警码及保持时间
-//  系统状态码
-static          u32                     g_SystemRunningStatuCode = 0x80000000;
-//系统运行阶段标识
+
+static          uint16_t                g_u16CtlAndCommunicateCode = 0x8000;
+static          uint32_t                g_SystemRunningStatuCode = 0x80000000;
+
 static  SYSTEM_WORK_STATU_Typedef       g_eSystemWorkStatu = EN_WAITTING_COMMAND;
 static  STACK_WORK_STATU_Typedef        g_eStackWorkStatu = EN_NOT_IN_WORK;
 
-//状态显示屏幕更新状态
-static WHETHER_TYPE_VARIABLE_Typedef g_eExternalScreenUpdateStatu = YES;
-
-//系统本次发电量(KWh)
-static          double                  g_dSystemIsolatedGeneratedEnergyThisTime = 0.0;
+static          float                   g_fSystemIsolatedGeneratedEnergyThisTime = 0.0;
 
 static          uint8_t                 g_u8WaitWorkModeSelectSwitch = DEF_DISABLED;
 
+static          uint32_t                                g_u32SysErrCode = 0;
+//系统预定错误类型有32种，对应g_u32ErrCode中的32位
+static  SHUT_DOWN_REQUEST_RESPONSE_WAIT_MASK_Typedef    g_stShutDownRequestWaitMask[32] = {{EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+    {EN_UN_MASK, 0 , {0 , 0, 0}},
+};
+
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
-*********************************************************************************************************
+***************************************************************************************************
 */
 static          void                    UpdateSysTime(SYSTEM_TIME_Typedef *);
 
-static          void                    SetSelfCheckCodeWorkModeSection(SYSTEM_WORK_MODE_Typedef);
+static          void                    SetCtlAndCommunicaeCodeWorkModeSection(SYSTEM_WORK_MODE_Typedef i_u8NewStatu);
 
 static          void                    SysTimeStatTask(void *p_arg);
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetWorkMode()
 *
 * Description:  Get the work mode of the system.
@@ -110,7 +139,7 @@ static          void                    SysTimeStatTask(void *p_arg);
 * Arguments  :  none
 *
 * Returns    :  the work mode of the system.
-*********************************************************************************************************
+***************************************************************************************************
 */
 SYSTEM_WORK_MODE_Typedef GetWorkMode(void)
 {
@@ -118,7 +147,7 @@ SYSTEM_WORK_MODE_Typedef GetWorkMode(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      SetWorkMode()
 *
 * Description:  Set the work mode of the system.
@@ -126,25 +155,25 @@ SYSTEM_WORK_MODE_Typedef GetWorkMode(void)
 * Arguments  :  the excepted work mode of the system.
 *
 * Returns    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void SetWorkMode(SYSTEM_WORK_MODE_Typedef i_eNewWorkModeStatu)
 {
     CPU_SR_ALLOC();
 
-    if( i_eNewWorkModeStatu >= 3 )//判断
-    {
+    if(i_eNewWorkModeStatu >= 3) { //判断
         i_eNewWorkModeStatu = EN_WORK_MODE_MALFUNCTION;
     }
 
     CPU_CRITICAL_ENTER();
     g_eSystemWorkMode = i_eNewWorkModeStatu;
-    SetSelfCheckCodeWorkModeSection(i_eNewWorkModeStatu);
+    SetCtlAndCommunicaeCodeWorkModeSection(i_eNewWorkModeStatu);
     CPU_CRITICAL_EXIT();
 }
 
+
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      SetWorkModeWaittingForSelectFlag()
 *
 * Description:  Set the flag that the system is waitting for the control side to select the work mode.
@@ -154,41 +183,39 @@ void SetWorkMode(SYSTEM_WORK_MODE_Typedef i_eNewWorkModeStatu)
 * Returns    :  none.
 *
 * Note(s)    :  The flag is included in the message that will send to the control side.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void SetWorkModeWaittingForSelectFlag(void)
 {
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();
     g_u8WaitWorkModeSelectSwitch = DEF_ENABLED;
-    SetSystemRunningStatuCodeBit(RuningStatuCodeControlModeSelectWaitFlagBit);
     CPU_CRITICAL_EXIT();
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      ResetWorkModeWaittingForSelectFlag()
 *
 * Description:  Reset the flag that the system is waitting for the control side to select the work mode.
-*               关闭等待标志
+*              
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  The flag is included in the message that will send to the control side.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void ResetWorkModeWaittingForSelectFlag(void)
 {
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();
     g_u8WaitWorkModeSelectSwitch = DEF_DISABLED;
-    ResetSystemRunningStatuCodeBit(RuningStatuCodeControlModeSelectWaitFlagBit);
     CPU_CRITICAL_EXIT();
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetWorkModeWaittingForSelectFlag()
 *
 * Description:  Get the flag that the system is waitting for the control side to select the work mode.
@@ -198,7 +225,7 @@ void ResetWorkModeWaittingForSelectFlag(void)
 * Returns    :  none.
 *
 * Note(s)    :  The flag is included in the message that will send to the control side.
-*********************************************************************************************************
+***************************************************************************************************
 */
 uint8_t GetWorkModeWaittingForSelectFlag(void)
 {
@@ -206,7 +233,7 @@ uint8_t GetWorkModeWaittingForSelectFlag(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      ControlModeTurnOver()
 *
 * Description:  Turn over the control mode.
@@ -216,24 +243,21 @@ uint8_t GetWorkModeWaittingForSelectFlag(void)
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void ControlModeTurnOver(void)
 {
-    if(g_eSystemControlMode == EN_CONTROL_MODE_AUTO)
-    {
+    if(g_eSystemControlMode == EN_CONTROL_MODE_AUTO) {
         g_eSystemControlMode = EN_CONTROL_MODE_MANNUAL;
-        SetSystemRunningStatuCodeBit(RuningStatuCodeCtrlMode);
-    }
-    else
-    {
+        SetConrolAndCommunicateStatuCodeBit(ConrtolStatusCodeCtrlMode);
+    } else {
         g_eSystemControlMode = EN_CONTROL_MODE_AUTO;
-        ResetSystemRunningStatuCodeBit(RuningStatuCodeCtrlMode);
+        ResetConrolAndCommunicateStatuCodeBit(ConrtolStatusCodeCtrlMode);
     }
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetControlMode()
 *
 * Description:  Get control mode of the system.
@@ -243,7 +267,7 @@ void ControlModeTurnOver(void)
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 SYSTEM_CONTROL_MODE_Typedef GetControlMode(void)
 {
@@ -251,17 +275,72 @@ SYSTEM_CONTROL_MODE_Typedef GetControlMode(void)
 }
 
 /*
-*********************************************************************************************************
-*                                      GetSystemTime()
+***************************************************************************************************
+*                                      ResetSystemWorkTimes()
 *
-* Description:  Get the system run time that from the boot time.
-*               获取系统运行时间
+* Description:  Reset the system work times.
+*
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
+*/
+void ResetSystemWorkTimes(void)
+{
+    g_u16SystemWorkTimes = 0;
+    StoreSystemWorkTimes(g_u16SystemWorkTimes);
+}
+
+/*
+***************************************************************************************************
+*                                      LoadSystemWorkTimes()
+*
+* Description:  load the system work times.
+*
+* Arguments  :  newest work time number.
+*
+* Returns    :  none.
+*
+* Note(s)    :  none.
+***************************************************************************************************
+*/
+void LoadSystemWorkTimesToPrgm(u16 i_u16WorkTimes)
+{
+    g_u16SystemWorkTimes = i_u16WorkTimes;
+}
+
+/*
+***************************************************************************************************
+*                                      SystemWorkTimesInc()
+*
+* Description:  Add a system work times.
+*
+* Arguments  :  none.
+*
+* Returns    :  none.
+*
+* Note(s)    :  none.
+***************************************************************************************************
+*/
+void SystemWorkTimesInc(void)
+{
+    g_u16SystemWorkTimes ++;
+    StoreSystemWorkTimes(g_u16SystemWorkTimes);
+}
+/*
+***************************************************************************************************
+*                                      GetSystemTime()
+*
+* Description:  Get the system run time that from the boot time.
+*               
+* Arguments  :  none.
+*
+* Returns    :  none.
+*
+* Note(s)    :  none.
+***************************************************************************************************
 */
 
 SYSTEM_TIME_Typedef GetSystemTime(void)
@@ -270,17 +349,55 @@ SYSTEM_TIME_Typedef GetSystemTime(void)
 }
 
 /*
-*********************************************************************************************************
-*                                      ResetHydrgProduceTimeThisTime()
+***************************************************************************************************
+*                                      GetSystemWorkTimes()
 *
-* Description:  Reset the hydrogen produce time this produce cycle.
-*               复位本次制氢时间
+* Description:  get the system work times.
+*
+* Arguments  :  none.
+*
+* Returns    :  the system work times
+*
+* Note(s)    :  none.
+***************************************************************************************************
+*/
+uint16_t GetSystemWorkTimes()
+{
+    return g_u16SystemWorkTimes;
+}
+
+/*
+***************************************************************************************************
+*                                      LoadTotalWorkTimeToPrgm()
+*
+* Description:  Load total work time to Program.
+*
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
+*/
+void LoadTotalWorkTimeToPrgm(SYSTEM_TIME_Typedef i_stTotalTime)
+{
+    g_stHydrgProduceTimeTotal.hour = i_stTotalTime.hour;
+    g_stHydrgProduceTimeTotal.minute = i_stTotalTime.minute;
+    g_stHydrgProduceTimeTotal.second = i_stTotalTime.second;
+}
+
+/*
+***************************************************************************************************
+*                         ResetHydrgProduceTimeThisTime()
+*
+* Description:  Reset the hydrogen produce time this produce cycle.
+*
+* Arguments  :  none.
+*
+* Returns    :  none.
+*
+* Note(s)    :  none.
+***************************************************************************************************
 */
 void ResetHydrgProduceTimeThisTime()
 {
@@ -290,17 +407,17 @@ void ResetHydrgProduceTimeThisTime()
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetHydrgProduceTimeThisTime()
 *
-* Description:  Get the hydrogen produce time this produce cycle.//获取本次制氢时间
+* Description:  Get the hydrogen produce time this produce cycle.
 *
 * Arguments  :  none.
 *
 * Returns    :  hydrogen produce time this cycle.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 SYSTEM_TIME_Typedef GetHydrgProduceTimeThisTime(void)
 {
@@ -308,17 +425,17 @@ SYSTEM_TIME_Typedef GetHydrgProduceTimeThisTime(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetHydrgProduceTimeTotal()
 *
-* Description:  Get the hydrogen produce time total.//获取累计制氢时间
+* Description:  Get the hydrogen produce time total.
 *
 * Arguments  :  none.
 *
 * Returns    :  hydrogen produce time total.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 SYSTEM_TIME_Typedef GetHydrgProduceTimeTotal(void)
 {
@@ -326,17 +443,17 @@ SYSTEM_TIME_Typedef GetHydrgProduceTimeTotal(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      ResetStackProductTimeThisTime()
 *
 * Description:  Reset the stack product time this produce cycle.
-*               复位本次发电时间
+*
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void ResetStackProductTimeThisTime()
 {
@@ -346,17 +463,17 @@ void ResetStackProductTimeThisTime()
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetStackProductTimeThisTime()
 *
-* Description:  Get the stack product time this produce cycle.//获取本次发电时间
+* Description:  Get the stack product time this produce cycle.
 *
 * Arguments  :  none.
 *
 * Returns    :  stack produce time this cycle.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 SYSTEM_TIME_Typedef GetStackProductTimeThisTime(void)
 {
@@ -364,17 +481,17 @@ SYSTEM_TIME_Typedef GetStackProductTimeThisTime(void)
 }
 
 /*
-*********************************************************************************************************
-*                                      ResetStackProductTimeThisTime()
+***************************************************************************************************
+*                                      GetStackProductTimeTotal()
 *
-* Description:  Get the stack product time total.//获取累计发电时间
+* Description:  Get the stack product time total.
 *
 * Arguments  :  none.
 *
 * Returns    :  stack produce time total.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 SYSTEM_TIME_Typedef GetStackProductTimeTotal(void)
 {
@@ -382,91 +499,17 @@ SYSTEM_TIME_Typedef GetStackProductTimeTotal(void)
 }
 
 /*
-*********************************************************************************************************
-*                                      ResetSystemWorkTimes()
+***************************************************************************************************
+*                        ResetHydrgProducerWorkTimes()
 *
-* Description:  Reset the system work times.//重置系统运行次数
-*
-* Arguments  :  none.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-*********************************************************************************************************
-*/
-void ResetSystemWorkTimes(void)
-{
-    g_u16SystemWorkTimes = 0;
-    SaveSystemWorkTimes();
-}
-
-/*
-*********************************************************************************************************
-*                                      LoadSystemWorkTimes()
-*
-* Description:  load the system work times.//加载累计工作次数
-*
-* Arguments  :  newest work time number.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-*********************************************************************************************************
-*/
-void LoadSystemWorkTimes(u16 u16WorkTimes)
-{
-    g_u16SystemWorkTimes = u16WorkTimes;
-}
-
-/*
-*********************************************************************************************************
-*                                      SystemWorkTimesInc()
-*
-* Description:  update the system work times.
-*               系统运行次数 + 1
-* Arguments  :  none.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-*********************************************************************************************************
-*/
-void SystemWorkTimesInc(void)
-{
-    g_u16SystemWorkTimes ++;
-    SaveSystemWorkTimes();
-}
-
-/*
-*********************************************************************************************************
-*                                      SystemWorkTimesInc()
-*
-* Description:  get the system work times.//获取系统运行次数
-*
-* Arguments  :  none.
-*
-* Returns    :  the system work times
-*
-* Note(s)    :  none.
-*********************************************************************************************************
-*/
-uint16_t GetSystemWorkTimes()
-{
-    return g_u16SystemWorkTimes;//YSTEM_RUNNING_TIMES;
-}
-
-/*
-*********************************************************************************************************
-*                                      ResetHydrgProducerWorkTimes()
-*
-* Description:  reset the hydrogen produce times.//重置制氢机运行次数
+* Description:  reset the hydrogen produce times.
 *
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void ResetHydrgProducerWorkTimes(void)
 {
@@ -474,17 +517,17 @@ void ResetHydrgProducerWorkTimes(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      LoadHydrgProducerWorkTimes()
 *
-* Description:  load the hydrogen produce times.//加载制氢机运行次数
+* Description:  load the hydrogen produce times.
 *
 * Arguments  :  newest the work time number.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void LoadHydrgProducerWorkTimes(u16 u16WorkTimes)
 {
@@ -492,17 +535,17 @@ void LoadHydrgProducerWorkTimes(u16 u16WorkTimes)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      HydrgProducerWorkTimesInc()
 *
-* Description:  increase the hydrogen produce times.//制氢机运行次数 + 1
+* Description:  increase the hydrogen produce times.
 *
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void HydrgProducerWorkTimesInc(void)
 {
@@ -510,17 +553,17 @@ void HydrgProducerWorkTimesInc(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetHydrgProducerWorkTimes()
 *
-* Description:  get the hydrogen produce times.//获取系统运行次数
+* Description:  get the hydrogen produce times.
 *
 * Arguments  :  none.
 *
 * Returns    :  unsigned short int.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 uint16_t GetHydrgProducerWorkTimes()
 {
@@ -528,17 +571,17 @@ uint16_t GetHydrgProducerWorkTimes()
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      ResetStackWorkTimes()
 *
-* Description:  reset the stack produce times.//重置电堆运行次数
+* Description:  reset the stack produce times.
 *
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void ResetStackWorkTimes(void)
 {
@@ -546,17 +589,17 @@ void ResetStackWorkTimes(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      LoadStackWorkTimes()
 *
-* Description:  get the stack produce times.//获取系统运行次数
+* Description:  get the stack produce times.
 *
 * Arguments  :  unsigned short int.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void LoadStackWorkTimes(u16 u16WorkTimes)
 {
@@ -564,61 +607,59 @@ void LoadStackWorkTimes(u16 u16WorkTimes)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      StackWorkTimesInc()
 *
-* Description:  increase the stack produce times.//电堆运行次数 + 1
+* Description:  increase the stack produce times.
 *
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void StackWorkTimesInc(void)
 {
-    g_u16StackWorkTimes++;
+    g_u16StackWorkTimes ++;
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetStackWorkTimes()
 *
-* Description:  get the stack produce times.//获取电堆运行次数
+* Description:  get the stack produce times.
 *
 * Arguments  :  none.
 *
 * Returns    :  unsigned short int.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 uint16_t GetStackWorkTimes()
 {
-    return g_u16StackWorkTimes;//YSTEM_RUNNING_TIMES;
+    return g_u16StackWorkTimes;
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      SetSystemWorkStatu()
 *
 * Description:  set the system work statu.
-*               设定系统运行状态
+*
 * Arguments  :  enum type.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void SetSystemWorkStatu(SYSTEM_WORK_STATU_Typedef m_enNewStatu)
 {
-//  OS_ERR err;
     CPU_SR_ALLOC();
 
-    if(m_enNewStatu >= 7)
-    {
+    if(m_enNewStatu >= 7) {
         m_enNewStatu = EN_SHUTTING_DOWN;
     }
 
@@ -629,7 +670,7 @@ void SetSystemWorkStatu(SYSTEM_WORK_STATU_Typedef m_enNewStatu)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetSystemWorkStatu()
 *
 * Description:  get the system work statu.
@@ -639,59 +680,15 @@ void SetSystemWorkStatu(SYSTEM_WORK_STATU_Typedef m_enNewStatu)
 * Returns    :  enum type.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 SYSTEM_WORK_STATU_Typedef GetSystemWorkStatu(void)
 {
     return g_eSystemWorkStatu;
 }
 
-
-
 /*
-*********************************************************************************************************
-*                                      SetExternalScreenUpdateStatu()
-*
-* Description:  set the screen update statu.
-*
-* Arguments  :  none.
-*
-* Returns    :  enum type.
-*
-* Note(s)    :  none.
-*********************************************************************************************************
-*/
-void SetExternalScreenUpdateStatu(WHETHER_TYPE_VARIABLE_Typedef i_NewStatu)
-{
-    CPU_SR_ALLOC();
-    CPU_CRITICAL_ENTER();
-    g_eExternalScreenUpdateStatu = i_NewStatu;
-    //****设置屏幕更新状态码?
-    CPU_CRITICAL_EXIT();
-
-}
-/*
-*********************************************************************************************************
-*                                      GetExternalScreenUpdateStatu()
-*
-* Description:  get the screen update statu.
-*
-* Arguments  :  none.
-*
-* Returns    :  g_eExternalScreenUpdateStatu.
-*
-* Note(s)    :  none.
-*********************************************************************************************************
-*/
-WHETHER_TYPE_VARIABLE_Typedef GetExternalScreenUpdateStatu(void)
-{
-    return g_eExternalScreenUpdateStatu;
-}
-
-
-
-/*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      SetStackWorkStatu()
 *
 * Description:  set the stack work statu.
@@ -701,19 +698,19 @@ WHETHER_TYPE_VARIABLE_Typedef GetExternalScreenUpdateStatu(void)
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void SetStackWorkStatu(STACK_WORK_STATU_Typedef i_eNewStatu)
 {
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();
     g_eStackWorkStatu = i_eNewStatu;
-    SetSystemRunningStatuCodeBit(RuningStatuCodeStackStatuBit);
+    SetSystemRunningStatuCodeBit(RuningStatuCodeFuelCellRuningStatuBit_1);
     CPU_CRITICAL_EXIT();
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetStackWorkStatu()
 *
 * Description:  get the stack work statu.
@@ -723,7 +720,7 @@ void SetStackWorkStatu(STACK_WORK_STATU_Typedef i_eNewStatu)
 * Returns    :  enum type.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 STACK_WORK_STATU_Typedef GetStackWorkStatu(void)
 {
@@ -731,17 +728,17 @@ STACK_WORK_STATU_Typedef GetStackWorkStatu(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      ResetAllAlarms()
 *
 * Description:  reset the all alarms statu.
-*               清零系统警报
+*               
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void ResetAllAlarms()
 {
@@ -757,18 +754,18 @@ void ResetAllAlarms()
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      AlarmCmd()
 *
 * Description:  command a kind of alarm statu.
-*               设定系统警报状态码(每个位对应不同的报警标志)
+*               
 * Arguments  :  m_enSystemAlarmKind - the kind of the alarm
 *               m_enNewStatu - the excepted statu of the alarm
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void AlarmCmd(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind, SWITCH_TYPE_VARIABLE_Typedef m_enNewStatu)
 {
@@ -792,17 +789,17 @@ void AlarmCmd(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind, SWITCH_TYPE_VARIABL
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetAlarmStatu()
 *
 * Description:  get the statu of a kind of alarm.
-*               获取系统报警状态
+*               
 * Arguments  :  m_enSystemAlarmKind - the kind of the alarm.
 *
 * Returns    :  the statu of the alarm.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 SWITCH_TYPE_VARIABLE_Typedef GetAlarmStatu(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind)
 {
@@ -811,17 +808,17 @@ SWITCH_TYPE_VARIABLE_Typedef GetAlarmStatu(SYSTEM_ALARM_ADDR_Typedef m_enSystemA
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetAlarmHoldTime()
 *
 * Description:  get the hold time of a kind of alarm.
-*               获取系统报警持续时间
+*               
 * Arguments  :  m_enSystemAlarmKind - the kind of the alarm.
 *
 * Returns    :  the hold time of the kind of alarm.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 SYSTEM_TIME_Typedef GetAlarmHoldTime(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind)
 {
@@ -829,17 +826,17 @@ SYSTEM_TIME_Typedef GetAlarmHoldTime(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKi
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetRunAlarmCode()
 *
 * Description:  get the alarm time.
-*               获取系统运行警报码
+*               
 * Arguments  :  none.
 *
 * Returns    :  the alarm code.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 uint32_t GetRunAlarmCode(void)
 {
@@ -847,47 +844,47 @@ uint32_t GetRunAlarmCode(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      ResetSystemIsolatedGeneratedEnergyThisTime()
 *
 * Description:  reset the isolated generated energy this time.
-*               复位系统发电量
+*              
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void ResetSystemIsolatedGeneratedEnergyThisTime(void)
 {
-    g_dSystemIsolatedGeneratedEnergyThisTime = 0.0;
+    g_fSystemIsolatedGeneratedEnergyThisTime = 0.0;
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      UpdateSystemIsolatedGeneratedEnergyThisTime()
 *
 * Description:  update the isolated generated energy this time.
-*               更新系统发电量(总的发电量)
+*               
 * Arguments  :  none.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void UpdateSystemIsolatedGeneratedEnergyThisTime()
 {
     if(g_eStackWorkStatu == EN_IN_WORK)
     {
-        g_dSystemIsolatedGeneratedEnergyThisTime += ((double) GetCurrentPower()) / 3600 / 1000 * 1;
+        g_fSystemIsolatedGeneratedEnergyThisTime += ((double) GetCurrentPower()) / 3600 / 1000 * 1;
         //3600为每小时的分钟数，1000为1kW, 1为每次更新的时间间隔为1s。
     }
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetIsolatedGenratedEnergyThisTime()
 *
 * Description:  get the isolated generated energy this time.
@@ -897,15 +894,15 @@ void UpdateSystemIsolatedGeneratedEnergyThisTime()
 * Returns    :  double.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
-double GetIsolatedGenratedEnergyThisTime()
+float GetIsolatedGenratedEnergyThisTime()
 {
-    return g_dSystemIsolatedGeneratedEnergyThisTime;
+    return g_fSystemIsolatedGeneratedEnergyThisTime;
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      SetSelfCheckCodeBit()
 *
 * Description:  set specified bit of the self-check code.
@@ -915,20 +912,32 @@ double GetIsolatedGenratedEnergyThisTime()
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
-void SetSelfCheckCodeBit(uint8_t i_u8BitNmb)
+void SetDevSelfCheckSensorStatusCodeBit(uint8_t i_u8BitNmb)
 {
-    if(i_u8BitNmb <= 64)
-    {
-        g_u64SysSelfCheckCode |= (1ll << i_u8BitNmb);//long long 1表示64位數;
+    if(i_u8BitNmb <= 8) {
+        g_stSelfCheckCode.DevSelfCheckSensorStatusCode  |= (1 << i_u8BitNmb);
     }
-    else
-    {}
 }
 
+void SetMachinePartASelfCheckCodeBit(uint8_t i_u8BitNmb)
+{
+    if(i_u8BitNmb <= 32) {
+        g_stSelfCheckCode.MachinePartASelfCheckCode  |= (1 << i_u8BitNmb);
+    } else {
+    }
+}
+
+void SetMachinePartBSelfCheckCodeBit(uint8_t i_u8BitNmb)
+{
+    if(i_u8BitNmb <= 32) {
+        g_stSelfCheckCode.MachinePartBSelfCheckCode  |= (1 << i_u8BitNmb);
+    } else {
+    }
+}
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      ResetSelfCheckCodeBit()
 *
 * Description:  reset specified bit of the self-check code.
@@ -938,21 +947,71 @@ void SetSelfCheckCodeBit(uint8_t i_u8BitNmb)
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
-void ResetSelfCheckCodeBit(uint8_t i_u8BitNmb)
+void ResetDevSelfCheckSensorStatusCodeBit(uint8_t i_u8BitNmb)
 {
-    if(i_u8BitNmb <= 64)
-    {
-        g_u64SysSelfCheckCode  &= ~(1ll << i_u8BitNmb);
+    if(i_u8BitNmb <= 8) {
+        g_stSelfCheckCode.DevSelfCheckSensorStatusCode  &= ~(1 << i_u8BitNmb);
+    } else {
     }
-    else
-    {}
 }
 
+void ResetMachinePartASelfCheckCodeBit(uint8_t i_u8BitNmb)
+{
+    if(i_u8BitNmb <= 32) {
+        g_stSelfCheckCode.MachinePartASelfCheckCode  &= ~(1 << i_u8BitNmb);
+    } else {
+    }
+}
+
+void ResetMachinePartBSelfCheckCodeBit(uint8_t i_u8BitNmb)
+{
+    if(i_u8BitNmb <= 32) {
+        g_stSelfCheckCode.MachinePartBSelfCheckCode  &= ~(1 << i_u8BitNmb);
+    } else {
+    }
+}
 /*
-*********************************************************************************************************
-*                                      SetSelfCheckCodeWorkModeSection()
+***************************************************************************************************
+*                           SELF_CHECK_CODE_Typedef GetSysSelfCheckCode()
+*
+* Description:  reset specified bit of the self-check code.
+*
+* Arguments  :  select the bit of the code.
+*
+* Returns    :  none.
+*
+* Note(s)    :  none.
+***************************************************************************************************
+*/
+SELF_CHECK_CODE_Typedef GetSysSelfCheckCode()
+{
+    SYSTEM_WORK_MODE_Typedef    eWorkMode;
+    eWorkMode = GetWorkMode();
+
+    switch((u8)eWorkMode) {
+        case EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL:
+            //不做屏蔽操作
+            break;
+
+        case EN_WORK_MODE_HYDROGEN_PRODUCER:
+            g_stSelfCheckCode.MachinePartBSelfCheckCode = 0;
+            break;
+
+        case EN_WORK_MODE_FUEL_CELL:
+            g_stSelfCheckCode.MachinePartASelfCheckCode = 0;
+            break;
+
+        default:
+            break;
+    }
+
+    return g_stSelfCheckCode;
+}
+/*
+***************************************************************************************************
+*                                      SetCtlAndCommunicaeCodeWorkModeSection()
 *
 * Description:  set the section, that accord to the work mode, of the self-check code.
 *
@@ -961,37 +1020,20 @@ void ResetSelfCheckCodeBit(uint8_t i_u8BitNmb)
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
-void SetSelfCheckCodeWorkModeSection(SYSTEM_WORK_MODE_Typedef i_u8NewStatu)
+void SetCtlAndCommunicaeCodeWorkModeSection(SYSTEM_WORK_MODE_Typedef i_u8NewStatu)
 {
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();
-    g_u64SysSelfCheckCode &= 0x3FFFFFFFFFFFFFFFu;
-    g_u64SysSelfCheckCode |= ((uint64_t)i_u8NewStatu << 62);
+    g_u16CtlAndCommunicateCode &= 0x8EFFu;
+    g_u16CtlAndCommunicateCode |= ((uint16_t)i_u8NewStatu << 11);
     CPU_CRITICAL_EXIT();
 }
 
-/*
-*********************************************************************************************************
-*                                      GetSelfCheckCode()
-*
-* Description:  get the self-check code.
-*
-* Arguments  :  none.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-*********************************************************************************************************
-*/
-uint64_t GetSelfCheckCode(void)
-{
-    return g_u64SysSelfCheckCode;
-}
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      GetSystemRunningStatuCode()
 *
 * Description:  get the system running statu code.
@@ -1001,7 +1043,7 @@ uint64_t GetSelfCheckCode(void)
 * Returns    :  running statu code.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 u32 GetSystemRunningStatuCode(void)
 {
@@ -1009,7 +1051,7 @@ u32 GetSystemRunningStatuCode(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      SetSystemRunningStatuCodeBit()
 *
 * Description:  set specified bit of the system running statu code.
@@ -1019,7 +1061,7 @@ u32 GetSystemRunningStatuCode(void)
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void SetSystemRunningStatuCodeBit(uint8_t i_u8BitNmb)
 {
@@ -1027,7 +1069,7 @@ void SetSystemRunningStatuCodeBit(uint8_t i_u8BitNmb)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      ResetSystemRunningStatuCodeBit()
 *
 * Description:  reset specified bit of the system running statu code.
@@ -1037,44 +1079,294 @@ void SetSystemRunningStatuCodeBit(uint8_t i_u8BitNmb)
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void ResetSystemRunningStatuCodeBit(uint8_t i_u8BitNmb)
 {
     g_SystemRunningStatuCode &= ~(1u << i_u8BitNmb);
 }
 
+
 /*
-*********************************************************************************************************
+***************************************************************************************************
+*                                      ResetSystemRunningStatuCode()
+*
+* Description:  reset the system running statu code.
+*
+* Arguments  :  none.
+*
+* Returns    :  none.
+*
+* Note(s)    :  none.
+***************************************************************************************************
+*/
+void ResetSystemRunningStatuCode(void)
+{
+    g_SystemRunningStatuCode = 0;
+}
+/*
+***************************************************************************************************
 *                             SetSystemRunningStatuCodeSysWorkStatuSection()
 *
 * Description:  reset the section, that accord to the work statu, of  the system running statu code.
-*                               设置系统运行工作模式
+*
 * Arguments  :  select the bit of the code.
 *
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void SetSystemRunningStatuCodeSysWorkStatuSection(SYSTEM_WORK_STATU_Typedef i_u8NewStatu)
 {
     CPU_SR_ALLOC();
 
-//  APP_TRACE_INFO(("The run statu code is %d<---\r\n", m_enNewStatu));
-    if(i_u8NewStatu <= 7)//判断
-    {
+    if(i_u8NewStatu <= 7) { //判断是否为正常工作状态
         CPU_CRITICAL_ENTER();
-        g_SystemRunningStatuCode &= 0x8FFFFFFFu;
+        g_SystemRunningStatuCode &= 0x0FFFFFFFu;
         g_SystemRunningStatuCode |= (i_u8NewStatu << 28);
         CPU_CRITICAL_EXIT();
+    } else {
     }
-    else
-    {}
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
+*                             SetSystemRunningStatuCodeStackRunStatuSection()
+*
+* Description:  Set the system running statu code.
+*
+* Arguments  :  select the bit of the code.
+*
+* Returns    :  none.
+*
+* Note(s)    :  none.
+***************************************************************************************************
+*/
+void SetSystemRunningStatuCodeStackRunStatuSection(SYSTEM_WORK_STATU_Typedef i_u8NewStatu)
+{
+    CPU_SR_ALLOC();
+
+    if(i_u8NewStatu <= 7) { //判断是否为正常工作状态
+        CPU_CRITICAL_ENTER();
+        g_SystemRunningStatuCode &= 0xF0FFFFFFu;
+        g_SystemRunningStatuCode |= (i_u8NewStatu << 24);
+        CPU_CRITICAL_EXIT();
+    } else {
+    }
+}
+/*
+***************************************************************************************************
+*                                      SetSystemRunningStatuCodeBit()
+*
+* Description:  set specified bit of the system running statu code.
+*
+* Arguments  :  select the bit of the code.
+*
+* Returns    :  none.
+*
+* Note(s)    :  none.
+***************************************************************************************************
+*/
+void SetConrolAndCommunicateStatuCodeBit(uint8_t i_u8BitNmb)
+{
+    g_u16CtlAndCommunicateCode |= (1u << i_u8BitNmb);
+}
+
+/*
+***************************************************************************************************
+*                                      ResetConrolAndCommunicateStatuCodeBit()
+*
+* Description:  reset specified bit of the system running statu code.
+*
+* Arguments  :  select the bit of the code.
+*
+* Returns    :  none.
+*
+* Note(s)    :  none.
+***************************************************************************************************
+*/
+void ResetConrolAndCommunicateStatuCodeBit(uint8_t i_u8BitNmb)
+{
+    g_u16CtlAndCommunicateCode &= ~(1u << i_u8BitNmb);
+}
+
+/*
+***************************************************************************************************
+*                                      GetConrolAndCommunicateStatuCode()
+*
+* Description:  reset specified bit of the system running statu code.
+*
+* Arguments  :  select the bit of the code.
+*
+* Returns    :  none.
+*
+* Note(s)    :  none.
+***************************************************************************************************
+*/
+uint16_t GetConrolAndCommunicateStatuCode()
+{
+    return g_u16CtlAndCommunicateCode;
+}
+
+/*
+***************************************************************************************************
+*                               CalcStackOptimumTemperatureByCurrent()
+*
+* Description : Calculate the optimum temperature that the stack can accept from the current.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : Calculated according to the stack manual curve.
+***************************************************************************************************
+*/
+uint8_t CalcStackOptimumTemperatureByCurrent(void)
+{
+    float m_StackCurrent;
+    float m_StackOptimumTemperature;
+    m_StackCurrent = GetSrcAnaSig(STACK_CURRENT);
+#ifdef LOWER_ENVIRONMENT_TEMPERATURE
+    m_StackOptimumTemperature = (0.53 * m_StackCurrent) + 26.01;//冬天
+#else
+    m_StackOptimumTemperature = (0.455 * m_StackCurrent) + 32;//夏天
+#endif
+    
+    return (uint8_t)m_StackOptimumTemperature;
+}
+
+/*
+***************************************************************************************************
+*                               GetStackMaxTemperatureByCurrent()
+*
+* Description : Calculate the maximum temperature that the stack can withstand from the current.
+*
+* Argument(s) : none.
+*
+* Return(s)   : fStackMaxTemperature.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+uint8_t CalcStackMaximumTemperatureByCurrent(void)
+{
+    float fStackCurrent;
+    float fStackMaxTemperature;
+
+    fStackCurrent = GetSrcAnaSig(STACK_CURRENT);
+
+    if(fStackCurrent < 65.3) {
+        fStackMaxTemperature = (0.352 * fStackCurrent) + 52;
+    } else {
+        fStackMaxTemperature = 75;
+    }
+
+    return (uint8_t)fStackMaxTemperature;
+}
+
+/*
+***************************************************************************************************
+*                               GetStackMaxTemperatureByCurrent()
+*
+* Description : Calculate the minimum temperature that the stack can withstand from the current.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+uint8_t CalcStackMinimumTemperatureByCurrent(void)
+{
+    float fStackCurrent;
+    float fStackMinTemperature;
+    fStackCurrent = GetSrcAnaSig(STACK_CURRENT);
+
+    if(fStackCurrent < 65.3) {
+        fStackMinTemperature = (0.532 * fStackCurrent) + 6;
+    } else if(fStackCurrent < 87.1) {
+        fStackMinTemperature = (1.782 * fStackCurrent) - 90.2;
+    } else {
+        fStackMinTemperature = 65;
+    }
+
+    return (uint8_t)fStackMinTemperature;
+}
+
+
+
+/*
+***************************************************************************************************
+*                               GetSysErrCode()
+*
+* Description : Calculate the minimum temperature that the stack can withstand from the current.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+uint32_t GetSysErrCode()
+{
+    return g_u32SysErrCode;
+}
+
+void SysErrStatuCmd(SYSTEM_ALARM_ADDR_Typedef i_eErrKind, SWITCH_TYPE_VARIABLE_Typedef i_eNewStatu)
+{
+    if((g_u32SysErrCode ^ (i_eNewStatu << (uint8_t)i_eErrKind)) != 0) {
+        if(i_eNewStatu == ON) {
+            g_u32SysErrCode |= (1 << i_eErrKind);
+        } else {
+            g_u32SysErrCode &= ~(1 << i_eErrKind);
+        }
+    }
+}
+
+void SetShutDownRequestMaskStatu(SYSTEM_ALARM_ADDR_Typedef i_ErrKind, REAL_TIME_REQUEST_MASK_Typedef i_eNewStatu, uint16_t i_u8DelaySeconds)
+{
+    if(i_eNewStatu == EN_DELAY) { //若更新至延时状态，则开启计时，若延时状态未变，则更新延时时间即可
+        g_stShutDownRequestWaitMask[i_ErrKind].MaskStatu = i_eNewStatu;
+        g_stShutDownRequestWaitMask[i_ErrKind].DelaySecond = i_u8DelaySeconds;//记录延时等待的时间
+        g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime = GetSystemTime();//记录延时开始的时间
+    } else { //切换为非延时状态，则清零计时
+        g_stShutDownRequestWaitMask[i_ErrKind].MaskStatu = i_eNewStatu;
+        g_stShutDownRequestWaitMask[i_ErrKind].DelaySecond = 0;
+        g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.hour = 0;
+        g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.minute = 0;
+        g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.second = 0;
+    }
+}
+
+REAL_TIME_REQUEST_MASK_Typedef GetShutDownRequestMaskStatu(SYSTEM_ALARM_ADDR_Typedef i_ErrKind)
+{
+    SYSTEM_TIME_Typedef stCurrentTime;
+
+    if(g_stShutDownRequestWaitMask[i_ErrKind].MaskStatu == EN_DELAY) {
+        stCurrentTime = GetSystemTime();
+
+        if((g_stShutDownRequestWaitMask[i_ErrKind].DelaySecond > 0)
+                && ((((stCurrentTime.hour - g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.hour) * 60
+                      + stCurrentTime.minute - g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.minute) * 60
+                     + stCurrentTime.second - g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.second)
+                    >= g_stShutDownRequestWaitMask[i_ErrKind].DelaySecond)) { //若延时到达，这自动切换为非屏蔽状态
+            g_stShutDownRequestWaitMask[i_ErrKind].MaskStatu = EN_UN_MASK;
+            g_stShutDownRequestWaitMask[i_ErrKind].DelaySecond = 0;
+            g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.hour = 0;
+            g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.minute = 0;
+            g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.second = 0;
+            BSP_BuzzerOff();
+        } else { //否则继续等待
+        }
+    }
+
+    return g_stShutDownRequestWaitMask[i_ErrKind].MaskStatu;
+}
+/*
+***************************************************************************************************
 *                             SystemTimeStatTaskCreate()
 *
 * Description:  create the system time statistics task.
@@ -1084,7 +1376,7 @@ void SetSystemRunningStatuCodeSysWorkStatuSection(SYSTEM_WORK_STATU_Typedef i_u8
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void SystemTimeStatTaskCreate(void)
 {
@@ -1107,7 +1399,7 @@ void SystemTimeStatTaskCreate(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                             SysTimeStatTask()
 *
 * Description:  the system time statistics task.
@@ -1117,7 +1409,7 @@ void SystemTimeStatTaskCreate(void)
 * Returns    :  none.
 *
 * Note(s)    :
-*********************************************************************************************************
+***************************************************************************************************
 */
 static  void  SysTimeStatTask(void *p_arg)
 {
@@ -1205,7 +1497,7 @@ static  void  SysTimeStatTask(void *p_arg)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                             UpdateSysTime()
 *
 * Description:  update all kinds of time in the system.
@@ -1215,7 +1507,7 @@ static  void  SysTimeStatTask(void *p_arg)
 * Returns    :  none.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 static void UpdateSysTime(SYSTEM_TIME_Typedef *i_stTargetTime)
 {
@@ -1237,22 +1529,21 @@ static void UpdateSysTime(SYSTEM_TIME_Typedef *i_stTargetTime)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                             GetCurrentPower()
 *
 * Description:  get current power.
-*               获得当前发电量
+*               
 * Arguments  :  none.
 *
 * Returns    :  float.
 *
 * Note(s)    :  none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 float GetCurrentPower(void)
 {
      return GetSrcAnaSig(STACK_VOLTAGE) * GetSrcAnaSig(STACK_CURRENT);
-    // return GetSrcAnaSig(STACK_CURRENT);
 }
 /******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/
 

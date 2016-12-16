@@ -1,4 +1,5 @@
-/*********************************************************************************************************
+/*
+***************************************************************************************************
 *                                         APPLICATION CODE
 *
 *                      (c) Copyright 2016; Guangdong ENECO Science And Technology Co.,Ltd
@@ -8,27 +9,23 @@
 ***************************************************************************************************
 */
 
-/*
-*******************************************************************************************************
-* Filename      :  app_analog_signal_monitor_task.h
-* Programmer(s) :  Fanjun
-* Version       :  V1.0
-* data          :  2016.5.8
-* brief         :  This file contains all the functions prototypes for the system run
-*                  config parameters firmware library.
-********************************************************************************************************
-*/
+/********************************************************************************
+  * @file    bsp_pid.h
+  * @author  Fanjun
+  * @version V1.0
+  * @date    3-May-2016
+  * @brief   This file contains all the functions prototypes for the pid control
+  *          firmware library.
+*********************************************************************************/
 
-#ifndef __APP_ANALOG_SIGNAL_MONITOR_TASK_H__
-#define __APP_ANALOG_SIGNAL_MONITOR_TASK_H__
-
-
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __BSP_PID_H__
+#define __BSP_PID_H__
 /*
 ***************************************************************************************************
 *                                           INCLUDE FILES
 ***************************************************************************************************
 */
-#include "includes.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -36,15 +33,42 @@
 */
 /*
 ***************************************************************************************************
-*                                    EXTERNAL OS VARIABLE DECLARATIONS
-***************************************************************************************************
-*/
-extern      OS_SEM      g_stAnaSigConvertFinishSem;
-/*
-***************************************************************************************************
 *                                           EXPORTED TYPE
 ***************************************************************************************************
 */
+
+typedef struct {
+    uint8_t Sv;   //设定温度
+    uint8_t Pv;  //当前温度
+
+    int8_t Err;//本次偏差
+    int8_t Err_Next;//上次偏差
+    int8_t Err_Last;//上上次偏差
+
+    
+    float Kp, Ki, Kd;//定义比例propotion、积分Integral、微分Differential系数
+    
+    
+//    float Ti;//积分时间常数
+//    float Td;//微分时间常数
+    uint8_t Tsam; //采样周期---控制周期，每隔Tsam控制器输出一次PID运算结果
+
+    float Iout;//积分控制输出值
+    float Pout;//比例控制输出值
+    float Dout;//微分控制输出值
+    
+    uint16_t OutValue;                      //控制量
+    uint16_t OutValueMax;                   //控制量最大值
+    uint16_t OutValueMin;                   //控制量最小值
+
+    uint16_t CalcCycleCount; //PID计算周期
+
+} INCREMENT_TYPE_PID_PARAMETER_Typedef;
+
+
+
+extern INCREMENT_TYPE_PID_PARAMETER_Typedef IPID;
+
 /*
 ***************************************************************************************************
 *                                           EXPORTED CONSTANTS
@@ -62,18 +86,12 @@ extern      OS_SEM      g_stAnaSigConvertFinishSem;
 *                                           EXPORTED FUNCTION
 ***************************************************************************************************
 */
-void    AnaSigMonitorTaskCreate(void);
 
+void IncrementType_PID_Init(void);
+//void IncrementType_PID_Process(void);
+void IncrementType_PID_Process(uint8_t i_OptimumTemperature);
 
-void    SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(unsigned char);
-void    SetHydrgProducerAnaSigRunningStartAutoAdjHookSwitch(unsigned char);
-void    SetHydrgProducerFansSpeedAutoIncreaseHookSwitch(unsigned char);
-void    SetStackHydrgPressHighEnoughHookSwitch(uint8_t i_NewStatu);
-/*
-***************************************************************************************************
-*                                             MODULE END
-***************************************************************************************************
-*/
+void SetStackIncrementTypePidSvalue(uint8_t i_NewValue);
+void SetStackIncrementTypePidPValue(uint8_t i_NewValue);
+#endif
 
-
-#endif                                                          /* End of module include */

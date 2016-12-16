@@ -1,24 +1,24 @@
 /*
-*********************************************************************************************************
-*                                              APPLICATION CODE
+***************************************************************************************************
+*                                         APPLICATION CODE
 *
-*                          (c) Copyright 2015; Guangdong Hydrogen Energy Science And Technology Co.,Ltd
+*                      (c) Copyright 2016; Guangdong ENECO Science And Technology Co.,Ltd
 *
 *               All rights reserved.  Protected by international copyright laws.
 *               Knowledge of the source code may NOT be used without authorization.
-*********************************************************************************************************
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 * Filename      : app_stack_manager.c
 * Version       : V1.00
-* Programmer(s) : SunKing.Yun
-*********************************************************************************************************
+* Programmer(s) : FanJun
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                             INCLUDE FILES
-*********************************************************************************************************
+***************************************************************************************************
 */
 #include <includes.h>
 #include <app_top_task.h>
@@ -26,23 +26,24 @@
 #include <app_system_real_time_parameters.h>
 #include "bsp_speed_adjust_device.h"
 #include "app_stack_manager.h"
-#include "app_speed_control_device_monitor_task.h"
-#include "app_huawei_communicate_task.h"
+#include "app_dc_module_communicate_task.h"
+#include "app_analog_signal_monitor_task.h"
+#include "bsp_pid.h"
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           MACRO DEFINITIONS
-*********************************************************************************************************
+***************************************************************************************************
 */
 #define STACK_MANAGER_TASK_STK_SIZE                             128
 #define STACK_MANAGER_DELAY_STOP_TASK_STK_SIZE                  100
 #define STACK_HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_MONITOR_TASK_STK_SIZE     256
 #define STACK_PROGRAM_CONTROL_AIR_PRESSURE_RELEASE_TASK_STK_SIZE 200
 
-#define  STACK_FAN_CONTROL_CYCLE   6
+#define  STACK_FAN_CONTROL_CYCLE   6  //·ç»ú¿ØÖÆÖÜÆÚ
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 OS_TCB      StackManagerTaskTCB;
@@ -57,13 +58,18 @@ static      CPU_STK     StackHydrogenYieldMatchingOffsetValueMonitorStk[STACK_HY
 static      CPU_STK     StackProgramControlAirPressureReleaseStk[STACK_PROGRAM_CONTROL_AIR_PRESSURE_RELEASE_TASK_STK_SIZE];
 
 /*
-*********************************************************************************************************
-*                                           LOCAL VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
+*                                          GLOBAL VARIABLES
+***************************************************************************************************
 */
 SWITCH_TYPE_VARIABLE_Typedef            g_eStackManagerStopDlyStatu = OFF;
 STACK_VENTING_TIME_PARAMETER_Typedef    StackVentAirTimeParameter = {0, 0.0, 0.0}; //µç¶ÑÅÅÆøÊ±¼ä²ÎÊý
 
+/*
+***************************************************************************************************
+*                                           LOCAL VARIABLES
+***************************************************************************************************
+*/
 static  float                           g_fAmpIntegralSum = 0.0;//µçÁ÷Ê±¼ä»ý·ÖÀÛ¼ÓºÍ
 static  float                           g_fHydrogenYieldMatchOffsetValue = 0.0;//µç¶ÑÆ¥ÇâÆ«ÒÆÖµ
 static  uint16_t                        g_u16StackExhaustTimesCount = 0;//µç¶ÑÅÅÆø´ÎÊý
@@ -72,16 +78,13 @@ static SWITCH_TYPE_VARIABLE_Typedef     g_u8StackOutAirValveStatus = OFF;//µç¶ÑÅ
 static  uint8_t                         g_StackStartPurifySw = DEF_DISABLED;
 static  uint8_t                         g_u8StackFanAutoAdjSw = DEF_ENABLED;//µç¶Ñ·çÉÈ×Ô¶¯µ÷ËÙ¿ª¹Ø
 static  uint8_t                         g_u8StackProgramControlAirPressureReleaseTaskSw = DEF_DISABLED;
-static  uint8_t                         g_u8StackHydrogenMarginMonitorTaskSw = DEF_DISABLED;
+static  uint8_t                         g_u8StackHydrogenYieldMatchingOffsetValueMonitorTaskSw = DEF_DISABLED;
 static  uint8_t                         g_u8StackNeedVentByAmpIntegralSumSw = DEF_DISABLED;//µç¶Ñ°²ÅàÃëÅÅÆø¿ª¹Ø
 
-
-u8  ChangePWM = 30;
-u8  Last_ChangePWM = 0;
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
-*********************************************************************************************************
+***************************************************************************************************
 */
 static      void        StackManagerTask(void);
 static      void        StackManagerDlyStopTask(void);
@@ -91,10 +94,7 @@ static      void        StackProgramControlAirPressureReleaseTask(void);
 static      void        SetStackStartPurifySwitch(uint8_t i_NewStatu);
 static      void        SetStackFanSpdAutoAdjSwitch(uint8_t);
 static      void        SetStackProgramControlAirPressureReleaseTaskSwitch(uint8_t i_NewStatu);
-static      void        SetStackHydrogenMarginMonitorTaskSwitch(uint8_t i_NewStatu);
-
-void        SetStackHydrgPressHighEnoughHookSwitch(u8);
-void        SetStackAnaSigAlarmRunningMonitorHookSwitch(u8);
+static      void        SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(uint8_t i_NewStatu);
 
 static      void        StackManagerTask(void);
 static      void        SetStackFanSpdAutoAdjSwitch(uint8_t);
@@ -102,7 +102,7 @@ static      void        SetStackFanSpdAutoAdjSwitch(uint8_t);
 static      void        StackManagerDlyStopTask(void);
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      CREATE STACK MANAGER TASK
 *
 * Description:  This function creates the stack manager task.
@@ -110,7 +110,7 @@ static      void        StackManagerDlyStopTask(void);
 * Arguments  :  none
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void StackManagerTaskCreate(void)
 {
@@ -135,7 +135,7 @@ void StackManagerTaskCreate(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      STACK MANAGER TASK
 *
 * Description:  The stack manager task.
@@ -143,7 +143,7 @@ void StackManagerTaskCreate(void)
 * Arguments  :  none
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void StackManagerTask(void)
 {
@@ -157,11 +157,15 @@ void StackManagerTask(void)
     {
         OSTaskSuspend(NULL, &err);
         StackWorkTimesInc();
+#ifdef STACK_FAN_PID_CONTROL
+        IncrementType_PID_Init();   //ÔöÁ¿Ê½PID³õÊ¼»¯
+#endif
         BSP_HydrgInValvePwrOn();
            
         APP_TRACE_INFO(("Stack manager start, waitting the hydrogen press up to 45KPa ...\n\r"));
         SetStackHydrgPressHighEnoughHookSwitch(DEF_ENABLED);
         SetStackStartPurifySwitch(DEF_ENABLED);//ÕýÔÚÅÅÔÓ×´Ì¬
+        
         OSTaskSemPend(0, OS_OPT_PEND_BLOCKING, NULL, &err); //½ÓÊÕÄ£ÄâÐÅºÅ¼à²âÈÎÎñÖÐÆøÑ¹¼à²âÈÎÎñÐÅºÅÁ¿
         SetStackFanCtlSpd(500);
         APP_TRACE_INFO(("Start the stack start purify...\n\r"));
@@ -169,22 +173,34 @@ void StackManagerTask(void)
         OSTimeDlyHMSM(0, 0, 5, 0, OS_OPT_TIME_HMSM_STRICT, &err);
         BSP_HydrgOutValvePwrOff();
         SetStackWorkStatu(EN_IN_WORK);
+        SetStackStartPurifySwitch(DEF_DISABLED);
         APP_TRACE_INFO(("Finish the stack start purify...\n\r"));
-        OSTaskResume(&HuaWeiModuleAdjustTaskTCB,  //»ªÎªÏÞÁ÷µ÷½ÚÈÎÎñ¿ªÊ¼
-                     &err);
-        fVoltage = GetSrcAnaSig(STACK_VOLTAGE);
-        if( fVoltage >= 48)                           //ÉèÖÃÎªµ±ÆøÑ¹´ïµ½45KPAµÄÊ±ºò£¬µçÑ¹48v´ò¿ªÖ±Á÷½Ó´¥Æ÷
-        {
-            BSP_DCConnectValvePwrOn();
-//            OSTaskResume(&HuaWeiModuleAdjustTaskTCB,  //»ªÎªÏÞÁ÷µ÷½ÚÈÎÎñ¿ªÊ¼
+
+//        fVoltage = GetSrcAnaSig(STACK_VOLTAGE);
+//        if( fVoltage >= 48)         //ÉèÖÃÎªµ±ÆøÑ¹´ïµ½45KPAµÄÊ±ºò£¬µçÑ¹48v´ò¿ªÖ±Á÷½Ó´¥Æ÷
+//        {
+//            BSP_DCConnectValvePwrOn();
+//            OSTaskResume(&DcModuleAdjustTaskTCB,  //»ªÎªÏÞÁ÷µ÷½ÚÈÎÎñ¿ªÊ¼
 //                          &err);
-        } 
+//        } 
+        BSP_DCConnectValvePwrOn();
+        OSTaskResume(&DcModuleAdjustTaskTCB,  //»ªÎªÏÞÁ÷µ÷½ÚÈÎÎñ¿ªÊ¼
+              &err);
+        
+        StackProgramControlPressureReleaseTaskCreate();        //µç¶Ñ³Ì¿ØÐ¹Ñ¹ÈÎÎñ´´½¨
+        StackHydrogenYieldMatchingOffsetValueMonitorTaskCreate();//µç¶ÑÆ¥ÇâÆ«ÒÆÁ¿¼à²âÈÎÎñ´´½¨
+        
         SetStackProgramControlAirPressureReleaseTaskSwitch(DEF_ENABLED);
-        SetStackHydrogenMarginMonitorTaskSwitch(DEF_ENABLED);
+        SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(DEF_ENABLED);
         SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(DEF_ENABLED);//1·ÖÖÓÇåÁãÒ»´ÎÅÅÆø´ÎÊý
         SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);
         SetStackFanSpdAutoAdjSwitch(DEF_ENABLED);
 
+        OSTaskResume(&StackProgramControlAirPressureReleaseTaskTCB,  //»Ö¸´µç¶Ñ³Ì¿ØÐ¹Ñ¹ÅÅÆøÈÎÎñ
+                     &err);
+        OSTaskResume(&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,  //»Ö¸´µç¶ÑÇâÆøÔ£¶È¼à²âÈÎÎñ
+                     &err);
+                     
         while(DEF_TRUE)
         {  
             OSSemPend(&StackManagerStopSem,
@@ -202,16 +218,21 @@ void StackManagerTask(void)
             if(g_fAmpIntegralSum >= 650.0){
                 if(OFF == GetStackOutAirValveStatus()){
                     SetStackNeedVentByAmpIntegralSumSwitch(DEF_ON);
-//                    g_fAmpIntegralSum = 0.0;//ÔÚÅÅÆø¿ª¹Ø´¦¹éÁã
+//                    g_fAmpIntegralSum = 0.0;//ÔÚÖÐ¶ÏÖÐÅÅÆø¿ª¹Ø´¦¹éÁã
                 }
             }
-                          
+#ifdef STACK_FAN_PID_CONTROL
+            IPID.CalcCycleCount++;
+            fOptimumStackTemp = CalcStackOptimumTemperatureByCurrent();
+            IncrementType_PID_Process(fOptimumStackTemp);
+            APP_TRACE_INFO(("--> IPID.Sv-Pv-Err-Err_Next-Err_Last-Pout-Iout-Dout-Out: %d--%d--%d--%d--%d--%.2f--%.2f--%.2f--%d:\r\n",IPID.Sv,IPID.Pv,IPID.Err,IPID.Err_Next,IPID.Err_Last,IPID.Pout,IPID.Iout,IPID.Dout,IPID.OutValue));
+#else
             //×Ô¶¯Ä£Ê½ÏÂ¸ù¾Ýµç¶ÑÎÂ¶È×Ô¶¯µ÷½Úµç¶Ñ·çÉÈËÙ¶È
             u8StackFansControlCycleCount++;
 
             if(g_u8StackFanAutoAdjSw == DEF_ENABLED) { 
                 if(u8StackFansControlCycleCount >=  STACK_FAN_CONTROL_CYCLE) {
-                    APP_TRACE_DEBUG(("Stack fans auto adjust ...\r\n"));
+                    APP_TRACE_INFO(("Stack fans auto adjust ...\r\n"));
                     fStackTemp = GetSrcAnaSig(STACK_TEMP);                    
                     if(fStackTemp <= 25) {
                         SetStackFanCtlSpd(500);
@@ -224,9 +245,11 @@ void StackManagerTask(void)
                     } else {
                         SetStackFanCtlSpd(2000);
                     }
+
                     u8StackFansControlCycleCount = 0;
                 }
-            } else {}     
+            } else {}
+#endif   
         }
         SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);
         SetStackFanSpdAutoAdjSwitch(DEF_ENABLED);//ÈôÕý³£ÔËÐÐ£¬»áÓÉµç¶ÑÑÓÊ±¹Ø±Õ³ÌÐò¹Ø±Õ£¬Ä¬ÈÏÓ¦´ò¿ª£¬¹ÊÔÚ´Ë´¦»Ö¸´
@@ -234,15 +257,15 @@ void StackManagerTask(void)
     }
 }
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                            SetStackFanSpdAutoAdjSwitch()
 *
 * Description:  Enable or Disable the stack fan auto adjust.
-*               µç¶Ñ·çÉÈ×Ô¶¯Ð£×¼¿ª¹Ø
+*               
 * Arguments  :  none
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void SetStackFanSpdAutoAdjSwitch(uint8_t i_NewStatu)
 {
@@ -259,7 +282,7 @@ uint8_t GetStackStartPurifySwitchStatus()
     return g_StackStartPurifySw;
 }
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                      CREATE THE STACK MANAGER DELAY STOP TASK
 *
 * Description:  This function creates the stack manager delay stop task.
@@ -267,7 +290,7 @@ uint8_t GetStackStartPurifySwitchStatus()
 * Arguments  :  none
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void StackManagerDlyStopTaskCreate()
 {
@@ -288,7 +311,7 @@ void StackManagerDlyStopTaskCreate()
     APP_TRACE_INFO(("Created the stack manager delay stop task, err code is %d...\n\r", err));
 }
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                   THE STACK MANAGER DELAY STOP TASK
 *
 * Description:  The stack manager delay stop task.
@@ -296,19 +319,18 @@ void StackManagerDlyStopTaskCreate()
 * Arguments  :  none
 *
 * Returns    :  none
-*********************************************************************************************************
+***************************************************************************************************
 */
 void StackManagerDlyStopTask(void)
 {
     OS_ERR      err;
-//    uint16_t    u16ShutDownHydrgPressBelow30KPaHoldSeconds = 0; //ÖÆÇâ»úÑ¹Á¦Ð¡ÓÚ30Kpa³ÖÐøÊ±¼ä
-    uint16_t    u16ShutDownStackFanDlySeconds = 0;              //¹Ø±Õµç¶Ñ¹ÜÀíÈÎÎñÊ±¼ä
+    uint16_t    u16ShutDownStackFanDlySeconds = 0;  //µç¶ÑÑÓÊ±¹Ø±ÕÊ±¼ä¼ÆÊ±
 
     while(DEF_TRUE) {
         
         OSTaskSuspend(NULL,
                       &err);
-        APP_TRACE_DEBUG(("The stack manager start to delay stop...\r\n"));
+        APP_TRACE_INFO(("The stack manager start to delay stop...\r\n"));
 
         g_eStackManagerStopDlyStatu = ON;
         SetStackFanSpdAutoAdjSwitch(DEF_DISABLED);  //¹Ø±Õ·ç»ú×Ô¶¯µ÷ËÙ
@@ -321,8 +343,8 @@ void StackManagerDlyStopTask(void)
                           &err);
             u16ShutDownStackFanDlySeconds ++;
 
-            //µç¶Ñ·çÉÈÑÓÊ±80Sºó¹Ø±Õ£¬Í¬Ê±¹ÒÆðµç¶ÑÍ£Ö¹ÈÎÎñ
-            if(u16ShutDownStackFanDlySeconds >= 80) {
+            //µç¶Ñ·çÉÈÑÓÊ±30Sºó¹Ø±Õ£¬Í¬Ê±¹ÒÆðµç¶ÑÍ£Ö¹ÈÎÎñ
+            if(u16ShutDownStackFanDlySeconds >= 30) {
                                 
                 OSSemPost(&StackManagerStopSem,
                           OS_OPT_POST_1,
@@ -332,23 +354,9 @@ void StackManagerDlyStopTask(void)
                               &err);
                 u16ShutDownStackFanDlySeconds = 0;
 
-                APP_TRACE_DEBUG(("The stack delay stop time arrive 80s,task sem send...\r\n"));
+                APP_TRACE_INFO(("The stack delay stop time arrive 30s,task sem send...\r\n"));
                 break;
             }
-
-//            if(GetSrcAnaSig(HYDROGEN_PRESS_1) >= 30) {
-//                u16ShutDownHydrgPressBelow30KPaHoldSeconds = 0;
-//            } else {
-//                u16ShutDownHydrgPressBelow30KPaHoldSeconds++;
-
-//                //µç¶ÑÆøÑ¹Ð¡ÓÚ30KpaµÄÊ±¼ä´ï30s
-//                if(u16ShutDownHydrgPressBelow30KPaHoldSeconds >= 30) {
-//                    OSSemPost(&StackManagerStopSem,
-//                              OS_OPT_POST_1,
-//                              &err);
-//                    u16ShutDownHydrgPressBelow30KPaHoldSeconds = 0;
-//                }
-//            }
         }
 
         BSP_HydrgInValvePwrOff();
@@ -406,7 +414,7 @@ void    StackHydrogenYieldMatchingOffsetValueMonitorTaskCreate()
                  (void *) 0,
                  (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                  (OS_ERR *)&err);
-    APP_TRACE_DEBUG(("Created the Stack V-hymo value monitor task, and err code is %d...\r\n", err));
+    APP_TRACE_INFO(("Created the Stack V-hymo value monitor task, and err code is %d...\r\n", err));
 }
 /*
 ***************************************************************************************************
@@ -426,48 +434,62 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
 {
     OS_ERR      err;
     float   fCurrent = 0.0;
-    float   fAmpIntegralSum = 0.0;        //°²ÅàÊ±¼ä»ý·ÖÖµ
-    float   fProportionalConstantA = 0.0;
+    float   fAmpIntegralValue = 0.0;        //°²ÅàÊ±¼ä»ý·ÖÖµ
+    float   fActualHydrogenMatchValue = 0.0;
+    static  uint8_t u8HydrogenYieldEnoughCount = 0;
+    static  uint8_t u8HydrogenYieldLackCount = 0;
     
     while(DEF_TRUE) {
         OSTaskSuspend(NULL, &err);
-
+        APP_TRACE_INFO(("**Resume Stack Hydrogen Yield Matching Offset Value Monitor Task...\r\n"));
         while(DEF_TRUE) {
             OSTaskSemPend(0,   //½ÓÊÕµç¶Ñ³Ì¿ØÐ¹Ñ¹ÈÎÎñÖÐµÄÊ±¼ä¼ÇÂ¼Íê³ÉÈÎÎñÐÅºÅÁ¿
                           OS_OPT_PEND_BLOCKING,
                           NULL,
                           &err);
             {
-                APP_TRACE_DEBUG(("-->fPurifyVentingTimeInterval:%.3f\r\n", StackVentAirTimeParameter.fVentAirTimeIntervalValue * 0.001));
-                APP_TRACE_DEBUG(("-->fDecompressVentingTime:%.3f\r\n", StackVentAirTimeParameter.fDecompressVentTimeValue * 0.001));
-
-                //°²ÅàÃë»ý·ÖÖµ¼ÆËã
+                //°²ÅàÊ±¼ä»ý·ÖÖµ¼ÆËã
                 fCurrent = GetSrcAnaSig(STACK_CURRENT);
-                APP_TRACE_DEBUG(("-->fCurrent:%.3f\r\n", fCurrent)); 
-                fAmpIntegralSum = (StackVentAirTimeParameter.fVentAirTimeIntervalValue * 0.001) * fCurrent;
+                fAmpIntegralValue = (StackVentAirTimeParameter.fVentAirTimeIntervalValue * 0.001) * fCurrent;
 
-                //°²ÅàÊ±¼ä³£Êý¼ÆËã
-                fProportionalConstantA = fAmpIntegralSum / (StackVentAirTimeParameter.fDecompressVentTimeValue * 0.001);
-                APP_TRACE_DEBUG(("-->fProportionalConstantA:%.3f\r\n", fProportionalConstantA));
-                //Æ¥ÇâÆ«ÒÆÖµ
-                g_fHydrogenYieldMatchOffsetValue = log(600 / fProportionalConstantA); //600Îª²âÊÔÖµA0
-                APP_TRACE_DEBUG(("-->g_fHydrogenYieldMatchOffsetValue:%.3f\r\r\n\n", g_fHydrogenYieldMatchOffsetValue));
+                //Êµ¼ÊÆ¥ÇâÖµ¼ÆËã
+                fActualHydrogenMatchValue = fAmpIntegralValue / (StackVentAirTimeParameter.fDecompressVentTimeValue * 0.001);
+                
+                //Æ¥ÇâÆ«ÒÆÖµln(600/ActualHydrogenMatchValue)
+                g_fHydrogenYieldMatchOffsetValue = log(600 / fActualHydrogenMatchValue); //600Îª²âÊÔÖµA0
 
-                if(g_fHydrogenYieldMatchOffsetValue > 0.5122) { //ÇâÆø²ú³öÊ±¼äÐ¡ÓÚ±ê×¼µÄ0.6±¶£¬²úÆø¹ý¶à
-                    //ÆøÁ¿³ä×ã,¿ÉÌá¸ßÊä³ö¹¦ÂÊ
-                    //ÏÞÁ÷µãÉÏÉý²ÉÓÃÖð´ÎÖÜÆÚÔö¼Ó
-                    
-
-                } else if(g_fHydrogenYieldMatchOffsetValue < -0.4041) { //ÇâÆø²ú³öÊ±¼ä´óÓÚ±ê×¼µÄ1.5±¶£¬²úÆø²»×ã
-                    //ÆøÁ¿²»×ã,ÏÞÖÆÊä³ö¹¦ÂÊ(ÏÞÁ÷ÏÞÑ¹)
-                    //ÏÞÁ÷µãÏÂ½µ²ÉÓÃÏßÐÔ½×¶Î¼õÐ¡
-                    
+                APP_TRACE_INFO(("-->Current-VentingInterval-DecompressTime:-#%.3f   -$%.3f   -&%.3f   \r\n", \
+                fCurrent,StackVentAirTimeParameter.fVentAirTimeIntervalValue * 0.001,StackVentAirTimeParameter.fDecompressVentTimeValue * 0.001));
+                
+                if(g_fHydrogenYieldMatchOffsetValue > 1.20) {//Æ¥ÇâÖµÐ¡ÓÚ±ê×¼µÄ0.3±¶£¬²úÆø³ä×ã£¬¿ÉÌá¸ßÊä³ö¹¦ÂÊ
+                    //ÏÞÁ÷µãÉÏÉýºÍÏÂ½µ¶¼²ÉÓÃÖð´ÎÖÜÆÚÔö¼Ó
+                    u8HydrogenYieldEnoughCount ++;
+                    u8HydrogenYieldLackCount = 0;
+                    if(u8HydrogenYieldEnoughCount >= 5){
+                        OSTaskSemPost(&DcModuleAdjustTaskTCB,
+                                      OS_OPT_POST_1,
+                                      &err);
+                        SetDcModuleCurrentLimitingPointImproveFlag(DEF_SET);
+                        u8HydrogenYieldEnoughCount = 0;
+                    }
+                } else if(g_fHydrogenYieldMatchOffsetValue < -0.40) {//Æ¥ÇâÖµ´óÓÚ±ê×¼µÄ1.5±¶£¬²úÆø²»×ã,ÏÞÖÆÊä³ö¹¦ÂÊ(ÏÞÁ÷ÏÞÑ¹) 
+                    u8HydrogenYieldLackCount ++;
+                    u8HydrogenYieldEnoughCount = 0;
+                    if(u8HydrogenYieldLackCount >= 5){
+                        OSTaskSemPost(&DcModuleAdjustTaskTCB,
+                                      OS_OPT_POST_1,
+                                      &err);
+                        SetDcModuleCurrentLimitingPointReduceFlag(DEF_SET);
+                        u8HydrogenYieldLackCount = 0;
+                    }
                 } else {
-                    //ÆøÁ¿ºÏÊÊ,ÇåÆøÁ¿Òì³£×´Ì¬±êÖ¾Î»
+                    //ÆøÁ¿ºÏÊÊ,Çå²»Õý³£¼ÆÊýÖµ
+                    u8HydrogenYieldEnoughCount = 0;
+                    u8HydrogenYieldLackCount = 0;
                 }
             }
 
-            if(g_u8StackHydrogenMarginMonitorTaskSw == DEF_DISABLED) {
+            if(g_u8StackHydrogenYieldMatchingOffsetValueMonitorTaskSw == DEF_DISABLED) {
                 break;
             }
         }
@@ -486,7 +508,7 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
 */
 float GetStackHydrogenYieldMatchOffsetValue(void)
 {
-    //ÏÞ¶¨Æ¥ÇâÆ«ÒÆÁ¿µÄÖµ£¬·ÀÖ¹Êý¾Ý´«ÊäÒç³ö
+    /* To prevent data transmission overflow */
     if(g_fHydrogenYieldMatchOffsetValue > 255.0 || g_fHydrogenYieldMatchOffsetValue < -255.0){
         g_fHydrogenYieldMatchOffsetValue = 0;
     }
@@ -523,7 +545,7 @@ void  StackProgramControlPressureReleaseTaskCreate(void)
                  (void *) 0,
                  (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                  (OS_ERR *)&err);
-    APP_TRACE_DEBUG(("Created the program control air pressure release task, and err code is %d...\r\n", err));
+    APP_TRACE_INFO(("Created the program control air pressure release task, and err code is %d...\r\n", err));
 }
 /*
 ***************************************************************************************************
@@ -545,48 +567,49 @@ void StackProgramControlAirPressureReleaseTask(void)
     
     while(DEF_TRUE) {
         OSTaskSuspend(NULL, &err);
-        
+        APP_TRACE_INFO(("**Stack Program Control Air Pressure Release Task...\r\n"));
         while(DEF_TRUE) {
-            OSTaskSemPend(0,   //½ÓÊÕAD²ÉÑùÖÐ¶ÏÖÐµÄÆøÑ¹¼à²âÅÐ¶¨ÈÎÎñÐÅºÅÁ¿
+            OSTaskSemPend(0,   //wait task sem from AD acquire interupt 
                           OS_OPT_PEND_BLOCKING,
                           NULL,
                           &err);
 
             if(err == OS_ERR_NONE) {
-                //¼à²âµ½ÆøÑ¹´ïµ½ÆøÑ¹ÉÏÏÞÐèÒª´ò¿ªÅÅÆø·§
+                //The air pressure reach the upper limit,need to open the exhaust valve
                 if(OFF == GetStackOutAirValveStatus()) {
-                    BSP_HydrgOutValvePwrOn();  //³Ì¿ØÐ¹Ñ¹ÅÅÆø
+                    BSP_HydrgOutValvePwrOn();  //program control release air press
                     fVolatageBefore = GetSrcAnaSig(STACK_VOLTAGE);
-                    g_u16StackExhaustTimesCount ++; //ÅÅÆø´ÎÊý¸üÐÂ
+                    g_u16StackExhaustTimesCount ++; //update exhaust time 
+                    APP_TRACE_INFO(("-->g_u16StackExhaustTimesCount:%d\r\n", g_u16StackExhaustTimesCount));
                     StackVentAirTimeParameter.fVentAirTimeIntervalValue = StackVentAirTimeParameter.u32_TimeRecordNum;//¼ÇÂ¼ÅÅÆø¼ä¸ô
-                    StackVentAirTimeParameter.u32_TimeRecordNum = 0;//ÇåÁã¼ÆÊýÖµ
+                    StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num 
                     u8VentAirTimeIntervalRecordFlag = YES;
                     SetStackOutAirValveStatus(ON);
-                    APP_TRACE_DEBUG(("-->fVolatageBefore:%.3f\r\n", fVolatageBefore));
+                    APP_TRACE_INFO(("-->fVolatageBefore:%.3f\r\n", fVolatageBefore));
                 }
-                //¼à²âµ½ÆøÑ¹´ïµ½ÆøÑ¹ÉÏÏÞÐèÒª¹Ø±ÕÅÅÆø·§
+                //The air pressure below the lower limit,need to close the exhaust valve
                 else if(ON == GetStackOutAirValveStatus()) {
                     BSP_HydrgOutValvePwrOff();
                     fVolatageAfter = GetSrcAnaSig(STACK_VOLTAGE); 
-                    BSP_StartRunningVentingTimeRecord();    //¿ªÊ¼¼ÇÂ¼ÅÅÆøÊ±¼ä²ÎÊý¼ÇÂ¼
+                    BSP_StartRunningVentingTimeRecord(); //Start recording the exhaust time parameter 
                     StackVentAirTimeParameter.fDecompressVentTimeValue = StackVentAirTimeParameter.u32_TimeRecordNum;//¼ÇÂ¼Ð¹Ñ¹Ê±¼ä
-                    StackVentAirTimeParameter.u32_TimeRecordNum = 0;//ÇåÁã¼ÆÊýÖµ
+                    StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num 
                     u8DecompressVentTimeRecordFlag = YES;
                     SetStackOutAirValveStatus(OFF);
-                    APP_TRACE_DEBUG(("-->fVolatageAfter:%.3f\r\n", fVolatageAfter));
-                    APP_TRACE_DEBUG(("-->fVpp:%.3f\r\n\r\n", fVolatageBefore - fVolatageAfter));
+                    APP_TRACE_INFO(("-->fVolatageAfter:%.3f\r\n", fVolatageAfter));
+                    APP_TRACE_INFO(("-->fVpp:%.3f\r\n\r\n", fVolatageBefore - fVolatageAfter));
                 } else {}
 
-
-                //·¢ËÍ¼ÇÂ¼µÄÊ±¼ä²ÎÊý¸øÇâÆøÔ£¶È¼ì²âÈÎÎñ
+                //Send task sem to V-HYMO monitor task
                 if((u8VentAirTimeIntervalRecordFlag == YES) && (u8DecompressVentTimeRecordFlag == YES)) {
                     OSTaskSemPost(&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,
                                   OS_OPT_POST_NO_SCHED,
                                   &err);
-                    u8VentAirTimeIntervalRecordFlag = NO;//ÖÃÎ»±êÖ¾
+                    u8VentAirTimeIntervalRecordFlag = NO;
                     u8DecompressVentTimeRecordFlag = NO;
                 }
 
+                /* Disable the task */
                 if(g_u8StackProgramControlAirPressureReleaseTaskSw == DEF_DISABLED) {
 
                     BSP_StopRunningVentingTimeRecord();
@@ -608,12 +631,21 @@ void StackProgramControlAirPressureReleaseTask(void)
 * Returns    :  none
 ***************************************************************************************************
 */
-//¸´Î»Ã¿·ÖÖÓµç¶ÑÅÅÆø´ÎÊý
 void ResetStackExhaustTimesCountPerMinutes()
 {
     g_u16StackExhaustTimesCount = 0;
 }
-
+/*
+***************************************************************************************************
+*                            SetStackOutAirValveStatus()
+*
+* Description:  Set stack out valve status.
+*
+* Arguments  :  none
+*
+* Returns    :  none
+***************************************************************************************************
+*/
 void SetStackOutAirValveStatus(SWITCH_TYPE_VARIABLE_Typedef i_NewStatu)
 {
     g_u8StackOutAirValveStatus = i_NewStatu;
@@ -634,13 +666,13 @@ SWITCH_TYPE_VARIABLE_Typedef GetStackOutAirValveStatus()
 * Returns    :  none
 ***************************************************************************************************
 */
-static void SetStackHydrogenMarginMonitorTaskSwitch(uint8_t i_NewStatu)
+static void SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(uint8_t i_NewStatu)
 {
-    g_u8StackHydrogenMarginMonitorTaskSw = i_NewStatu;
+    g_u8StackHydrogenYieldMatchingOffsetValueMonitorTaskSw = i_NewStatu;
 }
-uint8_t GetSStackHydrogenMarginMonitorTaskSwitchStatus()
+uint8_t GetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitchStatus()
 {
-    return g_u8StackHydrogenMarginMonitorTaskSw ;
+    return g_u8StackHydrogenYieldMatchingOffsetValueMonitorTaskSw ;
 }
 
 static void SetStackProgramControlAirPressureReleaseTaskSwitch(uint8_t i_NewStatu)

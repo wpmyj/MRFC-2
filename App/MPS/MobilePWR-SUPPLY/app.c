@@ -1,25 +1,24 @@
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                              APPLICATION CODE
 *
-*                          (c) Copyright 2015; Guangdong Hydrogen Energy Science And Technology Co.,Ltd
+*                          (c) Copyright 2016; Guangdong ENECO Science And Technology Co.,Ltd
 *
 *               All rights reserved.  Protected by international copyright laws.
 *               Knowledge of the source code may NOT be used without authorization.
-*********************************************************************************************************
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 * Filename      : app.c
 * Version       : V1.00
-* Programmer(s) : 
-*********************************************************************************************************
+* Programmer(s) : Fanjun
+***************************************************************************************************
 */
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                             INCLUDE FILES
-*********************************************************************************************************
-*/
+***************************************************************************************************/
 #include <includes.h>
 #include <os_app_hooks.h>
 #include "app_system_real_time_parameters.h"
@@ -30,46 +29,36 @@
 #include "app_wireness_communicate_task.h"
 #include "app_analog_signal_monitor_task.h"
 #include "app_digital_signal_monitor_task.h"
-#include "app_speed_control_device_monitor_task.h"
-#include "app_screen_display_task.h"
-#include "RS485CommWithUart5TaskCreate.h"
 #include "Make_Vacuum.h"
-#include "Time.h"
-#include "app_huawei_communicate_task.h"
-#include "bsp_huawei_485_adjust.h"
+#include "app_dc_module_communicate_task.h"
+#include "bsp_dc_module_adjust.h"
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                           MACRO DEFINITIONS
-*********************************************************************************************************
+***************************************************************************************************
 */
-#define  APP_TASK_START_STK_SIZE                    1024         /*size of TASK STK*/
+#define  APP_TASK_START_STK_SIZE                    128
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
-*********************************************************************************************************
+***************************************************************************************************
 */
-extern      OS_SEM      g_stAnaSigConvertFinishSem;
-extern      OS_SEM      IgniteFirstBehindWaitSem;
-
-
-extern      OS_SEM      IgniteSecondBehindWaitSem;
-extern      OS_SEM      MannualSelcetWorkModeSem;
-
 OS_TCB      AppTaskStartTCB;
 
-static CPU_STK_8BYTE_ALIGNED AppTaskStartStk[APP_TASK_START_STK_SIZE];
+static      CPU_STK_8BYTE_ALIGNED     AppTaskStartStk[APP_TASK_START_STK_SIZE];
+
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
-*********************************************************************************************************
+***************************************************************************************************
 */
 
 static      void        AppTaskStart(void *p_arg);
 static      void        USER_NVIC_Cfg(void);
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                                main()
 *
 * Description : This is the standard entry point for C code.  It is assumed that your code will call
@@ -78,7 +67,7 @@ static      void        USER_NVIC_Cfg(void);
 * Arguments   : none
 *
 * Returns     : none
-*********************************************************************************************************
+***************************************************************************************************
 */
 int  main(void)
 {
@@ -108,7 +97,7 @@ int  main(void)
 }
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          STARTUP TASK
 *
 * Description : This is the code of the startup task.
@@ -119,14 +108,14 @@ int  main(void)
 *
 * Notes       : 1) The first line of code is used to prevent a compiler warning because 'p_arg' is not
 *                  used.  The compiler should not generate any code for this statement.
-*********************************************************************************************************
+***************************************************************************************************
 */
 static  void  AppTaskStart(void *p_arg)
 {
     CPU_INT32U  cpu_clk_freq;
     CPU_INT32U  cnts;
     OS_ERR      err;
-    uint8_t i = 0;
+//    uint8_t i = 0;
     
     VERIFY_RESULT_TYPE_VARIABLE_Typedef eWaitCmdCheckStatu;
 
@@ -167,7 +156,9 @@ static  void  AppTaskStart(void *p_arg)
     OSSemCreate(&IgniteFirstBehindWaitSem, "Fast heater finish sem", 0, &err);
     OSSemCreate(&IgniteSecondBehindWaitSem, "IgniteSecondBehindWaitSem...", 0, &err);
     
-    LoadParameters();                   // 运行参数的初始化，后面需要用到的参数，故需要放在前面。
+    LoadDriverLayerParameters(); //载入驱动层参数，需要放在前面
+
+    LoadApplicationLayerParameters();//载入应用层参数
 
     App_OS_SetAllHooks();               // 用户应用相关介入函数设置
 
@@ -177,24 +168,19 @@ static  void  AppTaskStart(void *p_arg)
 
     DigSigMonitorTaskCreate();          // 数字信号监测任务创建
 
-//    SpdCtlDevMonitorTaskCreate();       // 调速设备监测任务
-
-    WirenessCommTaskCreate();           // 无线通信任务创建
+    CommunicateTaskCreate();           // 无线通信任务创建
     
-//    RS485CommWithUart5TaskCreate();                     //485与串口通信的任务搭建
-    HuaWeiModuleAdjustTaskCreate();
+    DcModuleAdjustTaskCreate();  //DC动态限流调节任务
 
-//    Make_Vacuum_FunctionTaskCreate();                   //抽真空函数任务的搭建
-    
-//    SerToScreenDisplayTaskCreate();     // 串口显示屏显示任务创建
+//    Make_Vacuum_FunctionTaskCreate(); //抽真空函数任务的搭建
 
-//    IgniterWorkTaskCreate();            // 点火工作任务创建
+    IgniterWorkTaskCreate();            // 点火工作任务创建
 
-//    HydrgProducerManagerTaskCreate();   // 制氢机管理任务
+    HydrgProducerManagerTaskCreate();   // 制氢机管理任务
 
     StackManagerTaskCreate();           // 电堆管理任务
 
-//    HydrgProducerDlyStopTaskCreate();   // 制氢机延时关闭任务
+    HydrgProducerDlyStopTaskCreate();   // 制氢机延时关闭任务
 
     StackManagerDlyStopTaskCreate();    // 电堆延时关闭任务
 
@@ -206,64 +192,44 @@ static  void  AppTaskStart(void *p_arg)
     APP_TRACE_INFO(("Running top Task...\r\n"));
     
     while(DEF_TRUE)
-    {        
-        Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
-        OSTimeDlyHMSM(0, 0, 2, 000, OS_OPT_TIME_HMSM_STRICT, &err);
-        for(i= 0;i< RS485_RX_CNT;i++){
-            APP_TRACE_INFO(("RS485_RX_BUF1[%d]:=%X...\n\r",i,RS485_RX_BUF[i]));
+    {                   
+        if( EN_THROUGH == CheckAuthorization() )
+        {          
+            eWaitCmdCheckStatu = WaittingCommand();                                        
+            if( EN_THROUGH == eWaitCmdCheckStatu ) 
+            {
+                Starting();            
+                Running();
+                KeepingWarm();                                                  
+            }
+            else
+            {
+                SetSystemWorkStatu( EN_ALARMING );
+                DeviceFaultAlarm();
+            }
         }
-        RS485_RX_CNT =0;
-        OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
-        Bsp_SetHWmoduleOutPutVIvalue(50.50,20.0);
-        OSTimeDlyHMSM(0, 0, 2, 000, OS_OPT_TIME_HMSM_STRICT, &err);
-        for(i= 0;i< RS485_RX_CNT;i++){
-            APP_TRACE_INFO(("RS485_RX_BUF2[%d]:=%X...\n\r",i,RS485_RX_BUF[i]));
+        else
+        {
+            SetSystemWorkStatu( EN_ALARMING );
+            DeviceFaultAlarm();
         }
-        OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
-        RS485_RX_CNT =0;
-        
-        
     }
-//    while(DEF_TRUE)
-//    {                   
-//        if( EN_THROUGH == CheckAuthorization() )
-//        {          
-//            eWaitCmdCheckStatu = WaittingCommand();                                        
-//            if( EN_THROUGH == eWaitCmdCheckStatu ) 
-//            {
-//                Starting();            
-//                Running();
-//                KeepingWarm();                                                  
-//            }
-//            else
-//            {
-//                SetSystemWorkStatu( EN_ALARMING );
-//                DeviceFaultAlarm();
-//            }
-//        }
-//        else
-//        {
-//            SetSystemWorkStatu( EN_ALARMING );
-//            DeviceFaultAlarm();
-//        }
-
-//    }
 
 }
 
 
 /*
-*********************************************************************************************************
+***************************************************************************************************
 *                                          USER NVICConfiguration
 *
 * Description : The use of this funciton is to set the interrupt group.
-*               用户中断优先级配置
+*               
 * Arguments   : none.
 *
 * Returns     : none
 *
 * Notes       : none.
-*********************************************************************************************************
+***************************************************************************************************
 */
 void USER_NVIC_Cfg( void )
 {
