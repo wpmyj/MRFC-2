@@ -27,8 +27,7 @@
 *                                       LOCAL GLOBAL VARIABLES
 ***************************************************************************************************
 */
-NTC_PARAMETER_TABLE_Typedef NTC_PARAMTET_TABLE[166] =
-{
+NTC_PARAMETER_TABLE_Typedef NTC_PARAMTET_TABLE[166] = {
     { -40,   4071370},
     { -39,   3799004},
     { -38,   3546481},
@@ -218,20 +217,13 @@ int8_t GetSrcTemp(double Rt_Value)
 
 //  printf("the mid_Rt is %d \r\n",m_u32Rt_Value);
 
-    if(m_u32Rt_Value < NTC_PARAMTET_TABLE[165].resistance)
-    {
+    if(m_u32Rt_Value < NTC_PARAMTET_TABLE[165].resistance) {
         return NTC_PARAMTET_TABLE[165].temp;
-    }
-    else if(m_u32Rt_Value > NTC_PARAMTET_TABLE[0].resistance)
-    {
+    } else if(m_u32Rt_Value > NTC_PARAMTET_TABLE[0].resistance) {
         return -40;
-    }
-    else
-    {
-        for(i = 164; i > 0;)
-        {
-            if(m_u32Rt_Value <= NTC_PARAMTET_TABLE[i].resistance)
-            {
+    } else {
+        for(i = 164; i > 0;) {
+            if(m_u32Rt_Value <= NTC_PARAMTET_TABLE[i].resistance) {
                 break;
                 //  return  NTC_PARAMTET_TABLE[i].temp;
             }
@@ -247,27 +239,27 @@ int8_t GetSrcTemp(double Rt_Value)
 
 uint8_t GetSourceTemp(double Rt_Value)
 {
-	int i;
-	uint32_t m_u32Rt_Value = (uint32_t)Rt_Value;
+    int i;
+    uint32_t m_u32Rt_Value = (uint32_t)Rt_Value;
 
 
-	if(m_u32Rt_Value < NTC_PARAMTET_TABLE[125].resistance)
-	{
-		return 125;
-	}
-	if(m_u32Rt_Value > NTC_PARAMTET_TABLE[0].resistance)
-	{
-		return 0;
-	}
-	for(i = 125; i >= 0;)
-	{		
-		if(m_u32Rt_Value <= NTC_PARAMTET_TABLE[i].resistance)
-		{
-			break;
-		}
-		i --;
-	}
-	return 	NTC_PARAMTET_TABLE[i].temp;
+    if(m_u32Rt_Value < NTC_PARAMTET_TABLE[125].resistance) {
+        return 125;
+    }
+
+    if(m_u32Rt_Value > NTC_PARAMTET_TABLE[0].resistance) {
+        return 0;
+    }
+
+    for(i = 125; i >= 0;) {
+        if(m_u32Rt_Value <= NTC_PARAMTET_TABLE[i].resistance) {
+            break;
+        }
+
+        i --;
+    }
+
+    return  NTC_PARAMTET_TABLE[i].temp;
 }
 
 

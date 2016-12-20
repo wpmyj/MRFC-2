@@ -50,8 +50,7 @@ extern "C" {
   * @brief  CAN init structure definition
   */
 
-typedef struct
-{
+typedef struct {
     uint16_t CAN_Prescaler;   /*!< Specifies the length of a time quantum.
                                  It ranges from 1 to 1024. */
 
@@ -103,8 +102,7 @@ typedef struct
   * @brief  CAN filter init structure definition
   */
 
-typedef struct
-{
+typedef struct {
     uint16_t CAN_FilterIdHigh;         /*!< Specifies the filter identification number (MSBs for a 32-bit
                                               configuration, first one for a 16-bit configuration).
                                               This parameter can be a value between 0x0000 and 0xFFFF */
@@ -142,8 +140,7 @@ typedef struct
   * @brief  CAN Tx message structure definition
   */
 
-typedef struct
-{
+typedef struct {
     uint32_t StdId;  /*!< Specifies the standard identifier.
                         This parameter can be a value between 0 to 0x7FF. */
 
@@ -170,8 +167,7 @@ typedef struct
   * @brief  CAN Rx message structure definition
   */
 
-typedef struct
-{
+typedef struct {
     uint32_t StdId;  /*!< Specifies the standard identifier.
                         This parameter can be a value between 0 to 0x7FF. */
 

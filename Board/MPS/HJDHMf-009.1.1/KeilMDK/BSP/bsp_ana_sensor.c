@@ -74,8 +74,7 @@ static      uint8_t     g_u8AnaSensorTypeNmb[BSP_ANA_SENSORS_NMB] = {0};
 
 //线性输出的传感器相关参数
 static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorParameter[BSP_ANA_SENSORS_NMB];
-static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorDefaultParameter[BSP_ANA_SENSORS_NMB] =
-{
+static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorDefaultParameter[BSP_ANA_SENSORS_NMB] = {
     {0, 0xFFFF},       //电堆温度
     {827, 32.0},     //电压，采用电压传感器，比率还会做适当调整
     {2007.35, 16.059}, //电流
@@ -85,7 +84,7 @@ static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorDefaultParameter[
     {708.98, 3.1767},  // 液位
     {0, 1241.21},      // 预留1
     {0, 1241.21}       // 预留2
-}; 
+};
 
 static      float       g_fAnaSigAnaValue[BSP_ANA_SENSORS_NMB] = {0};//产生当前数字信号的源物理信号值（标准单位）
 
@@ -134,10 +133,10 @@ ErrorStatus BSP_GetCalibratedAnaSensorPara(ANALOG_SIGNAL_SERSOR_PARAMETERS_Typed
     OSTimeDlyHMSM(0, 0, 0, 10,                      //等待传感器上电充分
                   OS_OPT_TIME_HMSM_STRICT,
                   &err);
-    
+
 //    AnaSigSampleStart();    //模拟信号采样开始，在中断中开始下一次采样
     for(i = 0; i < NMB_OF_AVERAGE_WHEN_CALIBRATION; i++) {
-        
+
         AnaSigSampleStart();    //模拟信号采样开始，在中断中开始下一次采样
         OSSemPend(&g_stAnaSigConvertFinishSem,
                   OS_CFG_TICK_RATE_HZ,
@@ -260,23 +259,24 @@ void AnaSensorSelfCheck(void)
     //电堆温度不需要调零处理
     Temp = g_u16OriginalDigValue[0];
 
-    if(Temp >= (3775.43))//端口悬空对应的值
-    {
+    if(Temp >= (3775.43)) { //端口悬空对应的值
         SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaTempBit);
-    }else {
+    } else {
         ResetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaTempBit);
     }
 
     //电堆电压
     Temp = g_u16OriginalDigValue[1] - g_stAnaSigSensorParameter[1].BaseDigValue;
-    if(Temp >= 200 || Temp <= -200){
+
+    if(Temp >= 200 || Temp <= -200) {
         SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaVoltageBit);
-    }else{
+    } else {
         ResetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaCurrentBit);
     }
 
     //电堆电流
     Temp = g_u16OriginalDigValue[2] - g_stAnaSigSensorParameter[2].BaseDigValue;
+
     if(Temp >= 200 || Temp <= -200) {
         SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaCurrentBit);
     } else {
@@ -285,6 +285,7 @@ void AnaSensorSelfCheck(void)
 
     //液压
     Temp = g_u16OriginalDigValue[3] - g_stAnaSigSensorParameter[3].BaseDigValue;
+
     if(Temp >= 200 || Temp <= -200) {
         SetMachinePartASelfCheckCodeBit(SelfCheckCodeGrpHydrgLqdPressBit);
     } else {
@@ -293,6 +294,7 @@ void AnaSensorSelfCheck(void)
 
     //气压1
     Temp = g_u16OriginalDigValue[4] - g_stAnaSigSensorParameter[4].BaseDigValue;
+
     if(Temp >= 200 || Temp <= -200) {
         SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaHydrgPressBit);
     } else {
@@ -334,7 +336,7 @@ void AnaSensorSelfCheck(void)
 *                                                UpdateAnaSigDigValue()
 *
 * Description : The function can convert the digtal value of the analog sersor to natural signal.
-*               
+*
 * Arguments   : none.
 *
 * Returns     : none.
@@ -348,15 +350,13 @@ void UpdateAnaSigDigValue()
 {
     uint8_t     i;
 
-    if(g_u8FilterOperationCursor >= NMB_OF_AVERAGE_ANALOG_SIGNAL_SAMPLE)
-    {
+    if(g_u8FilterOperationCursor >= NMB_OF_AVERAGE_ANALOG_SIGNAL_SAMPLE) {
         g_u8FilterOperationCursor = 0;
     }
 
     //数据滤波算法:滤波值=[(总和-滤波值)+原始值]/采样总数
-    for(i = 0; i < BSP_ANA_SENSORS_NMB; i++)
-    {
-        if(i != HYDROGEN_PRESS_1){//电堆气压值不滤波
+    for(i = 0; i < BSP_ANA_SENSORS_NMB; i++) {
+        if(i != HYDROGEN_PRESS_1) { //电堆气压值不滤波
             g_fDigValueSum[i] -= g_u32DigValueFilter[i][g_u8FilterOperationCursor];
             g_u32DigValueFilter[i][g_u8FilterOperationCursor] = g_u16OriginalDigValue[i];
             g_fDigValueSum[i] += g_u32DigValueFilter[i][g_u8FilterOperationCursor];
@@ -373,7 +373,7 @@ void UpdateAnaSigDigValue()
 *                                                BSP_GetSourceAnaSig()
 *
 * Description : The function can convert the digtal value of the analog sensor to natural signal.
-*				
+*
 * Arguments   : i_eAnaSigKind --获取的模拟信号类型.
 *
 * Returns     : g_fAnaSigAnaValue
@@ -385,86 +385,61 @@ void UpdateAnaSigDigValue()
 
 float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
 {
-	float fMidRtMul100K, fRtValue;
-	
-	if(STACK_TEMP == i_eAnaSigKind)
-	{
-			fMidRtMul100K = 59000 * (3.3 * g_fDigFilteredValue[STACK_TEMP] / 5.0 / 4095)/(1 - 3.3 * g_fDigFilteredValue[STACK_TEMP] / 5.0 / 4095);
-			fRtValue = fMidRtMul100K * 100000 / (100000 - fMidRtMul100K);
-			g_fAnaSigAnaValue[STACK_TEMP] = (float)(GetSourceTemp(fRtValue));
+    float fMidRtMul100K, fRtValue;
+
+    if(STACK_TEMP == i_eAnaSigKind) {
+        fMidRtMul100K = 59000 * (3.3 * g_fDigFilteredValue[STACK_TEMP] / 5.0 / 4095) / (1 - 3.3 * g_fDigFilteredValue[STACK_TEMP] / 5.0 / 4095);
+        fRtValue = fMidRtMul100K * 100000 / (100000 - fMidRtMul100K);
+        g_fAnaSigAnaValue[STACK_TEMP] = (float)(GetSourceTemp(fRtValue));
 //            APP_TRACE_INFO(("--> g_fDigFilteredValue[STACK_TEMP]: %f \r\n", g_fDigFilteredValue[STACK_TEMP]));
 //            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[STACK_TEMP]: %f \r\n\r\n", g_fAnaSigAnaValue[STACK_TEMP]));
-	}
-	else
-	{
-		if(STACK_VOLTAGE == i_eAnaSigKind)
-		{
-			if(g_fDigFilteredValue[STACK_VOLTAGE] <= g_stAnaSigSensorParameter[STACK_VOLTAGE].BaseDigValue)
-			{
-				g_fAnaSigAnaValue[STACK_VOLTAGE] = 0.0;
-			}
-			else
-			{
+    } else {
+        if(STACK_VOLTAGE == i_eAnaSigKind) {
+            if(g_fDigFilteredValue[STACK_VOLTAGE] <= g_stAnaSigSensorParameter[STACK_VOLTAGE].BaseDigValue) {
+                g_fAnaSigAnaValue[STACK_VOLTAGE] = 0.0;
+            } else {
                 g_fAnaSigAnaValue[STACK_VOLTAGE] = (g_fDigFilteredValue[STACK_VOLTAGE] - g_stAnaSigSensorParameter[STACK_VOLTAGE].BaseDigValue) / g_stAnaSigSensorParameter[STACK_VOLTAGE].AnaToDigRatio;
-			}
+            }
+
 //            APP_TRACE_INFO(("--> g_fDigFilteredValue[STACK_VOLTAGE]: %f \r\n", g_fDigFilteredValue[STACK_CURRENT]));
 //            APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[STACK_VOLTAGE].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[STACK_VOLTAGE].BaseDigValue));
 //            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[STACK_VOLTAGE]: %f \r\n\r\n", g_fAnaSigAnaValue[STACK_VOLTAGE]));
-			
-		}
-		else if(STACK_CURRENT == i_eAnaSigKind)
-		{   
-			if(g_fDigFilteredValue[STACK_CURRENT] <= g_stAnaSigSensorParameter[STACK_CURRENT].BaseDigValue)
-			{
-				g_fAnaSigAnaValue[STACK_CURRENT] = 0.0;
-			}
-			else if(g_fDigFilteredValue[STACK_CURRENT] >= 4014.71)
-			{
-				 g_fAnaSigAnaValue[STACK_CURRENT] = 100.0;
-			}
-			else    
-			{
-				g_fAnaSigAnaValue[STACK_CURRENT] = (fabs((g_fDigFilteredValue[STACK_CURRENT] - g_stAnaSigSensorParameter[STACK_CURRENT].BaseDigValue)+ 1) / g_stAnaSigSensorParameter[STACK_CURRENT].AnaToDigRatio);
-			}
+
+        } else if(STACK_CURRENT == i_eAnaSigKind) {
+            if(g_fDigFilteredValue[STACK_CURRENT] <= g_stAnaSigSensorParameter[STACK_CURRENT].BaseDigValue) {
+                g_fAnaSigAnaValue[STACK_CURRENT] = 0.0;
+            } else if(g_fDigFilteredValue[STACK_CURRENT] >= 4014.71) {
+                g_fAnaSigAnaValue[STACK_CURRENT] = 100.0;
+            } else {
+                g_fAnaSigAnaValue[STACK_CURRENT] = (fabs((g_fDigFilteredValue[STACK_CURRENT] - g_stAnaSigSensorParameter[STACK_CURRENT].BaseDigValue) + 1) / g_stAnaSigSensorParameter[STACK_CURRENT].AnaToDigRatio);
+            }
+
 //            APP_TRACE_INFO(("--> g_fDigFilteredValue[STACK_CURRENT]: %f \r\n", g_fDigFilteredValue[STACK_CURRENT]));
 //            APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[STACK_CURRENT].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[STACK_CURRENT].BaseDigValue));
-//            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[STACK_CURRENT]: %f \r\n\r\n", g_fAnaSigAnaValue[STACK_CURRENT]));            
-		}
-		else if(LIQUID_PRESS == i_eAnaSigKind)
-		{
-			if(g_fDigFilteredValue[LIQUID_PRESS] <= g_stAnaSigSensorParameter[LIQUID_PRESS].BaseDigValue)
-			{
-				g_fAnaSigAnaValue[LIQUID_PRESS] = 0.0;
-			}
-			else if(g_fDigFilteredValue[LIQUID_PRESS] >= 3970.91)
-			{
-				 g_fAnaSigAnaValue[LIQUID_PRESS] = 25.0;
-			}
-			else
-			{
-				g_fAnaSigAnaValue[LIQUID_PRESS] = (fabs((g_fDigFilteredValue[LIQUID_PRESS] - g_stAnaSigSensorParameter[LIQUID_PRESS].BaseDigValue) +1) / g_stAnaSigSensorParameter[LIQUID_PRESS].AnaToDigRatio);
-			}
-		}
-		else if(HYDROGEN_PRESS_1 == i_eAnaSigKind)
-		{
-            
-			if(g_fDigFilteredValue[HYDROGEN_PRESS_1] <= g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue)
-			{
-				g_fAnaSigAnaValue[HYDROGEN_PRESS_1] = 0.0;
-			}
-			else if(g_fDigFilteredValue[HYDROGEN_PRESS_1] >= 3040.23)
-			{
-				 g_fAnaSigAnaValue[HYDROGEN_PRESS_1] = 80.0;
-			}																				 
-			else
-			{			
-				g_fAnaSigAnaValue[HYDROGEN_PRESS_1] = (fabs((g_fDigFilteredValue[HYDROGEN_PRESS_1] - g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue)+ 1) / g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].AnaToDigRatio);
-			}
+//            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[STACK_CURRENT]: %f \r\n\r\n", g_fAnaSigAnaValue[STACK_CURRENT]));
+        } else if(LIQUID_PRESS == i_eAnaSigKind) {
+            if(g_fDigFilteredValue[LIQUID_PRESS] <= g_stAnaSigSensorParameter[LIQUID_PRESS].BaseDigValue) {
+                g_fAnaSigAnaValue[LIQUID_PRESS] = 0.0;
+            } else if(g_fDigFilteredValue[LIQUID_PRESS] >= 3970.91) {
+                g_fAnaSigAnaValue[LIQUID_PRESS] = 25.0;
+            } else {
+                g_fAnaSigAnaValue[LIQUID_PRESS] = (fabs((g_fDigFilteredValue[LIQUID_PRESS] - g_stAnaSigSensorParameter[LIQUID_PRESS].BaseDigValue) + 1) / g_stAnaSigSensorParameter[LIQUID_PRESS].AnaToDigRatio);
+            }
+        } else if(HYDROGEN_PRESS_1 == i_eAnaSigKind) {
+
+            if(g_fDigFilteredValue[HYDROGEN_PRESS_1] <= g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue) {
+                g_fAnaSigAnaValue[HYDROGEN_PRESS_1] = 0.0;
+            } else if(g_fDigFilteredValue[HYDROGEN_PRESS_1] >= 3040.23) {
+                g_fAnaSigAnaValue[HYDROGEN_PRESS_1] = 80.0;
+            } else {
+                g_fAnaSigAnaValue[HYDROGEN_PRESS_1] = (fabs((g_fDigFilteredValue[HYDROGEN_PRESS_1] - g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue) + 1) / g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].AnaToDigRatio);
+            }
+
 //            APP_TRACE_INFO(("--> g_fDigFilteredValue[HYDROGEN_PRESS_1]: %f \r\n", g_fDigFilteredValue[HYDROGEN_PRESS_1]));
 //            APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue));
 //            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[HYDROGEN_PRESS_1]: %f \r\n\r\n", g_fAnaSigAnaValue[HYDROGEN_PRESS_1]));
-		}
-		else{}
-	}
-	return 	g_fAnaSigAnaValue[i_eAnaSigKind];
+        } else {}
+    }
+
+    return  g_fAnaSigAnaValue[i_eAnaSigKind];
 }

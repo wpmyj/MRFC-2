@@ -47,8 +47,7 @@ extern "C" {
   * @brief  FLASH Status
   */
 
-typedef enum
-{
+typedef enum {
     FLASH_BUSY = 1,
     FLASH_ERROR_PG,
     FLASH_ERROR_WRP,

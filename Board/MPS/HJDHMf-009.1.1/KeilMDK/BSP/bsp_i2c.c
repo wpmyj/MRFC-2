@@ -142,8 +142,7 @@
 ***************************************************************************************************
 */
 
-typedef  struct bsp_i2c_dev_status
-{
+typedef  struct bsp_i2c_dev_status {
     CPU_INT08U   AccessType;                                    /* Transfer Access Type RD/WR/WR_RD                     */
     CPU_INT08U   Addr;                                          /* I2C slave address                                    */
     CPU_INT08U   State;                                         /* Current transfer state                               */
@@ -154,8 +153,7 @@ typedef  struct bsp_i2c_dev_status
 } BSP_I2C_DEV_STATUS;
 
 
-typedef  struct  bsp_i2c_reg
-{
+typedef  struct  bsp_i2c_reg {
     CPU_REG32   I2C_CR1;
     CPU_REG32   I2C_CR2;
     CPU_REG32   I2C_OAR1;
@@ -256,8 +254,7 @@ CPU_BOOLEAN  BSP_I2C_Init(CPU_INT08U  i2c_id,
 
 
     /* ------------- ARGUMENTS CHECKING ----------------- */
-    switch(i2c_id)
-    {
+    switch(i2c_id) {
         case BSP_I2C_ID_I2C1:
             p_i2c_reg        = (BSP_I2C_REG *)BSP_I2C_REG_I2C1_BASE_ADDR;
             p_i2c_dev_status = (BSP_I2C_DEV_STATUS *)&BSP_I2C_DevTbl[0];
@@ -296,8 +293,7 @@ CPU_BOOLEAN  BSP_I2C_Init(CPU_INT08U  i2c_id,
                            (BSP_OS_SEM_VAL) 0,
                            (CPU_CHAR *) "I2C Wait");
 
-    if(err == DEF_FAIL)
-    {
+    if(err == DEF_FAIL) {
         return (DEF_FAIL);
     }
 
@@ -305,8 +301,7 @@ CPU_BOOLEAN  BSP_I2C_Init(CPU_INT08U  i2c_id,
                            (BSP_OS_SEM_VAL) 1,
                            (CPU_CHAR *)"I2C Lock");
 
-    if(err == DEF_FAIL)
-    {
+    if(err == DEF_FAIL) {
         return (DEF_FAIL);
     }
 
@@ -314,8 +309,7 @@ CPU_BOOLEAN  BSP_I2C_Init(CPU_INT08U  i2c_id,
     RCC_GetClocksFreq(&rcc_clocks);
     pclk_freq = rcc_clocks.PCLK1_Frequency;
 
-    if(pclk_freq > BSP_I2C_PER_CLK_MAX_FREQ_HZ)
-    {
+    if(pclk_freq > BSP_I2C_PER_CLK_MAX_FREQ_HZ) {
         return (DEF_FAIL);
     }
 
@@ -327,11 +321,9 @@ CPU_BOOLEAN  BSP_I2C_Init(CPU_INT08U  i2c_id,
                          & BSP_I2C_REG_CR2_FREQ_MASK;
 
     /* Calculate the clock divider                         */
-    switch(i2c_mode)
-    {
+    switch(i2c_mode) {
         case BSP_I2C_MODE_STANDARD:
-            if(clk_freq > BSP_I2C_MODE_STANDARD_MAX_FREQ_HZ)
-            {
+            if(clk_freq > BSP_I2C_MODE_STANDARD_MAX_FREQ_HZ) {
                 return (DEF_FAIL);
             }
 
@@ -340,8 +332,7 @@ CPU_BOOLEAN  BSP_I2C_Init(CPU_INT08U  i2c_id,
             break;
 
         case BSP_I2C_MODE_FAST_1_2:
-            if(clk_freq > BSP_I2C_MODE_FAST_MAX_FREQ_HZ)
-            {
+            if(clk_freq > BSP_I2C_MODE_FAST_MAX_FREQ_HZ) {
                 return (DEF_FAIL);
             }
 
@@ -352,8 +343,7 @@ CPU_BOOLEAN  BSP_I2C_Init(CPU_INT08U  i2c_id,
 
 
         case BSP_I2C_MODE_FAST_16_9:
-            if(clk_freq > BSP_I2C_MODE_FAST_MAX_FREQ_HZ)
-            {
+            if(clk_freq > BSP_I2C_MODE_FAST_MAX_FREQ_HZ) {
                 return (DEF_FAIL);
             }
 
@@ -366,8 +356,7 @@ CPU_BOOLEAN  BSP_I2C_Init(CPU_INT08U  i2c_id,
     p_i2c_reg->I2C_CCR = reg_val;
 
     /* Enable interrupts in the interrupt controller      */
-    switch(i2c_id)
-    {
+    switch(i2c_id) {
         case BSP_I2C_ID_I2C1:
             BSP_IntVectSet(BSP_INT_ID_I2C1_EV, BSP_I2C1_EventISR_Handler);
             BSP_IntEn(BSP_INT_ID_I2C1_EV);
@@ -448,8 +437,7 @@ static  CPU_BOOLEAN  BSP_I2C_StartXfer(CPU_INT08U   i2c_id,
 
     err = DEF_OK;
 
-    switch(i2c_id)
-    {
+    switch(i2c_id) {
         case BSP_I2C_ID_I2C1:
             p_i2c_reg        = (BSP_I2C_REG *)BSP_I2C_REG_I2C1_BASE_ADDR;
             p_i2c_dev_status = (BSP_I2C_DEV_STATUS *)&BSP_I2C_DevTbl[0];
@@ -467,8 +455,7 @@ static  CPU_BOOLEAN  BSP_I2C_StartXfer(CPU_INT08U   i2c_id,
     err = BSP_OS_SemWait(&(p_i2c_dev_status->SemLock),          /* Lock the I2C peripheral                              */
                          0);
 
-    if(err == DEF_FAIL)
-    {
+    if(err == DEF_FAIL) {
         return (DEF_FAIL);
     }
 
@@ -491,8 +478,7 @@ static  CPU_BOOLEAN  BSP_I2C_StartXfer(CPU_INT08U   i2c_id,
     BSP_OS_SemPost(&(p_i2c_dev_status->SemLock));               /* Release the I2C Peripheral                           */
 
 
-    if(p_i2c_dev_status->BufLen != 0)                           /* If the transfer is incomplete ...                    */
-    {
+    if(p_i2c_dev_status->BufLen != 0) {                         /* If the transfer is incomplete ...                    */
         err  = DEF_FAIL;                                        /* ... return an errror                                 */
     }
 
@@ -533,13 +519,11 @@ CPU_BOOLEAN  BSP_I2C_Rd(CPU_INT08U   i2c_id,
     CPU_BOOLEAN  err;
 
 
-    if(p_buf == (CPU_INT08U *)0)
-    {
+    if(p_buf == (CPU_INT08U *)0) {
         return (DEF_FAIL);
     }
 
-    if(nbr_bytes < 1)
-    {
+    if(nbr_bytes < 1) {
         return (DEF_FAIL);
     }
 
@@ -587,13 +571,11 @@ CPU_BOOLEAN  BSP_I2C_Wr(CPU_INT08U   i2c_id,
     CPU_BOOLEAN  err;
 
 
-    if(p_buf == (CPU_INT08U *)0)
-    {
+    if(p_buf == (CPU_INT08U *)0) {
         return (DEF_FAIL);
     }
 
-    if(nbr_bytes < 1)
-    {
+    if(nbr_bytes < 1) {
         return (DEF_FAIL);
     }
 
@@ -641,13 +623,11 @@ CPU_BOOLEAN  BSP_I2C_WrRd(CPU_INT08U   i2c_id,
     CPU_BOOLEAN  err;
 
 
-    if(p_buf == (CPU_INT08U *)0)
-    {
+    if(p_buf == (CPU_INT08U *)0) {
         return (DEF_FAIL);
     }
 
-    if(nbr_bytes < 2)
-    {
+    if(nbr_bytes < 2) {
         return (DEF_FAIL);
     }
 
@@ -718,8 +698,7 @@ void  BSP_I2Cx_EventISR_Handler(CPU_INT08U  i2c_nbr)
     CPU_INT32U           int_stat2;
 
 
-    switch(i2c_nbr)
-    {
+    switch(i2c_nbr) {
         case 0:
             p_i2c_reg = (BSP_I2C_REG *)BSP_I2C_REG_I2C1_BASE_ADDR;
             break;
@@ -737,22 +716,17 @@ void  BSP_I2Cx_EventISR_Handler(CPU_INT08U  i2c_nbr)
     int_stat1         =  p_i2c_reg->I2C_SR1;
     int_stat1        &=  BSP_I2C_REG_SR1_EVENT_MASK;
 
-    switch(p_i2c_dev_status->State)
-    {
+    switch(p_i2c_dev_status->State) {
         case BSP_I2C_STATE_START:                               /* --------------- I2C START STATE ------------------ */
 
             /* If the start bit flag has been generated ...       */
-            if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_SB))
-            {
+            if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_SB)) {
                 /* Send the Address with the correct direction        */
-                if(p_i2c_dev_status->AccessType == BSP_I2C_ACCESS_TYPE_RD)
-                {
+                if(p_i2c_dev_status->AccessType == BSP_I2C_ACCESS_TYPE_RD) {
                     DEF_BIT_SET(p_i2c_reg->I2C_CR1, BSP_I2C_REG_CR1_ACK);
                     p_i2c_reg->I2C_DR = (p_i2c_dev_status->Addr << 1)
                                         | DEF_BIT_00;
-                }
-                else
-                {
+                } else {
                     p_i2c_reg->I2C_DR = (p_i2c_dev_status->Addr << 1) & DEF_BIT_FIELD(7, 1);
                 }
 
@@ -764,22 +738,17 @@ void  BSP_I2Cx_EventISR_Handler(CPU_INT08U  i2c_nbr)
         case BSP_I2C_STATE_ADDR:                                /* --------------- I2C ADRESS STATE ----------------- */
 
             /* If the address was sent ...                        */
-            if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_ADDR))
-            {
+            if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_ADDR)) {
                 int_stat2 = p_i2c_reg->I2C_SR2;
 
                 (void)&int_stat2;
 
-                switch(p_i2c_dev_status->AccessType)
-                {
+                switch(p_i2c_dev_status->AccessType) {
                     case BSP_I2C_ACCESS_TYPE_RD:
-                        if(p_i2c_dev_status->BufLen == 1)
-                        {
+                        if(p_i2c_dev_status->BufLen == 1) {
                             p_i2c_dev_status->State = BSP_I2C_STATE_STOP;
                             DEF_BIT_CLR(p_i2c_reg->I2C_CR1, BSP_I2C_REG_CR1_ACK);
-                        }
-                        else
-                        {
+                        } else {
                             p_i2c_dev_status->State = BSP_I2C_STATE_DATA;
                         }
 
@@ -787,18 +756,14 @@ void  BSP_I2Cx_EventISR_Handler(CPU_INT08U  i2c_nbr)
 
                     case BSP_I2C_ACCESS_TYPE_WR:
                     case BSP_I2C_ACCESS_TYPE_WR_RD:
-                        if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_TXE))
-                        {
+                        if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_TXE)) {
                             p_i2c_reg->I2C_DR = (CPU_INT32U)(*(p_i2c_dev_status->BufPtr));
                             p_i2c_dev_status->BufPtr++;
                             p_i2c_dev_status->BufLen--;
 
-                            if(p_i2c_dev_status->BufLen == 0)
-                            {
+                            if(p_i2c_dev_status->BufLen == 0) {
                                 p_i2c_dev_status->State = BSP_I2C_STATE_STOP;
-                            }
-                            else
-                            {
+                            } else {
                                 p_i2c_dev_status->State = BSP_I2C_STATE_DATA;
                             }
                         }
@@ -808,9 +773,7 @@ void  BSP_I2Cx_EventISR_Handler(CPU_INT08U  i2c_nbr)
                     default:
                         break;
                 }
-            }
-            else
-            {
+            } else {
                 p_i2c_dev_status->State      = BSP_I2C_STATE_IDLE;
                 p_i2c_dev_status->AccessType = BSP_I2C_ACCESS_TYPE_NONE;
 
@@ -824,12 +787,10 @@ void  BSP_I2Cx_EventISR_Handler(CPU_INT08U  i2c_nbr)
             break;
 
         case BSP_I2C_STATE_DATA:                               /* ---------------- I2C DATA STATE ------------------ */
-            switch(p_i2c_dev_status->AccessType)
-            {
+            switch(p_i2c_dev_status->AccessType) {
                 /* If the I2C is receiving ...                        */
                 case BSP_I2C_ACCESS_TYPE_WR_RD:
-                    if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_TXE))
-                    {
+                    if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_TXE)) {
                         /* Initialize the Transfer as read access             */
                         DEF_BIT_SET(p_i2c_reg->I2C_CR1, BSP_I2C_REG_CR1_START);
                         p_i2c_dev_status->State      = BSP_I2C_STATE_START;
@@ -841,15 +802,13 @@ void  BSP_I2Cx_EventISR_Handler(CPU_INT08U  i2c_nbr)
                 case BSP_I2C_ACCESS_TYPE_RD:
 
                     /* If the receive register is not empty               */
-                    if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_RXNE))
-                    {
+                    if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_RXNE)) {
                         *(p_i2c_dev_status->BufPtr) = (CPU_INT08U)(p_i2c_reg->I2C_DR & BSP_I2C_REG_DR_MASK);
                         p_i2c_dev_status->BufPtr++;
                         p_i2c_dev_status->BufLen--;
 
                         /*  If it is the last byte                             */
-                        if(p_i2c_dev_status->BufLen == 1)
-                        {
+                        if(p_i2c_dev_status->BufLen == 1) {
                             /*  NOT Acknowledge, Generate STOP condition           */
                             DEF_BIT_CLR(p_i2c_reg->I2C_CR1, BSP_I2C_REG_CR1_ACK);
                             DEF_BIT_SET(p_i2c_reg->I2C_CR1, BSP_I2C_REG_CR1_STOP);
@@ -860,14 +819,12 @@ void  BSP_I2Cx_EventISR_Handler(CPU_INT08U  i2c_nbr)
                     break;
 
                 case BSP_I2C_ACCESS_TYPE_WR:
-                    if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_TXE))
-                    {
+                    if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_TXE)) {
                         p_i2c_reg->I2C_DR = (CPU_INT32U)(*(p_i2c_dev_status->BufPtr));
                         p_i2c_dev_status->BufPtr++;
                         p_i2c_dev_status->BufLen--;
 
-                        if(p_i2c_dev_status->BufLen == 0)
-                        {
+                        if(p_i2c_dev_status->BufLen == 0) {
                             p_i2c_dev_status->State = BSP_I2C_STATE_STOP;
                         }
                     }
@@ -878,10 +835,8 @@ void  BSP_I2Cx_EventISR_Handler(CPU_INT08U  i2c_nbr)
             break;
 
         case BSP_I2C_STATE_STOP:                                /* ---------------- I2C STOP STATE ------------------ */
-            if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_BTF))
-            {
-                switch(p_i2c_dev_status->AccessType)
-                {
+            if(DEF_BIT_IS_SET(int_stat1, BSP_I2C_REG_SR1_BTF)) {
+                switch(p_i2c_dev_status->AccessType) {
                     case BSP_I2C_ACCESS_TYPE_WR_RD:
                     case BSP_I2C_ACCESS_TYPE_RD:
                         DEF_BIT_SET(p_i2c_reg->I2C_CR1, BSP_I2C_REG_CR1_STOP);
@@ -972,8 +927,7 @@ static  void  BSP_I2Cx_ErrISR_Handler(CPU_INT08U  i2c_nbr)
     CPU_INT32U           int_stat1;
 
 
-    switch(i2c_nbr)
-    {
+    switch(i2c_nbr) {
         case 0:
             p_i2c_reg = (BSP_I2C_REG *)BSP_I2C_REG_I2C1_BASE_ADDR;
             break;
@@ -992,8 +946,7 @@ static  void  BSP_I2Cx_ErrISR_Handler(CPU_INT08U  i2c_nbr)
 
     DEF_BIT_CLR(p_i2c_reg->I2C_SR1, int_stat1);
 
-    if(p_i2c_dev_status->State != BSP_I2C_STATE_IDLE)
-    {
+    if(p_i2c_dev_status->State != BSP_I2C_STATE_IDLE) {
         p_i2c_dev_status->State      = BSP_I2C_STATE_IDLE;
         p_i2c_dev_status->AccessType = BSP_I2C_ACCESS_TYPE_NONE;
         DEF_BIT_SET(p_i2c_reg->I2C_CR1, BSP_I2C_REG_CR1_STOP);

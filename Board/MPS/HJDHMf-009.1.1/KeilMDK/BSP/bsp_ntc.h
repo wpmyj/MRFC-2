@@ -3,8 +3,7 @@
 
 #include "stdint.h"
 
-typedef struct
-{
+typedef struct {
     int8_t temp;
     uint32_t resistance;
 } NTC_PARAMETER_TABLE_Typedef;

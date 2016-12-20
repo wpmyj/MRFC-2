@@ -47,8 +47,7 @@ extern "C" {
   * @brief  DMA Init structure definition
   */
 
-typedef struct
-{
+typedef struct {
     uint32_t DMA_PeripheralBaseAddr; /*!< Specifies the peripheral base address for DMAy Channelx. */
 
     uint32_t DMA_MemoryBaseAddr;     /*!< Specifies the memory base address for DMAy Channelx. */

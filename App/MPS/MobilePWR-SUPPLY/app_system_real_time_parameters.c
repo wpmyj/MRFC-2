@@ -198,7 +198,7 @@ void SetWorkModeWaittingForSelectFlag(void)
 *                                      ResetWorkModeWaittingForSelectFlag()
 *
 * Description:  Reset the flag that the system is waitting for the control side to select the work mode.
-*              
+*
 * Arguments  :  none.
 *
 * Returns    :  none.
@@ -334,7 +334,7 @@ void SystemWorkTimesInc(void)
 *                                      GetSystemTime()
 *
 * Description:  Get the system run time that from the boot time.
-*               
+*
 * Arguments  :  none.
 *
 * Returns    :  none.
@@ -732,7 +732,7 @@ STACK_WORK_STATU_Typedef GetStackWorkStatu(void)
 *                                      ResetAllAlarms()
 *
 * Description:  reset the all alarms statu.
-*               
+*
 * Arguments  :  none.
 *
 * Returns    :  none.
@@ -745,8 +745,7 @@ void ResetAllAlarms()
     int i;
     g_stSystemAlarmsInf.AlarmCode = 0;
 
-    for(i = 0; i < 32; i++)//警报码为32位的数，时间全部清零
-    {
+    for(i = 0; i < 32; i++) { //警报码为32位的数，时间全部清零
         g_stSystemAlarmsInf.HoldTime[i].second = 0x00;
         g_stSystemAlarmsInf.HoldTime[i].minute = 0x00;
         g_stSystemAlarmsInf.HoldTime[i].hour = 0x00;
@@ -758,7 +757,7 @@ void ResetAllAlarms()
 *                                      AlarmCmd()
 *
 * Description:  command a kind of alarm statu.
-*               
+*
 * Arguments  :  m_enSystemAlarmKind - the kind of the alarm
 *               m_enNewStatu - the excepted statu of the alarm
 *
@@ -769,23 +768,18 @@ void ResetAllAlarms()
 */
 void AlarmCmd(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind, SWITCH_TYPE_VARIABLE_Typedef m_enNewStatu)
 {
-    if((g_stSystemAlarmsInf.AlarmCode ^ (m_enNewStatu << (u8)m_enSystemAlarmKind)) != 0)//若状态有变化
-    {
+    if((g_stSystemAlarmsInf.AlarmCode ^ (m_enNewStatu << (u8)m_enSystemAlarmKind)) != 0) { //若状态有变化
         g_stSystemAlarmsInf.HoldTime[m_enSystemAlarmKind].second = 0x00;
         g_stSystemAlarmsInf.HoldTime[m_enSystemAlarmKind].minute = 0x00;
         g_stSystemAlarmsInf.HoldTime[m_enSystemAlarmKind].hour = 0x00;
 
-        if(m_enNewStatu == OFF)
-        {
+        if(m_enNewStatu == OFF) {
             g_stSystemAlarmsInf.AlarmCode &= ~(1 << (u8)m_enSystemAlarmKind);
-        }
-        else
-        {
+        } else {
             g_stSystemAlarmsInf.AlarmCode |= (1 << (u8)m_enSystemAlarmKind);
         }
+    } else { //否则什么也不做
     }
-    else//否则什么也不做
-    {}
 }
 
 /*
@@ -793,7 +787,7 @@ void AlarmCmd(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind, SWITCH_TYPE_VARIABL
 *                                      GetAlarmStatu()
 *
 * Description:  get the statu of a kind of alarm.
-*               
+*
 * Arguments  :  m_enSystemAlarmKind - the kind of the alarm.
 *
 * Returns    :  the statu of the alarm.
@@ -812,7 +806,7 @@ SWITCH_TYPE_VARIABLE_Typedef GetAlarmStatu(SYSTEM_ALARM_ADDR_Typedef m_enSystemA
 *                                      GetAlarmHoldTime()
 *
 * Description:  get the hold time of a kind of alarm.
-*               
+*
 * Arguments  :  m_enSystemAlarmKind - the kind of the alarm.
 *
 * Returns    :  the hold time of the kind of alarm.
@@ -830,7 +824,7 @@ SYSTEM_TIME_Typedef GetAlarmHoldTime(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKi
 *                                      GetRunAlarmCode()
 *
 * Description:  get the alarm time.
-*               
+*
 * Arguments  :  none.
 *
 * Returns    :  the alarm code.
@@ -848,7 +842,7 @@ uint32_t GetRunAlarmCode(void)
 *                                      ResetSystemIsolatedGeneratedEnergyThisTime()
 *
 * Description:  reset the isolated generated energy this time.
-*              
+*
 * Arguments  :  none.
 *
 * Returns    :  none.
@@ -866,7 +860,7 @@ void ResetSystemIsolatedGeneratedEnergyThisTime(void)
 *                                      UpdateSystemIsolatedGeneratedEnergyThisTime()
 *
 * Description:  update the isolated generated energy this time.
-*               
+*
 * Arguments  :  none.
 *
 * Returns    :  none.
@@ -876,8 +870,7 @@ void ResetSystemIsolatedGeneratedEnergyThisTime(void)
 */
 void UpdateSystemIsolatedGeneratedEnergyThisTime()
 {
-    if(g_eStackWorkStatu == EN_IN_WORK)
-    {
+    if(g_eStackWorkStatu == EN_IN_WORK) {
         g_fSystemIsolatedGeneratedEnergyThisTime += ((double) GetCurrentPower()) / 3600 / 1000 * 1;
         //3600为每小时的分钟数，1000为1kW, 1为每次更新的时间间隔为1s。
     }
@@ -1232,7 +1225,7 @@ uint8_t CalcStackOptimumTemperatureByCurrent(void)
 #else
     m_StackOptimumTemperature = (0.455 * m_StackCurrent) + 32;//夏天
 #endif
-    
+
     return (uint8_t)m_StackOptimumTemperature;
 }
 
@@ -1422,27 +1415,23 @@ static  void  SysTimeStatTask(void *p_arg)
                 0,
                 &err);
 
-    while(DEF_TRUE)
-    {
+    while(DEF_TRUE) {
         OSSemPend(&g_stSystemTimeUpdateSem,
                   OS_CFG_TICK_RATE_HZ,
                   OS_OPT_PEND_BLOCKING,
                   NULL,
                   &err);
-        
-        if( err == OS_ERR_NONE )                             
-        {
+
+        if(err == OS_ERR_NONE) {
             UpdateSysTime(&g_stSystemTime);
             UpdateSystemIsolatedGeneratedEnergyThisTime();
-            
+
             if((g_eSystemWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL)
-                    || (g_eSystemWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER))
-            {
+                    || (g_eSystemWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER)) {
                 if((g_eSystemWorkStatu == EN_START_PRGM_ONE_FRONT)
                         || (g_eSystemWorkStatu == EN_START_PRGM_ONE_BEHIND)
                         || (g_eSystemWorkStatu == EN_START_PRGM_TWO)
-                        || (g_eSystemWorkStatu == EN_RUNNING))
-                {
+                        || (g_eSystemWorkStatu == EN_RUNNING)) {
                     //更新制氢时间
                     UpdateSysTime(&g_stHydrgProduceTimeThisTime);
                     UpdateSysTime(&g_stHydrgProduceTimeTotal);
@@ -1452,10 +1441,8 @@ static  void  SysTimeStatTask(void *p_arg)
                     u32AlarmCode &= 0xFFFFFFF;  //滤掉前面4位与制氢机警报无关的公共组警报
                     u32AlarmCode >>= 16;            //与制氢机相关的警报从bit16开始
 
-                    while(u32AlarmCode != 0)
-                    {
-                        if((u32AlarmCode & 1) == 1)
-                        {
+                    while(u32AlarmCode != 0) {
+                        if((u32AlarmCode & 1) == 1) {
                             UpdateSysTime(&g_stSystemAlarmsInf.HoldTime[i]);
                         }
 
@@ -1470,29 +1457,26 @@ static  void  SysTimeStatTask(void *p_arg)
                 }
             }
 
-        if(g_eStackWorkStatu == EN_IN_WORK)
-        {
-            UpdateSysTime(&g_stStackProductTimeThisTime);
-            UpdateSysTime(&g_stStackProductTimeTotal);
-            u32AlarmCode = g_stSystemAlarmsInf.AlarmCode;
+            if(g_eStackWorkStatu == EN_IN_WORK) {
+                UpdateSysTime(&g_stStackProductTimeThisTime);
+                UpdateSysTime(&g_stStackProductTimeTotal);
+                u32AlarmCode = g_stSystemAlarmsInf.AlarmCode;
 
-            i = 0;
-            u32AlarmCode &= 0xFFFF;//滤掉前面4位与电堆警报无关的公共组警报和制氢机警报
+                i = 0;
+                u32AlarmCode &= 0xFFFF;//滤掉前面4位与电堆警报无关的公共组警报和制氢机警报
 
 //          u32AlarmCode >>= 16;//与电堆相关的警报从bit0开始，无需右移
-            while(u32AlarmCode != 0)
-            {
-                if((u32AlarmCode & 1) == 1)
-                {
-                    UpdateSysTime(&g_stSystemAlarmsInf.HoldTime[i]);
+                while(u32AlarmCode != 0) {
+                    if((u32AlarmCode & 1) == 1) {
+                        UpdateSysTime(&g_stSystemAlarmsInf.HoldTime[i]);
+                    }
+
+                    u32AlarmCode >>= 1;
+                    i++;
                 }
-
-                u32AlarmCode >>= 1;
-                i++;
             }
-        }
 
-    }
+        }
     }
 }
 
@@ -1514,12 +1498,10 @@ static void UpdateSysTime(SYSTEM_TIME_Typedef *i_stTargetTime)
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();
 
-    if(++i_stTargetTime->second >= (uint16_t) 60)
-    {
+    if(++i_stTargetTime->second >= (uint16_t) 60) {
         i_stTargetTime->second = 0;
 
-        if(++i_stTargetTime->minute >= 60)
-        {
+        if(++i_stTargetTime->minute >= 60) {
             i_stTargetTime->minute = 0;
             ++i_stTargetTime->hour;
         }
@@ -1533,7 +1515,7 @@ static void UpdateSysTime(SYSTEM_TIME_Typedef *i_stTargetTime)
 *                             GetCurrentPower()
 *
 * Description:  get current power.
-*               
+*
 * Arguments  :  none.
 *
 * Returns    :  float.
@@ -1543,7 +1525,7 @@ static void UpdateSysTime(SYSTEM_TIME_Typedef *i_stTargetTime)
 */
 float GetCurrentPower(void)
 {
-     return GetSrcAnaSig(STACK_VOLTAGE) * GetSrcAnaSig(STACK_CURRENT);
+    return GetSrcAnaSig(STACK_VOLTAGE) * GetSrcAnaSig(STACK_CURRENT);
 }
 /******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/
 

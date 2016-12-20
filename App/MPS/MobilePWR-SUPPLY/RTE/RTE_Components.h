@@ -3,8 +3,8 @@
  * Auto generated Run-Time-Environment Component Configuration File
  *      *** Do not modify ! ***
  *
- * Project: 'MobilePWR-Supply' 
- * Target:  'Target 1' 
+ * Project: 'MobilePWR-Supply'
+ * Target:  'Target 1'
  */
 
 #ifndef RTE_COMPONENTS_H

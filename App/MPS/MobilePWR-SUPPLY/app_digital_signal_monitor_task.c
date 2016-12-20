@@ -94,28 +94,22 @@ static void UpdateThermocoupleTemp(uint8_t *i_TempErr)
 
     BSP_MAX6675_Temp_Read(fltOriginalValue, u8TempErr);
 
-    if(g_u8DigTempFilterOperationCursor >= NMB_OF_AVERAGE_TEMPERATURE_SAMPLE)
-    {
+    if(g_u8DigTempFilterOperationCursor >= NMB_OF_AVERAGE_TEMPERATURE_SAMPLE) {
         g_u8DigTempFilterOperationCursor = 0;
     }
 
     CPU_CRITICAL_ENTER();
 
-    for(i = 0; i < 2; i++)
-    {
-        if(u8TempErr[i] == 0)
-        {
+    for(i = 0; i < 2; i++) {
+        if(u8TempErr[i] == 0) {
             g_fAnaTempSum[i] -= g_u16OriginalTempFilter[i][g_u8DigTempFilterOperationCursor];
             g_u16OriginalTempFilter[i][g_u8DigTempFilterOperationCursor] = fltOriginalValue[i];
             g_fAnaTempSum[i] += g_u16OriginalTempFilter[i][g_u8DigTempFilterOperationCursor];
             g_fAnaTemp[i] = g_fAnaTempSum[i] / NMB_OF_AVERAGE_TEMPERATURE_SAMPLE;
-        }
-        else
-        {
+        } else {
             g_fAnaTempSum[i] = 999 * NMB_OF_AVERAGE_TEMPERATURE_SAMPLE;
 
-            for(j = 0; j < NMB_OF_AVERAGE_TEMPERATURE_SAMPLE; j++)
-            {
+            for(j = 0; j < NMB_OF_AVERAGE_TEMPERATURE_SAMPLE; j++) {
                 g_u16OriginalTempFilter[i][j] = 999;
             }
 
@@ -220,46 +214,38 @@ static void  DigSigMonitorTask(void *p_arg)
     //数字温度传感器转换引脚复位
     DigTempSensorConvertStart();
 
-    while(DEF_TRUE)
-    {
+    while(DEF_TRUE) {
         OSTimeDlyHMSM(0, 0, 0, 250, OS_OPT_TIME_HMSM_STRICT, &err);
-        
+
         //温度传感器片选选中,更新热电偶温度数据，获得错误标志数组
         UpdateThermocoupleTemp(TempErr);
 
         //根据采样错误位设置自检码指定位
-        if(TempErr[0] == 1)
-        {
+        if(TempErr[0] == 1) {
             SetMachinePartASelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
-        }
-        else
-        {
+        } else {
             ResetMachinePartASelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
         }
 
-        if(TempErr[1] == 1)
-        {
+        if(TempErr[1] == 1) {
             SetMachinePartASelfCheckCodeBit(SelfCheckCodeGrpHydrgFireThermocoupleBit);
-        }
-        else
-        {
+        } else {
             ResetMachinePartASelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
         }
 
         //开启监测任务
-        if(g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw == DEF_ENABLED)
-        {
+        if(g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw == DEF_ENABLED) {
             HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook();
         }
 
-        if(g_u8HydrgProducerDigSigRunningMonitorAlarmHookSw == DEF_ENABLED)
-        {
+        if(g_u8HydrgProducerDigSigRunningMonitorAlarmHookSw == DEF_ENABLED) {
             HydrgProducerDigSigAlarmRunningMonitorHook();
         }
+
         if(g_u8StackExhaustTimesCountPerMinutesMonitorHookSw == DEF_ENABLED) {
             SetStackExhaustTimesCountPerMinutesMonitorHook();
         }
-        
+
     }
 }
 
@@ -286,7 +272,7 @@ void SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(u8 i_NewStatu)
 *                     HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook()
 *
 * Description : wait for the ignite first time to behind switchover.
-*               
+*
 * Arguments   : none.
 *
 * Returns     : none.
@@ -301,8 +287,7 @@ static void HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook(void)
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();
 
-    if(GetReformerTemp() >= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt)
-    {
+    if(GetReformerTemp() >= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt) {
         OSSemPost(&IgniteFirstBehindWaitSem, OS_OPT_POST_1, &err);
         g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw = DEF_DISABLED;
     }
@@ -363,7 +348,7 @@ void SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
 *                     HydrgProducerDigSigAlarmRunningMonitorHook()
 *
 * Description : manager the digital signal concerned alarms.
-*               
+*
 * Arguments   : none.
 *
 * Returns     : none.
@@ -377,16 +362,11 @@ static void HydrgProducerDigSigAlarmRunningMonitorHook(void)
     float fReformerTemp;
     fReformerTemp = GetReformerTemp();
 
-    if(fReformerTemp > g_stReformerTempCmpTbl.AlarmUpperLimit)
-    {
+    if(fReformerTemp > g_stReformerTempCmpTbl.AlarmUpperLimit) {
         AlarmCmd(REFORMER_TEMP_HIGH_ALARM, ON);
-    }
-    else    if(fReformerTemp < g_stReformerTempCmpTbl.AlarmLowerLimit)
-    {
+    } else    if(fReformerTemp < g_stReformerTempCmpTbl.AlarmLowerLimit) {
         AlarmCmd(REFORMER_TEMP_LOW_ALARM, ON);
-    }
-    else
-    {
+    } else {
         AlarmCmd(REFORMER_TEMP_HIGH_ALARM, OFF);
         AlarmCmd(REFORMER_TEMP_LOW_ALARM, OFF);
     }

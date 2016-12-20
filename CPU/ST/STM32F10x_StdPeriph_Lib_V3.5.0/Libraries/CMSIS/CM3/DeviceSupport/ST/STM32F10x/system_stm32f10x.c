@@ -318,8 +318,7 @@ void SystemCoreClockUpdate(void)
     /* Get SYSCLK source -------------------------------------------------------*/
     tmp = RCC->CFGR & RCC_CFGR_SWS;
 
-    switch(tmp)
-    {
+    switch(tmp) {
         case 0x00:  /* HSI used as system clock */
             SystemCoreClock = HSI_VALUE;
             break;
@@ -337,13 +336,10 @@ void SystemCoreClockUpdate(void)
 #ifndef STM32F10X_CL
             pllmull = (pllmull >> 18) + 2;
 
-            if(pllsource == 0x00)
-            {
+            if(pllsource == 0x00) {
                 /* HSI oscillator clock divided by 2 selected as PLL clock entry */
                 SystemCoreClock = (HSI_VALUE >> 1) * pllmull;
-            }
-            else
-            {
+            } else {
 #if defined (STM32F10X_LD_VL) || defined (STM32F10X_MD_VL) || (defined STM32F10X_HD_VL)
                 prediv1factor = (RCC->CFGR2 & RCC_CFGR2_PREDIV1) + 1;
                 /* HSE oscillator clock selected as PREDIV1 clock entry */
@@ -351,13 +347,10 @@ void SystemCoreClockUpdate(void)
 #else
 
                 /* HSE selected as PLL clock entry */
-                if((RCC->CFGR & RCC_CFGR_PLLXTPRE) != (uint32_t)RESET)
-                {
+                if((RCC->CFGR & RCC_CFGR_PLLXTPRE) != (uint32_t)RESET) {
                     /* HSE oscillator clock divided by 2 */
                     SystemCoreClock = (HSE_VALUE >> 1) * pllmull;
-                }
-                else
-                {
+                } else {
                     SystemCoreClock = HSE_VALUE * pllmull;
                 }
 
@@ -367,36 +360,27 @@ void SystemCoreClockUpdate(void)
 #else
             pllmull = pllmull >> 18;
 
-            if(pllmull != 0x0D)
-            {
+            if(pllmull != 0x0D) {
                 pllmull += 2;
-            }
-            else
-            {
+            } else {
                 /* PLL multiplication factor = PLL input clock * 6.5 */
                 pllmull = 13 / 2;
             }
 
-            if(pllsource == 0x00)
-            {
+            if(pllsource == 0x00) {
                 /* HSI oscillator clock divided by 2 selected as PLL clock entry */
                 SystemCoreClock = (HSI_VALUE >> 1) * pllmull;
-            }
-            else
-            {
+            } else {
                 /* PREDIV1 selected as PLL clock entry */
 
                 /* Get PREDIV1 clock source and division factor */
                 prediv1source = RCC->CFGR2 & RCC_CFGR2_PREDIV1SRC;
                 prediv1factor = (RCC->CFGR2 & RCC_CFGR2_PREDIV1) + 1;
 
-                if(prediv1source == 0)
-                {
+                if(prediv1source == 0) {
                     /* HSE oscillator clock selected as PREDIV1 clock entry */
                     SystemCoreClock = (HSE_VALUE / prediv1factor) * pllmull;
-                }
-                else
-                {
+                } else {
                     /* PLL2 clock selected as PREDIV1 clock entry */
 
                     /* Get PREDIV2 division factor and PLL2 multiplication factor */
@@ -516,24 +500,18 @@ static void SetSysClockToHSE(void)
     RCC->CR |= ((uint32_t)RCC_CR_HSEON);
 
     /* Wait till HSE is ready and if Time out is reached exit */
-    do
-    {
+    do {
         HSEStatus = RCC->CR & RCC_CR_HSERDY;
         StartUpCounter++;
-    }
-    while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
+    } while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
 
-    if((RCC->CR & RCC_CR_HSERDY) != RESET)
-    {
+    if((RCC->CR & RCC_CR_HSERDY) != RESET) {
         HSEStatus = (uint32_t)0x01;
-    }
-    else
-    {
+    } else {
         HSEStatus = (uint32_t)0x00;
     }
 
-    if(HSEStatus == (uint32_t)0x01)
-    {
+    if(HSEStatus == (uint32_t)0x01) {
 
 #if !defined STM32F10X_LD_VL && !defined STM32F10X_MD_VL && !defined STM32F10X_HD_VL
         /* Enable Prefetch Buffer */
@@ -546,12 +524,9 @@ static void SetSysClockToHSE(void)
         FLASH->ACR |= (uint32_t)FLASH_ACR_LATENCY_0;
 #else
 
-        if(HSE_VALUE <= 24000000)
-        {
+        if(HSE_VALUE <= 24000000) {
             FLASH->ACR |= (uint32_t)FLASH_ACR_LATENCY_0;
-        }
-        else
-        {
+        } else {
             FLASH->ACR |= (uint32_t)FLASH_ACR_LATENCY_1;
         }
 
@@ -572,12 +547,9 @@ static void SetSysClockToHSE(void)
         RCC->CFGR |= (uint32_t)RCC_CFGR_SW_HSE;
 
         /* Wait till HSE is used as system clock source */
-        while((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x04)
-        {
+        while((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x04) {
         }
-    }
-    else
-    {
+    } else {
         /* If HSE fails to start-up, the application will have wrong clock
              configuration. User can add here some code to deal with this error */
     }
@@ -599,24 +571,18 @@ static void SetSysClockTo24(void)
     RCC->CR |= ((uint32_t)RCC_CR_HSEON);
 
     /* Wait till HSE is ready and if Time out is reached exit */
-    do
-    {
+    do {
         HSEStatus = RCC->CR & RCC_CR_HSERDY;
         StartUpCounter++;
-    }
-    while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
+    } while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
 
-    if((RCC->CR & RCC_CR_HSERDY) != RESET)
-    {
+    if((RCC->CR & RCC_CR_HSERDY) != RESET) {
         HSEStatus = (uint32_t)0x01;
-    }
-    else
-    {
+    } else {
         HSEStatus = (uint32_t)0x00;
     }
 
-    if(HSEStatus == (uint32_t)0x01)
-    {
+    if(HSEStatus == (uint32_t)0x01) {
 #if !defined STM32F10X_LD_VL && !defined STM32F10X_MD_VL && !defined STM32F10X_HD_VL
         /* Enable Prefetch Buffer */
         FLASH->ACR |= FLASH_ACR_PRFTBE;
@@ -653,8 +619,7 @@ static void SetSysClockTo24(void)
         RCC->CR |= RCC_CR_PLL2ON;
 
         /* Wait till PLL2 is ready */
-        while((RCC->CR & RCC_CR_PLL2RDY) == 0)
-        {
+        while((RCC->CR & RCC_CR_PLL2RDY) == 0) {
         }
 
 #elif defined (STM32F10X_LD_VL) || defined (STM32F10X_MD_VL) || defined (STM32F10X_HD_VL)
@@ -671,8 +636,7 @@ static void SetSysClockTo24(void)
         RCC->CR |= RCC_CR_PLLON;
 
         /* Wait till PLL is ready */
-        while((RCC->CR & RCC_CR_PLLRDY) == 0)
-        {
+        while((RCC->CR & RCC_CR_PLLRDY) == 0) {
         }
 
         /* Select PLL as system clock source */
@@ -680,12 +644,9 @@ static void SetSysClockTo24(void)
         RCC->CFGR |= (uint32_t)RCC_CFGR_SW_PLL;
 
         /* Wait till PLL is used as system clock source */
-        while((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x08)
-        {
+        while((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x08) {
         }
-    }
-    else
-    {
+    } else {
         /* If HSE fails to start-up, the application will have wrong clock
              configuration. User can add here some code to deal with this error */
     }
@@ -707,24 +668,18 @@ static void SetSysClockTo36(void)
     RCC->CR |= ((uint32_t)RCC_CR_HSEON);
 
     /* Wait till HSE is ready and if Time out is reached exit */
-    do
-    {
+    do {
         HSEStatus = RCC->CR & RCC_CR_HSERDY;
         StartUpCounter++;
-    }
-    while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
+    } while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
 
-    if((RCC->CR & RCC_CR_HSERDY) != RESET)
-    {
+    if((RCC->CR & RCC_CR_HSERDY) != RESET) {
         HSEStatus = (uint32_t)0x01;
-    }
-    else
-    {
+    } else {
         HSEStatus = (uint32_t)0x00;
     }
 
-    if(HSEStatus == (uint32_t)0x01)
-    {
+    if(HSEStatus == (uint32_t)0x01) {
         /* Enable Prefetch Buffer */
         FLASH->ACR |= FLASH_ACR_PRFTBE;
 
@@ -761,8 +716,7 @@ static void SetSysClockTo36(void)
         RCC->CR |= RCC_CR_PLL2ON;
 
         /* Wait till PLL2 is ready */
-        while((RCC->CR & RCC_CR_PLL2RDY) == 0)
-        {
+        while((RCC->CR & RCC_CR_PLL2RDY) == 0) {
         }
 
 #else
@@ -775,8 +729,7 @@ static void SetSysClockTo36(void)
         RCC->CR |= RCC_CR_PLLON;
 
         /* Wait till PLL is ready */
-        while((RCC->CR & RCC_CR_PLLRDY) == 0)
-        {
+        while((RCC->CR & RCC_CR_PLLRDY) == 0) {
         }
 
         /* Select PLL as system clock source */
@@ -784,12 +737,9 @@ static void SetSysClockTo36(void)
         RCC->CFGR |= (uint32_t)RCC_CFGR_SW_PLL;
 
         /* Wait till PLL is used as system clock source */
-        while((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x08)
-        {
+        while((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x08) {
         }
-    }
-    else
-    {
+    } else {
         /* If HSE fails to start-up, the application will have wrong clock
              configuration. User can add here some code to deal with this error */
     }
@@ -811,24 +761,18 @@ static void SetSysClockTo48(void)
     RCC->CR |= ((uint32_t)RCC_CR_HSEON);
 
     /* Wait till HSE is ready and if Time out is reached exit */
-    do
-    {
+    do {
         HSEStatus = RCC->CR & RCC_CR_HSERDY;
         StartUpCounter++;
-    }
-    while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
+    } while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
 
-    if((RCC->CR & RCC_CR_HSERDY) != RESET)
-    {
+    if((RCC->CR & RCC_CR_HSERDY) != RESET) {
         HSEStatus = (uint32_t)0x01;
-    }
-    else
-    {
+    } else {
         HSEStatus = (uint32_t)0x00;
     }
 
-    if(HSEStatus == (uint32_t)0x01)
-    {
+    if(HSEStatus == (uint32_t)0x01) {
         /* Enable Prefetch Buffer */
         FLASH->ACR |= FLASH_ACR_PRFTBE;
 
@@ -859,8 +803,7 @@ static void SetSysClockTo48(void)
         RCC->CR |= RCC_CR_PLL2ON;
 
         /* Wait till PLL2 is ready */
-        while((RCC->CR & RCC_CR_PLL2RDY) == 0)
-        {
+        while((RCC->CR & RCC_CR_PLL2RDY) == 0) {
         }
 
 
@@ -878,8 +821,7 @@ static void SetSysClockTo48(void)
         RCC->CR |= RCC_CR_PLLON;
 
         /* Wait till PLL is ready */
-        while((RCC->CR & RCC_CR_PLLRDY) == 0)
-        {
+        while((RCC->CR & RCC_CR_PLLRDY) == 0) {
         }
 
         /* Select PLL as system clock source */
@@ -887,12 +829,9 @@ static void SetSysClockTo48(void)
         RCC->CFGR |= (uint32_t)RCC_CFGR_SW_PLL;
 
         /* Wait till PLL is used as system clock source */
-        while((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x08)
-        {
+        while((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x08) {
         }
-    }
-    else
-    {
+    } else {
         /* If HSE fails to start-up, the application will have wrong clock
              configuration. User can add here some code to deal with this error */
     }
@@ -915,24 +854,18 @@ static void SetSysClockTo56(void)
     RCC->CR |= ((uint32_t)RCC_CR_HSEON);
 
     /* Wait till HSE is ready and if Time out is reached exit */
-    do
-    {
+    do {
         HSEStatus = RCC->CR & RCC_CR_HSERDY;
         StartUpCounter++;
-    }
-    while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
+    } while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
 
-    if((RCC->CR & RCC_CR_HSERDY) != RESET)
-    {
+    if((RCC->CR & RCC_CR_HSERDY) != RESET) {
         HSEStatus = (uint32_t)0x01;
-    }
-    else
-    {
+    } else {
         HSEStatus = (uint32_t)0x00;
     }
 
-    if(HSEStatus == (uint32_t)0x01)
-    {
+    if(HSEStatus == (uint32_t)0x01) {
         /* Enable Prefetch Buffer */
         FLASH->ACR |= FLASH_ACR_PRFTBE;
 
@@ -963,8 +896,7 @@ static void SetSysClockTo56(void)
         RCC->CR |= RCC_CR_PLL2ON;
 
         /* Wait till PLL2 is ready */
-        while((RCC->CR & RCC_CR_PLL2RDY) == 0)
-        {
+        while((RCC->CR & RCC_CR_PLL2RDY) == 0) {
         }
 
 
@@ -983,8 +915,7 @@ static void SetSysClockTo56(void)
         RCC->CR |= RCC_CR_PLLON;
 
         /* Wait till PLL is ready */
-        while((RCC->CR & RCC_CR_PLLRDY) == 0)
-        {
+        while((RCC->CR & RCC_CR_PLLRDY) == 0) {
         }
 
         /* Select PLL as system clock source */
@@ -992,12 +923,9 @@ static void SetSysClockTo56(void)
         RCC->CFGR |= (uint32_t)RCC_CFGR_SW_PLL;
 
         /* Wait till PLL is used as system clock source */
-        while((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x08)
-        {
+        while((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x08) {
         }
-    }
-    else
-    {
+    } else {
         /* If HSE fails to start-up, the application will have wrong clock
              configuration. User can add here some code to deal with this error */
     }
@@ -1020,24 +948,18 @@ static void SetSysClockTo72(void)
     RCC->CR |= ((uint32_t)RCC_CR_HSEON);
 
     /* Wait till HSE is ready and if Time out is reached exit */
-    do
-    {
+    do {
         HSEStatus = RCC->CR & RCC_CR_HSERDY;
         StartUpCounter++;
-    }
-    while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
+    } while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
 
-    if((RCC->CR & RCC_CR_HSERDY) != RESET)
-    {
+    if((RCC->CR & RCC_CR_HSERDY) != RESET) {
         HSEStatus = (uint32_t)0x01;
-    }
-    else
-    {
+    } else {
         HSEStatus = (uint32_t)0x00;
     }
 
-    if(HSEStatus == (uint32_t)0x01)
-    {
+    if(HSEStatus == (uint32_t)0x01) {
         /* Enable Prefetch Buffer */
         FLASH->ACR |= FLASH_ACR_PRFTBE;
 
@@ -1069,8 +991,7 @@ static void SetSysClockTo72(void)
         RCC->CR |= RCC_CR_PLL2ON;
 
         /* Wait till PLL2 is ready */
-        while((RCC->CR & RCC_CR_PLL2RDY) == 0)
-        {
+        while((RCC->CR & RCC_CR_PLL2RDY) == 0) {
         }
 
 
@@ -1089,8 +1010,7 @@ static void SetSysClockTo72(void)
         RCC->CR |= RCC_CR_PLLON;
 
         /* Wait till PLL is ready */
-        while((RCC->CR & RCC_CR_PLLRDY) == 0)
-        {
+        while((RCC->CR & RCC_CR_PLLRDY) == 0) {
         }
 
         /* Select PLL as system clock source */
@@ -1098,12 +1018,9 @@ static void SetSysClockTo72(void)
         RCC->CFGR |= (uint32_t)RCC_CFGR_SW_PLL;
 
         /* Wait till PLL is used as system clock source */
-        while((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x08)
-        {
+        while((RCC->CFGR & (uint32_t)RCC_CFGR_SWS) != (uint32_t)0x08) {
         }
-    }
-    else
-    {
+    } else {
         /* If HSE fails to start-up, the application will have wrong clock
              configuration. User can add here some code to deal with this error */
     }

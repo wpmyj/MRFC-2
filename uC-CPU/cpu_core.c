@@ -233,8 +233,7 @@ void  CPU_Init(void)
 
 void  CPU_SW_Exception(void)
 {
-    while(DEF_ON)
-    {
+    while(DEF_ON) {
         ;
     }
 }
@@ -313,13 +312,11 @@ void  CPU_NameGet(CPU_CHAR  *p_name,
     CPU_SR_ALLOC();
 
 
-    if(p_err == (CPU_ERR *)0)
-    {
+    if(p_err == (CPU_ERR *)0) {
         CPU_SW_EXCEPTION(;);
     }
 
-    if(p_name == (CPU_CHAR *)0)
-    {
+    if(p_name == (CPU_CHAR *)0) {
         *p_err = CPU_ERR_NULL_PTR;
         return;
     }
@@ -370,13 +367,11 @@ void  CPU_NameSet(const  CPU_CHAR  *p_name,
     CPU_SR_ALLOC();
 
 
-    if(p_err == (CPU_ERR *)0)
-    {
+    if(p_err == (CPU_ERR *)0) {
         CPU_SW_EXCEPTION(;);
     }
 
-    if(p_name == (const CPU_CHAR *)0)
-    {
+    if(p_name == (const CPU_CHAR *)0) {
         *p_err = CPU_ERR_NULL_PTR;
         return;
     }
@@ -384,8 +379,7 @@ void  CPU_NameSet(const  CPU_CHAR  *p_name,
     len = Str_Len_N(p_name,
                     CPU_CFG_NAME_SIZE);
 
-    if(len < CPU_CFG_NAME_SIZE)                                 /* If       cfg name len < max name size, ...           */
-    {
+    if(len < CPU_CFG_NAME_SIZE) {                               /* If       cfg name len < max name size, ...           */
         CPU_CRITICAL_ENTER();
         (void)Str_Copy_N(&CPU_Name[0],                           /* ... copy cfg name to CPU host name.                  */
                          p_name,
@@ -393,9 +387,7 @@ void  CPU_NameSet(const  CPU_CHAR  *p_name,
         CPU_CRITICAL_EXIT();
         *p_err = CPU_ERR_NONE;
 
-    }
-    else
-    {
+    } else {
         *p_err = CPU_ERR_NAME_SIZE;
     }
 }
@@ -641,8 +633,7 @@ CPU_TS_TMR_FREQ  CPU_TS_TmrFreqGet(CPU_ERR  *p_err)
     CPU_TS_TMR_FREQ  freq_hz;
 
 
-    if(p_err == (CPU_ERR *)0)
-    {
+    if(p_err == (CPU_ERR *)0) {
         CPU_SW_EXCEPTION(;);
     }
 
@@ -848,8 +839,7 @@ void  CPU_IntDisMeasStart(void)
 {
     CPU_IntDisMeasCtr++;
 
-    if(CPU_IntDisNestCtr == 0u)                                     /* If ints NOT yet dis'd, ...                       */
-    {
+    if(CPU_IntDisNestCtr == 0u) {                                   /* If ints NOT yet dis'd, ...                       */
         CPU_IntDisMeasStart_cnts = CPU_TS_TmrRd();                  /* ... get ints dis'd start time.                   */
     }
 
@@ -1041,21 +1031,18 @@ void  CPU_IntDisMeasStop(void)
 
     CPU_IntDisNestCtr--;
 
-    if(CPU_IntDisNestCtr == 0u)                                     /* If ints NO longer dis'd,        ...              */
-    {
+    if(CPU_IntDisNestCtr == 0u) {                                   /* If ints NO longer dis'd,        ...              */
         CPU_IntDisMeasStop_cnts = CPU_TS_TmrRd();                   /* ... get  ints dis'd stop time & ...              */
         /* ... calc ints dis'd tot  time (see Note #1b2A).  */
         time_ints_disd_cnts     = CPU_IntDisMeasStop_cnts -
                                   CPU_IntDisMeasStart_cnts;
 
         /* Calc max ints dis'd times.                       */
-        if(CPU_IntDisMeasMaxCur_cnts < time_ints_disd_cnts)
-        {
+        if(CPU_IntDisMeasMaxCur_cnts < time_ints_disd_cnts) {
             CPU_IntDisMeasMaxCur_cnts = time_ints_disd_cnts;
         }
 
-        if(CPU_IntDisMeasMax_cnts    < time_ints_disd_cnts)
-        {
+        if(CPU_IntDisMeasMax_cnts    < time_ints_disd_cnts) {
             CPU_IntDisMeasMax_cnts    = time_ints_disd_cnts;
         }
     }
@@ -1312,15 +1299,12 @@ CPU_DATA  CPU_CntLeadZeros16(CPU_INT16U  val)
 
 #else                                                                           /* ----------- C-OPTIMIZED ------------ */
 
-    if(val > 0x00FFu)                                                           /* Chk bits [15:08] :                   */
-    {
+    if(val > 0x00FFu) {                                                         /* Chk bits [15:08] :                   */
         /* .. Nbr lead zeros =               .. */
         ix             = (CPU_DATA)(val >>  8u);                                /* .. lookup tbl ix  = 'val' >>  8 bits */
         nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] +  0u);             /* .. plus nbr msb lead zeros =  0 bits.*/
 
-    }
-    else                                                                        /* Chk bits [07:00] :                   */
-    {
+    } else {                                                                    /* Chk bits [07:00] :                   */
         /* .. Nbr lead zeros =               .. */
         ix             = (CPU_DATA)(val >>  0u);                                /* .. lookup tbl ix  = 'val' >>  0 bits */
         nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] +  8u);             /* .. plus nbr msb lead zeros =  8 bits.*/
@@ -1391,34 +1375,25 @@ CPU_DATA  CPU_CntLeadZeros32(CPU_INT32U  val)
 
 #else                                                                           /* ----------- C-OPTIMIZED ------------ */
 
-    if(val > 0x0000FFFFu)
-    {
-        if(val > 0x00FFFFFFu)                                                   /* Chk bits [31:24] :                   */
-        {
+    if(val > 0x0000FFFFu) {
+        if(val > 0x00FFFFFFu) {                                                 /* Chk bits [31:24] :                   */
             /* .. Nbr lead zeros =               .. */
             ix             = (CPU_DATA)(val >> 24u);                            /* .. lookup tbl ix  = 'val' >> 24 bits */
             nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] +  0u);         /* .. plus nbr msb lead zeros =  0 bits.*/
 
-        }
-        else                                                                    /* Chk bits [23:16] :                   */
-        {
+        } else {                                                                /* Chk bits [23:16] :                   */
             /* .. Nbr lead zeros =               .. */
             ix             = (CPU_DATA)(val >> 16u);                            /* .. lookup tbl ix  = 'val' >> 16 bits */
             nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] +  8u);         /* .. plus nbr msb lead zeros =  8 bits.*/
         }
 
-    }
-    else
-    {
-        if(val > 0x000000FFu)                                                   /* Chk bits [15:08] :                   */
-        {
+    } else {
+        if(val > 0x000000FFu) {                                                 /* Chk bits [15:08] :                   */
             /* .. Nbr lead zeros =               .. */
             ix             = (CPU_DATA)(val >>  8u);                            /* .. lookup tbl ix  = 'val' >>  8 bits */
             nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] + 16u);         /* .. plus nbr msb lead zeros = 16 bits.*/
 
-        }
-        else                                                                    /* Chk bits [07:00] :                   */
-        {
+        } else {                                                                /* Chk bits [07:00] :                   */
             /* .. Nbr lead zeros =               .. */
             ix             = (CPU_DATA)(val >>  0u);                            /* .. lookup tbl ix  = 'val' >>  0 bits */
             nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] + 24u);         /* .. plus nbr msb lead zeros = 24 bits.*/
@@ -1490,73 +1465,52 @@ CPU_DATA  CPU_CntLeadZeros64(CPU_INT64U  val)
 
 #else                                                                           /* ----------- C-OPTIMIZED ------------ */
 
-    if(val > 0x00000000FFFFFFFFu)
-    {
-        if(val > 0x0000FFFFFFFFFFFFu)
-        {
-            if(val > 0x00FFFFFFFFFFFFFFu)                                       /* Chk bits [63:56] :                   */
-            {
+    if(val > 0x00000000FFFFFFFFu) {
+        if(val > 0x0000FFFFFFFFFFFFu) {
+            if(val > 0x00FFFFFFFFFFFFFFu) {                                     /* Chk bits [63:56] :                   */
                 /* .. Nbr lead zeros =               .. */
                 ix             = (CPU_DATA)(val >> 56u);                        /* .. lookup tbl ix  = 'val' >> 56 bits */
                 nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] +  0u);     /* .. plus nbr msb lead zeros =  0 bits.*/
 
-            }
-            else                                                                /* Chk bits [55:48] :                   */
-            {
+            } else {                                                            /* Chk bits [55:48] :                   */
                 /* .. Nbr lead zeros =               .. */
                 ix             = (CPU_DATA)(val >> 48u);                        /* .. lookup tbl ix  = 'val' >> 48 bits */
                 nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] +  8u);     /* .. plus nbr msb lead zeros =  8 bits.*/
             }
 
-        }
-        else
-        {
-            if(val > 0x000000FFFFFFFFFFu)                                       /* Chk bits [47:40] :                   */
-            {
+        } else {
+            if(val > 0x000000FFFFFFFFFFu) {                                     /* Chk bits [47:40] :                   */
                 /* .. Nbr lead zeros =               .. */
                 ix             = (CPU_DATA)(val >> 40u);                        /* .. lookup tbl ix  = 'val' >> 40 bits */
                 nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] + 16u);     /* .. plus nbr msb lead zeros = 16 bits.*/
 
-            }
-            else                                                                /* Chk bits [39:32] :                   */
-            {
+            } else {                                                            /* Chk bits [39:32] :                   */
                 /* .. Nbr lead zeros =               .. */
                 ix             = (CPU_DATA)(val >> 32u);                        /* .. lookup tbl ix  = 'val' >> 32 bits */
                 nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] + 24u);     /* .. plus nbr msb lead zeros = 24 bits.*/
             }
         }
 
-    }
-    else
-    {
-        if(val > 0x000000000000FFFFu)
-        {
-            if(val > 0x0000000000FFFFFFu)                                       /* Chk bits [31:24] :                   */
-            {
+    } else {
+        if(val > 0x000000000000FFFFu) {
+            if(val > 0x0000000000FFFFFFu) {                                     /* Chk bits [31:24] :                   */
                 /* .. Nbr lead zeros =               .. */
                 ix             = (CPU_DATA)(val >> 24u);                        /* .. lookup tbl ix  = 'val' >> 24 bits */
                 nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] + 32u);     /* .. plus nbr msb lead zeros = 32 bits.*/
 
-            }
-            else                                                                /* Chk bits [23:16] :                   */
-            {
+            } else {                                                            /* Chk bits [23:16] :                   */
                 /* .. Nbr lead zeros =               .. */
                 ix             = (CPU_DATA)(val >> 16u);                        /* .. lookup tbl ix  = 'val' >> 16 bits */
                 nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] + 40u);     /* .. plus nbr msb lead zeros = 40 bits.*/
             }
 
-        }
-        else
-        {
-            if(val > 0x00000000000000FFu)                                       /* Chk bits [15:08] :                   */
-            {
+        } else {
+            if(val > 0x00000000000000FFu) {                                     /* Chk bits [15:08] :                   */
                 /* .. Nbr lead zeros =               .. */
                 ix             = (CPU_DATA)(val >>  8u);                        /* .. lookup tbl ix  = 'val' >>  8 bits */
                 nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] + 48u);     /* .. plus nbr msb lead zeros = 48 bits.*/
 
-            }
-            else                                                                /* Chk bits [07:00] :                   */
-            {
+            } else {                                                            /* Chk bits [07:00] :                   */
                 /* .. Nbr lead zeros =               .. */
                 ix             = (CPU_DATA)(val >>  0u);                        /* .. lookup tbl ix  = 'val' >>  0 bits */
                 nbr_lead_zeros = (CPU_DATA)(CPU_CntLeadZerosTbl[ix] + 56u);     /* .. plus nbr msb lead zeros = 56 bits.*/
@@ -1691,8 +1645,7 @@ CPU_DATA  CPU_CntTrailZeros(CPU_DATA  val)
     CPU_DATA  nbr_trail_zeros;
 
 
-    if(val == 0u)                                               /* Rtn ALL val bits as zero'd (see Note #3).            */
-    {
+    if(val == 0u) {                                             /* Rtn ALL val bits as zero'd (see Note #3).            */
         return (CPU_CFG_DATA_SIZE * DEF_OCTET_NBR_BITS);
     }
 
@@ -1789,8 +1742,7 @@ CPU_DATA  CPU_CntTrailZeros08(CPU_INT08U  val)
     CPU_DATA    nbr_trail_zeros;
 
 
-    if(val == 0u)                                               /* Rtn ALL val bits as zero'd (see Note #3).            */
-    {
+    if(val == 0u) {                                             /* Rtn ALL val bits as zero'd (see Note #3).            */
         return (CPU_WORD_SIZE_08 * DEF_OCTET_NBR_BITS);
     }
 
@@ -1895,8 +1847,7 @@ CPU_DATA  CPU_CntTrailZeros16(CPU_INT16U  val)
     CPU_DATA    nbr_trail_zeros;
 
 
-    if(val == 0u)                                               /* Rtn ALL val bits as zero'd (see Note #3).            */
-    {
+    if(val == 0u) {                                             /* Rtn ALL val bits as zero'd (see Note #3).            */
         return (CPU_WORD_SIZE_16 * DEF_OCTET_NBR_BITS);
     }
 
@@ -2001,8 +1952,7 @@ CPU_DATA  CPU_CntTrailZeros32(CPU_INT32U  val)
     CPU_DATA    nbr_trail_zeros;
 
 
-    if(val == 0u)                                               /* Rtn ALL val bits as zero'd (see Note #3).            */
-    {
+    if(val == 0u) {                                             /* Rtn ALL val bits as zero'd (see Note #3).            */
         return (CPU_WORD_SIZE_32 * DEF_OCTET_NBR_BITS);
     }
 
@@ -2107,8 +2057,7 @@ CPU_DATA  CPU_CntTrailZeros64(CPU_INT64U  val)
     CPU_DATA    nbr_trail_zeros;
 
 
-    if(val == 0u)                                               /* Rtn ALL val bits as zero'd (see Note #3).            */
-    {
+    if(val == 0u) {                                             /* Rtn ALL val bits as zero'd (see Note #3).            */
         return (CPU_WORD_SIZE_64 * DEF_OCTET_NBR_BITS);
     }
 
@@ -2292,8 +2241,7 @@ static  void  CPU_IntDisMeasInit(void)
     time_meas_tot_cnts = 0u;
     CPU_INT_DIS();                                              /* Ints MUST be dis'd for ovrhd calc (see Note #3b).    */
 
-    for(i = 0u; i < CPU_CFG_INT_DIS_MEAS_OVRHD_NBR; i++)
-    {
+    for(i = 0u; i < CPU_CFG_INT_DIS_MEAS_OVRHD_NBR; i++) {
         CPU_IntDisMeasMaxCur_cnts = 0u;
         CPU_IntDisMeasStart();                                  /* Perform multiple consecutive start/stop time meas's  */
         CPU_IntDisMeasStop();
@@ -2417,12 +2365,9 @@ static  CPU_TS_TMR  CPU_IntDisMeasMaxCalc(CPU_TS_TMR  time_tot_cnts)
 
     time_max_cnts = time_tot_cnts;
 
-    if(time_max_cnts >  CPU_IntDisMeasOvrhd_cnts)               /* If       max ints dis'd time >  ovrhd time, ...      */
-    {
+    if(time_max_cnts >  CPU_IntDisMeasOvrhd_cnts) {             /* If       max ints dis'd time >  ovrhd time, ...      */
         time_max_cnts -= CPU_IntDisMeasOvrhd_cnts;              /* ... adj  max ints dis'd time by ovrhd time; ...      */
-    }
-    else                                                        /* ... else max ints dis'd time <  ovrhd time, ...      */
-    {
+    } else {                                                    /* ... else max ints dis'd time <  ovrhd time, ...      */
         time_max_cnts  = 0u;                                    /* ... clr  max ints dis'd time (see Note #2).          */
     }
 

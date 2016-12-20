@@ -110,8 +110,7 @@ void EXTI_Init(EXTI_InitTypeDef *EXTI_InitStruct)
 
     tmp = (uint32_t)EXTI_BASE;
 
-    if(EXTI_InitStruct->EXTI_LineCmd != DISABLE)
-    {
+    if(EXTI_InitStruct->EXTI_LineCmd != DISABLE) {
         /* Clear EXTI line configuration */
         EXTI->IMR &= ~EXTI_InitStruct->EXTI_Line;
         EXTI->EMR &= ~EXTI_InitStruct->EXTI_Line;
@@ -125,22 +124,17 @@ void EXTI_Init(EXTI_InitTypeDef *EXTI_InitStruct)
         EXTI->FTSR &= ~EXTI_InitStruct->EXTI_Line;
 
         /* Select the trigger for the selected external interrupts */
-        if(EXTI_InitStruct->EXTI_Trigger == EXTI_Trigger_Rising_Falling)
-        {
+        if(EXTI_InitStruct->EXTI_Trigger == EXTI_Trigger_Rising_Falling) {
             /* Rising Falling edge */
             EXTI->RTSR |= EXTI_InitStruct->EXTI_Line;
             EXTI->FTSR |= EXTI_InitStruct->EXTI_Line;
-        }
-        else
-        {
+        } else {
             tmp = (uint32_t)EXTI_BASE;
             tmp += EXTI_InitStruct->EXTI_Trigger;
 
             *(__IO uint32_t *) tmp |= EXTI_InitStruct->EXTI_Line;
         }
-    }
-    else
-    {
+    } else {
         tmp += EXTI_InitStruct->EXTI_Mode;
 
         /* Disable the selected external lines */
@@ -189,12 +183,9 @@ FlagStatus EXTI_GetFlagStatus(uint32_t EXTI_Line)
     /* Check the parameters */
     assert_param(IS_GET_EXTI_LINE(EXTI_Line));
 
-    if((EXTI->PR & EXTI_Line) != (uint32_t)RESET)
-    {
+    if((EXTI->PR & EXTI_Line) != (uint32_t)RESET) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 
@@ -231,12 +222,9 @@ ITStatus EXTI_GetITStatus(uint32_t EXTI_Line)
 
     enablestatus =  EXTI->IMR & EXTI_Line;
 
-    if(((EXTI->PR & EXTI_Line) != (uint32_t)RESET) && (enablestatus != (uint32_t)RESET))
-    {
+    if(((EXTI->PR & EXTI_Line) != (uint32_t)RESET) && (enablestatus != (uint32_t)RESET)) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 

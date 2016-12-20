@@ -105,8 +105,7 @@ CPU_INT32U  BSP_PeriphClkFreqGet(CPU_DATA  pwr_clk_id)
 
     clk_freq = BSP_CPU_ClkFreq();
 
-    switch(pwr_clk_id)
-    {
+    switch(pwr_clk_id) {
         case BSP_PERIPH_ID_DMA1:
         case BSP_PERIPH_ID_DMA2:
         case BSP_PERIPH_ID_SRAM:
@@ -130,8 +129,7 @@ CPU_INT32U  BSP_PeriphClkFreqGet(CPU_DATA  pwr_clk_id)
         case BSP_PERIPH_ID_USART1:
             clk_div = (BSP_PERIPH_REG_RCC_CFGR & 0x00003800) >> 11;
 
-            if(clk_div < 4)
-            {
+            if(clk_div < 4) {
                 return (clk_freq);
             }
 
@@ -161,8 +159,7 @@ CPU_INT32U  BSP_PeriphClkFreqGet(CPU_DATA  pwr_clk_id)
         case BSP_PERIPH_ID_DAC:
             clk_div = (BSP_PERIPH_REG_RCC_CFGR & 0x00000700) >> 8;
 
-            if(clk_div < 4)
-            {
+            if(clk_div < 4) {
                 return (clk_freq);
             }
 
@@ -193,8 +190,7 @@ CPU_INT32U  BSP_PeriphClkFreqGet(CPU_DATA  pwr_clk_id)
 
 void  BSP_PeriphEn(CPU_DATA  pwr_clk_id)
 {
-    switch(pwr_clk_id)
-    {
+    switch(pwr_clk_id) {
         case BSP_PERIPH_ID_DMA1:
         case BSP_PERIPH_ID_DMA2:
         case BSP_PERIPH_ID_SRAM:
@@ -264,8 +260,7 @@ void  BSP_PeriphEn(CPU_DATA  pwr_clk_id)
 
 void  BSP_PeriphDis(CPU_DATA  pwr_clk_id)
 {
-    switch(pwr_clk_id)
-    {
+    switch(pwr_clk_id) {
         case BSP_PERIPH_ID_DMA1:
         case BSP_PERIPH_ID_DMA2:
         case BSP_PERIPH_ID_SRAM:

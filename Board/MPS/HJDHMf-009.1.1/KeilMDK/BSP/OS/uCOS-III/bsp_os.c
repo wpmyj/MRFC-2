@@ -136,8 +136,7 @@ CPU_BOOLEAN  BSP_OS_SemCreate(BSP_OS_SEM       *p_sem,
                 (OS_SEM_CTR)sem_val,
                 (OS_ERR *)&err);
 
-    if(err != OS_ERR_NONE)
-    {
+    if(err != OS_ERR_NONE) {
         return (DEF_FAIL);
     }
 
@@ -179,8 +178,7 @@ CPU_BOOLEAN  BSP_OS_SemWait(BSP_OS_SEM  *p_sem,
               (CPU_TS)0,
               (OS_ERR *)&err);
 
-    if(err != OS_ERR_NONE)
-    {
+    if(err != OS_ERR_NONE) {
         return (DEF_FAIL);
     }
 
@@ -213,8 +211,7 @@ CPU_BOOLEAN  BSP_OS_SemPost(BSP_OS_SEM *p_sem)
               (OS_OPT)OS_OPT_POST_1,
               (OS_ERR *)&err);
 
-    if(err != OS_ERR_NONE)
-    {
+    if(err != OS_ERR_NONE) {
         return (DEF_FAIL);
     }
 
@@ -254,18 +251,14 @@ void   BSP_OS_TimeDlyMs(CPU_INT32U  dly_ms)
     OS_ERR      err;
 
 
-    if(dly_ms > 10000u)                                          /* Limit delays to 10 seconds.                        */
-    {
+    if(dly_ms > 10000u) {                                        /* Limit delays to 10 seconds.                        */
         dly_ms = 10000u;
     }
 
-    if(dly_ms >= 1000u)
-    {
+    if(dly_ms >= 1000u) {
         ms  = dly_ms % 1000u;
         sec = dly_ms / 1000u;
-    }
-    else
-    {
+    } else {
         ms  = dly_ms;
         sec = 0u;
     }

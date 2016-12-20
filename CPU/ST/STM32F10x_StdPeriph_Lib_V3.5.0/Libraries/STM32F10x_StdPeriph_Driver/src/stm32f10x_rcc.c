@@ -278,8 +278,7 @@ void RCC_HSEConfig(uint32_t RCC_HSE)
     RCC->CR &= CR_HSEBYP_Reset;
 
     /* Configure HSE (RCC_HSE_OFF is already covered by the code section above) */
-    switch(RCC_HSE)
-    {
+    switch(RCC_HSE) {
         case RCC_HSE_ON:
             /* Set HSEON bit */
             RCC->CR |= CR_HSEON_Set;
@@ -309,19 +308,14 @@ ErrorStatus RCC_WaitForHSEStartUp(void)
     FlagStatus HSEStatus = RESET;
 
     /* Wait till HSE is ready and if Time out is reached exit */
-    do
-    {
+    do {
         HSEStatus = RCC_GetFlagStatus(RCC_FLAG_HSERDY);
         StartUpCounter++;
-    }
-    while((StartUpCounter != HSE_STARTUP_TIMEOUT) && (HSEStatus == RESET));
+    } while((StartUpCounter != HSE_STARTUP_TIMEOUT) && (HSEStatus == RESET));
 
-    if(RCC_GetFlagStatus(RCC_FLAG_HSERDY) != RESET)
-    {
+    if(RCC_GetFlagStatus(RCC_FLAG_HSERDY) != RESET) {
         status = SUCCESS;
-    }
-    else
-    {
+    } else {
         status = ERROR;
     }
 
@@ -706,13 +700,10 @@ void RCC_ITConfig(uint8_t RCC_IT, FunctionalState NewState)
     assert_param(IS_RCC_IT(RCC_IT));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Perform Byte access to RCC_CIR bits to enable the selected interrupts */
         *(__IO uint8_t *) CIR_BYTE2_ADDRESS |= RCC_IT;
-    }
-    else
-    {
+    } else {
         /* Perform Byte access to RCC_CIR bits to disable the selected interrupts */
         *(__IO uint8_t *) CIR_BYTE2_ADDRESS &= (uint8_t)~RCC_IT;
     }
@@ -841,8 +832,7 @@ void RCC_LSEConfig(uint8_t RCC_LSE)
     *(__IO uint8_t *) BDCR_ADDRESS = RCC_LSE_OFF;
 
     /* Configure LSE (RCC_LSE_OFF is already covered by the code section above) */
-    switch(RCC_LSE)
-    {
+    switch(RCC_LSE) {
         case RCC_LSE_ON:
             /* Set LSEON bit */
             *(__IO uint8_t *) BDCR_ADDRESS = RCC_LSE_ON;
@@ -925,8 +915,7 @@ void RCC_GetClocksFreq(RCC_ClocksTypeDef *RCC_Clocks)
     /* Get SYSCLK source -------------------------------------------------------*/
     tmp = RCC->CFGR & CFGR_SWS_Mask;
 
-    switch(tmp)
-    {
+    switch(tmp) {
         case 0x00:  /* HSI used as system clock */
             RCC_Clocks->SYSCLK_Frequency = HSI_VALUE;
             break;
@@ -944,13 +933,10 @@ void RCC_GetClocksFreq(RCC_ClocksTypeDef *RCC_Clocks)
 #ifndef STM32F10X_CL
             pllmull = (pllmull >> 18) + 2;
 
-            if(pllsource == 0x00)
-            {
+            if(pllsource == 0x00) {
                 /* HSI oscillator clock divided by 2 selected as PLL clock entry */
                 RCC_Clocks->SYSCLK_Frequency = (HSI_VALUE >> 1) * pllmull;
-            }
-            else
-            {
+            } else {
 #if defined (STM32F10X_LD_VL) || defined (STM32F10X_MD_VL) || defined (STM32F10X_HD_VL)
                 prediv1factor = (RCC->CFGR2 & CFGR2_PREDIV1) + 1;
                 /* HSE oscillator clock selected as PREDIV1 clock entry */
@@ -958,13 +944,10 @@ void RCC_GetClocksFreq(RCC_ClocksTypeDef *RCC_Clocks)
 #else
 
                 /* HSE selected as PLL clock entry */
-                if((RCC->CFGR & CFGR_PLLXTPRE_Mask) != (uint32_t)RESET)
-                {
+                if((RCC->CFGR & CFGR_PLLXTPRE_Mask) != (uint32_t)RESET) {
                     /* HSE oscillator clock divided by 2 */
                     RCC_Clocks->SYSCLK_Frequency = (HSE_VALUE >> 1) * pllmull;
-                }
-                else
-                {
+                } else {
                     RCC_Clocks->SYSCLK_Frequency = HSE_VALUE * pllmull;
                 }
 
@@ -974,36 +957,27 @@ void RCC_GetClocksFreq(RCC_ClocksTypeDef *RCC_Clocks)
 #else
             pllmull = pllmull >> 18;
 
-            if(pllmull != 0x0D)
-            {
+            if(pllmull != 0x0D) {
                 pllmull += 2;
-            }
-            else
-            {
+            } else {
                 /* PLL multiplication factor = PLL input clock * 6.5 */
                 pllmull = 13 / 2;
             }
 
-            if(pllsource == 0x00)
-            {
+            if(pllsource == 0x00) {
                 /* HSI oscillator clock divided by 2 selected as PLL clock entry */
                 RCC_Clocks->SYSCLK_Frequency = (HSI_VALUE >> 1) * pllmull;
-            }
-            else
-            {
+            } else {
                 /* PREDIV1 selected as PLL clock entry */
 
                 /* Get PREDIV1 clock source and division factor */
                 prediv1source = RCC->CFGR2 & CFGR2_PREDIV1SRC;
                 prediv1factor = (RCC->CFGR2 & CFGR2_PREDIV1) + 1;
 
-                if(prediv1source == 0)
-                {
+                if(prediv1source == 0) {
                     /* HSE oscillator clock selected as PREDIV1 clock entry */
                     RCC_Clocks->SYSCLK_Frequency = (HSE_VALUE / prediv1factor) * pllmull;
-                }
-                else
-                {
+                } else {
                     /* PLL2 clock selected as PREDIV1 clock entry */
 
                     /* Get PREDIV2 division factor and PLL2 multiplication factor */
@@ -1085,12 +1059,9 @@ void RCC_AHBPeriphClockCmd(uint32_t RCC_AHBPeriph, FunctionalState NewState)
     assert_param(IS_RCC_AHB_PERIPH(RCC_AHBPeriph));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         RCC->AHBENR |= RCC_AHBPeriph;
-    }
-    else
-    {
+    } else {
         RCC->AHBENR &= ~RCC_AHBPeriph;
     }
 }
@@ -1116,12 +1087,9 @@ void RCC_APB2PeriphClockCmd(uint32_t RCC_APB2Periph, FunctionalState NewState)
     assert_param(IS_RCC_APB2_PERIPH(RCC_APB2Periph));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         RCC->APB2ENR |= RCC_APB2Periph;
-    }
-    else
-    {
+    } else {
         RCC->APB2ENR &= ~RCC_APB2Periph;
     }
 }
@@ -1148,12 +1116,9 @@ void RCC_APB1PeriphClockCmd(uint32_t RCC_APB1Periph, FunctionalState NewState)
     assert_param(IS_RCC_APB1_PERIPH(RCC_APB1Periph));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         RCC->APB1ENR |= RCC_APB1Periph;
-    }
-    else
-    {
+    } else {
         RCC->APB1ENR &= ~RCC_APB1Periph;
     }
 }
@@ -1176,12 +1141,9 @@ void RCC_AHBPeriphResetCmd(uint32_t RCC_AHBPeriph, FunctionalState NewState)
     assert_param(IS_RCC_AHB_PERIPH_RESET(RCC_AHBPeriph));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         RCC->AHBRSTR |= RCC_AHBPeriph;
-    }
-    else
-    {
+    } else {
         RCC->AHBRSTR &= ~RCC_AHBPeriph;
     }
 }
@@ -1208,12 +1170,9 @@ void RCC_APB2PeriphResetCmd(uint32_t RCC_APB2Periph, FunctionalState NewState)
     assert_param(IS_RCC_APB2_PERIPH(RCC_APB2Periph));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         RCC->APB2RSTR |= RCC_APB2Periph;
-    }
-    else
-    {
+    } else {
         RCC->APB2RSTR &= ~RCC_APB2Periph;
     }
 }
@@ -1240,12 +1199,9 @@ void RCC_APB1PeriphResetCmd(uint32_t RCC_APB1Periph, FunctionalState NewState)
     assert_param(IS_RCC_APB1_PERIPH(RCC_APB1Periph));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         RCC->APB1RSTR |= RCC_APB1Periph;
-    }
-    else
-    {
+    } else {
         RCC->APB1RSTR &= ~RCC_APB1Periph;
     }
 }
@@ -1356,28 +1312,20 @@ FlagStatus RCC_GetFlagStatus(uint8_t RCC_FLAG)
     /* Get the RCC register index */
     tmp = RCC_FLAG >> 5;
 
-    if(tmp == 1)                /* The flag to check is in CR register */
-    {
+    if(tmp == 1) {              /* The flag to check is in CR register */
         statusreg = RCC->CR;
-    }
-    else if(tmp == 2)           /* The flag to check is in BDCR register */
-    {
+    } else if(tmp == 2) {       /* The flag to check is in BDCR register */
         statusreg = RCC->BDCR;
-    }
-    else                       /* The flag to check is in CSR register */
-    {
+    } else {                   /* The flag to check is in CSR register */
         statusreg = RCC->CSR;
     }
 
     /* Get the flag position */
     tmp = RCC_FLAG & FLAG_Mask;
 
-    if((statusreg & ((uint32_t)1 << tmp)) != (uint32_t)RESET)
-    {
+    if((statusreg & ((uint32_t)1 << tmp)) != (uint32_t)RESET) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 
@@ -1430,12 +1378,9 @@ ITStatus RCC_GetITStatus(uint8_t RCC_IT)
     assert_param(IS_RCC_GET_IT(RCC_IT));
 
     /* Check the status of the specified RCC interrupt */
-    if((RCC->CIR & RCC_IT) != (uint32_t)RESET)
-    {
+    if((RCC->CIR & RCC_IT) != (uint32_t)RESET) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 

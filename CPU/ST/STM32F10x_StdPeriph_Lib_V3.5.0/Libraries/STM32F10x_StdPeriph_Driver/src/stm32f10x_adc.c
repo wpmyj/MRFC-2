@@ -181,24 +181,18 @@ void ADC_DeInit(ADC_TypeDef *ADCx)
     /* Check the parameters */
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
 
-    if(ADCx == ADC1)
-    {
+    if(ADCx == ADC1) {
         /* Enable ADC1 reset state */
         RCC_APB2PeriphResetCmd(RCC_APB2Periph_ADC1, ENABLE);
         /* Release ADC1 from reset state */
         RCC_APB2PeriphResetCmd(RCC_APB2Periph_ADC1, DISABLE);
-    }
-    else if(ADCx == ADC2)
-    {
+    } else if(ADCx == ADC2) {
         /* Enable ADC2 reset state */
         RCC_APB2PeriphResetCmd(RCC_APB2Periph_ADC2, ENABLE);
         /* Release ADC2 from reset state */
         RCC_APB2PeriphResetCmd(RCC_APB2Periph_ADC2, DISABLE);
-    }
-    else
-    {
-        if(ADCx == ADC3)
-        {
+    } else {
+        if(ADCx == ADC3) {
             /* Enable ADC3 reset state */
             RCC_APB2PeriphResetCmd(RCC_APB2Periph_ADC3, ENABLE);
             /* Release ADC3 from reset state */
@@ -302,13 +296,10 @@ void ADC_Cmd(ADC_TypeDef *ADCx, FunctionalState NewState)
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Set the ADON bit to wake up the ADC from power down mode */
         ADCx->CR2 |= CR2_ADON_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected ADC peripheral */
         ADCx->CR2 &= CR2_ADON_Reset;
     }
@@ -328,13 +319,10 @@ void ADC_DMACmd(ADC_TypeDef *ADCx, FunctionalState NewState)
     assert_param(IS_ADC_DMA_PERIPH(ADCx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected ADC DMA request */
         ADCx->CR2 |= CR2_DMA_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected ADC DMA request */
         ADCx->CR2 &= CR2_DMA_Reset;
     }
@@ -362,13 +350,10 @@ void ADC_ITConfig(ADC_TypeDef *ADCx, uint16_t ADC_IT, FunctionalState NewState)
     /* Get the ADC IT index */
     itmask = (uint8_t)ADC_IT;
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected ADC interrupts */
         ADCx->CR1 |= itmask;
-    }
-    else
-    {
+    } else {
         /* Disable the selected ADC interrupts */
         ADCx->CR1 &= (~(uint32_t)itmask);
     }
@@ -399,13 +384,10 @@ FlagStatus ADC_GetResetCalibrationStatus(ADC_TypeDef *ADCx)
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
 
     /* Check the status of RSTCAL bit */
-    if((ADCx->CR2 & CR2_RSTCAL_Set) != (uint32_t)RESET)
-    {
+    if((ADCx->CR2 & CR2_RSTCAL_Set) != (uint32_t)RESET) {
         /* RSTCAL bit is set */
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* RSTCAL bit is reset */
         bitstatus = RESET;
     }
@@ -439,13 +421,10 @@ FlagStatus ADC_GetCalibrationStatus(ADC_TypeDef *ADCx)
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
 
     /* Check the status of CAL bit */
-    if((ADCx->CR2 & CR2_CAL_Set) != (uint32_t)RESET)
-    {
+    if((ADCx->CR2 & CR2_CAL_Set) != (uint32_t)RESET) {
         /* CAL bit is set: calibration on going */
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* CAL bit is reset: end of calibration */
         bitstatus = RESET;
     }
@@ -467,14 +446,11 @@ void ADC_SoftwareStartConvCmd(ADC_TypeDef *ADCx, FunctionalState NewState)
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected ADC conversion on external event and start the selected
            ADC conversion */
         ADCx->CR2 |= CR2_EXTTRIG_SWSTART_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected ADC conversion on external event and stop the selected
            ADC conversion */
         ADCx->CR2 &= CR2_EXTTRIG_SWSTART_Reset;
@@ -493,13 +469,10 @@ FlagStatus ADC_GetSoftwareStartConvStatus(ADC_TypeDef *ADCx)
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
 
     /* Check the status of SWSTART bit */
-    if((ADCx->CR2 & CR2_SWSTART_Set) != (uint32_t)RESET)
-    {
+    if((ADCx->CR2 & CR2_SWSTART_Set) != (uint32_t)RESET) {
         /* SWSTART bit is set */
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* SWSTART bit is reset */
         bitstatus = RESET;
     }
@@ -549,13 +522,10 @@ void ADC_DiscModeCmd(ADC_TypeDef *ADCx, FunctionalState NewState)
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected ADC regular discontinuous mode */
         ADCx->CR1 |= CR1_DISCEN_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected ADC regular discontinuous mode */
         ADCx->CR1 &= CR1_DISCEN_Reset;
     }
@@ -608,8 +578,7 @@ void ADC_RegularChannelConfig(ADC_TypeDef *ADCx, uint8_t ADC_Channel, uint8_t Ra
     assert_param(IS_ADC_SAMPLE_TIME(ADC_SampleTime));
 
     /* if ADC_Channel_10 ... ADC_Channel_17 is selected */
-    if(ADC_Channel > ADC_Channel_9)
-    {
+    if(ADC_Channel > ADC_Channel_9) {
         /* Get the old register value */
         tmpreg1 = ADCx->SMPR1;
         /* Calculate the mask to clear */
@@ -622,9 +591,7 @@ void ADC_RegularChannelConfig(ADC_TypeDef *ADCx, uint8_t ADC_Channel, uint8_t Ra
         tmpreg1 |= tmpreg2;
         /* Store the new register value */
         ADCx->SMPR1 = tmpreg1;
-    }
-    else /* ADC_Channel include in ADC_Channel_[0..9] */
-    {
+    } else { /* ADC_Channel include in ADC_Channel_[0..9] */
         /* Get the old register value */
         tmpreg1 = ADCx->SMPR2;
         /* Calculate the mask to clear */
@@ -640,8 +607,7 @@ void ADC_RegularChannelConfig(ADC_TypeDef *ADCx, uint8_t ADC_Channel, uint8_t Ra
     }
 
     /* For Rank 1 to 6 */
-    if(Rank < 7)
-    {
+    if(Rank < 7) {
         /* Get the old register value */
         tmpreg1 = ADCx->SQR3;
         /* Calculate the mask to clear */
@@ -656,8 +622,7 @@ void ADC_RegularChannelConfig(ADC_TypeDef *ADCx, uint8_t ADC_Channel, uint8_t Ra
         ADCx->SQR3 = tmpreg1;
     }
     /* For Rank 7 to 12 */
-    else if(Rank < 13)
-    {
+    else if(Rank < 13) {
         /* Get the old register value */
         tmpreg1 = ADCx->SQR2;
         /* Calculate the mask to clear */
@@ -672,8 +637,7 @@ void ADC_RegularChannelConfig(ADC_TypeDef *ADCx, uint8_t ADC_Channel, uint8_t Ra
         ADCx->SQR2 = tmpreg1;
     }
     /* For Rank 13 to 16 */
-    else
-    {
+    else {
         /* Get the old register value */
         tmpreg1 = ADCx->SQR1;
         /* Calculate the mask to clear */
@@ -702,13 +666,10 @@ void ADC_ExternalTrigConvCmd(ADC_TypeDef *ADCx, FunctionalState NewState)
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected ADC conversion on external event */
         ADCx->CR2 |= CR2_EXTTRIG_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected ADC conversion on external event */
         ADCx->CR2 &= CR2_EXTTRIG_Reset;
     }
@@ -751,13 +712,10 @@ void ADC_AutoInjectedConvCmd(ADC_TypeDef *ADCx, FunctionalState NewState)
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected ADC automatic injected group conversion */
         ADCx->CR1 |= CR1_JAUTO_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected ADC automatic injected group conversion */
         ADCx->CR1 &= CR1_JAUTO_Reset;
     }
@@ -778,13 +736,10 @@ void ADC_InjectedDiscModeCmd(ADC_TypeDef *ADCx, FunctionalState NewState)
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected ADC injected discontinuous mode */
         ADCx->CR1 |= CR1_JDISCEN_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected ADC injected discontinuous mode */
         ADCx->CR1 &= CR1_JDISCEN_Reset;
     }
@@ -843,13 +798,10 @@ void ADC_ExternalTrigInjectedConvCmd(ADC_TypeDef *ADCx, FunctionalState NewState
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected ADC external event selection for injected group */
         ADCx->CR2 |= CR2_JEXTTRIG_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected ADC external event selection for injected group */
         ADCx->CR2 &= CR2_JEXTTRIG_Reset;
     }
@@ -869,14 +821,11 @@ void ADC_SoftwareStartInjectedConvCmd(ADC_TypeDef *ADCx, FunctionalState NewStat
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected ADC conversion for injected group on external event and start the selected
            ADC injected conversion */
         ADCx->CR2 |= CR2_JEXTTRIG_JSWSTART_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected ADC conversion on external event for injected group and stop the selected
            ADC injected conversion */
         ADCx->CR2 &= CR2_JEXTTRIG_JSWSTART_Reset;
@@ -895,13 +844,10 @@ FlagStatus ADC_GetSoftwareStartInjectedConvCmdStatus(ADC_TypeDef *ADCx)
     assert_param(IS_ADC_ALL_PERIPH(ADCx));
 
     /* Check the status of JSWSTART bit */
-    if((ADCx->CR2 & CR2_JSWSTART_Set) != (uint32_t)RESET)
-    {
+    if((ADCx->CR2 & CR2_JSWSTART_Set) != (uint32_t)RESET) {
         /* JSWSTART bit is set */
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* JSWSTART bit is reset */
         bitstatus = RESET;
     }
@@ -957,8 +903,7 @@ void ADC_InjectedChannelConfig(ADC_TypeDef *ADCx, uint8_t ADC_Channel, uint8_t R
     assert_param(IS_ADC_SAMPLE_TIME(ADC_SampleTime));
 
     /* if ADC_Channel_10 ... ADC_Channel_17 is selected */
-    if(ADC_Channel > ADC_Channel_9)
-    {
+    if(ADC_Channel > ADC_Channel_9) {
         /* Get the old register value */
         tmpreg1 = ADCx->SMPR1;
         /* Calculate the mask to clear */
@@ -971,9 +916,7 @@ void ADC_InjectedChannelConfig(ADC_TypeDef *ADCx, uint8_t ADC_Channel, uint8_t R
         tmpreg1 |= tmpreg2;
         /* Store the new register value */
         ADCx->SMPR1 = tmpreg1;
-    }
-    else /* ADC_Channel include in ADC_Channel_[0..9] */
-    {
+    } else { /* ADC_Channel include in ADC_Channel_[0..9] */
         /* Get the old register value */
         tmpreg1 = ADCx->SMPR2;
         /* Calculate the mask to clear */
@@ -1191,13 +1134,10 @@ void ADC_TempSensorVrefintCmd(FunctionalState NewState)
     /* Check the parameters */
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the temperature sensor and Vrefint channel*/
         ADC1->CR2 |= CR2_TSVREFE_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the temperature sensor and Vrefint channel*/
         ADC1->CR2 &= CR2_TSVREFE_Reset;
     }
@@ -1223,13 +1163,10 @@ FlagStatus ADC_GetFlagStatus(ADC_TypeDef *ADCx, uint8_t ADC_FLAG)
     assert_param(IS_ADC_GET_FLAG(ADC_FLAG));
 
     /* Check the status of the specified ADC flag */
-    if((ADCx->SR & ADC_FLAG) != (uint8_t)RESET)
-    {
+    if((ADCx->SR & ADC_FLAG) != (uint8_t)RESET) {
         /* ADC_FLAG is set */
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* ADC_FLAG is reset */
         bitstatus = RESET;
     }
@@ -1282,13 +1219,10 @@ ITStatus ADC_GetITStatus(ADC_TypeDef *ADCx, uint16_t ADC_IT)
     enablestatus = (ADCx->CR1 & (uint8_t)ADC_IT) ;
 
     /* Check the status of the specified ADC interrupt */
-    if(((ADCx->SR & itmask) != (uint32_t)RESET) && enablestatus)
-    {
+    if(((ADCx->SR & itmask) != (uint32_t)RESET) && enablestatus) {
         /* ADC_IT is set */
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* ADC_IT is reset */
         bitstatus = RESET;
     }

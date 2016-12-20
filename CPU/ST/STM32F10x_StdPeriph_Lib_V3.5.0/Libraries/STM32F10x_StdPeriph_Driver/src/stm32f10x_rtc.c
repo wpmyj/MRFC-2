@@ -93,12 +93,9 @@ void RTC_ITConfig(uint16_t RTC_IT, FunctionalState NewState)
     assert_param(IS_RTC_IT(RTC_IT));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         RTC->CRH |= RTC_IT;
-    }
-    else
-    {
+    } else {
         RTC->CRH &= (uint16_t)~RTC_IT;
     }
 }
@@ -207,8 +204,7 @@ uint32_t RTC_GetDivider(void)
 void RTC_WaitForLastTask(void)
 {
     /* Loop until RTOFF flag is set */
-    while((RTC->CRL & RTC_FLAG_RTOFF) == (uint16_t)RESET)
-    {
+    while((RTC->CRL & RTC_FLAG_RTOFF) == (uint16_t)RESET) {
     }
 }
 
@@ -226,8 +222,7 @@ void RTC_WaitForSynchro(void)
     RTC->CRL &= (uint16_t)~RTC_FLAG_RSF;
 
     /* Loop until RSF flag is set */
-    while((RTC->CRL & RTC_FLAG_RSF) == (uint16_t)RESET)
-    {
+    while((RTC->CRL & RTC_FLAG_RSF) == (uint16_t)RESET) {
     }
 }
 
@@ -249,12 +244,9 @@ FlagStatus RTC_GetFlagStatus(uint16_t RTC_FLAG)
     /* Check the parameters */
     assert_param(IS_RTC_GET_FLAG(RTC_FLAG));
 
-    if((RTC->CRL & RTC_FLAG) != (uint16_t)RESET)
-    {
+    if((RTC->CRL & RTC_FLAG) != (uint16_t)RESET) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 
@@ -298,12 +290,9 @@ ITStatus RTC_GetITStatus(uint16_t RTC_IT)
 
     bitstatus = (ITStatus)(RTC->CRL & RTC_IT);
 
-    if(((RTC->CRH & RTC_IT) != (uint16_t)RESET) && (bitstatus != (uint16_t)RESET))
-    {
+    if(((RTC->CRH & RTC_IT) != (uint16_t)RESET) && (bitstatus != (uint16_t)RESET)) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 

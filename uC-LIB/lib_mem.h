@@ -293,8 +293,7 @@ typedef  MEM_POOL_BLK_QTY  MEM_POOL_IX;
 typedef  struct  mem_pool  MEM_POOL;
 
 /* --------------------- MEM POOL --------------------- */
-struct  mem_pool
-{
+struct  mem_pool {
     LIB_MEM_TYPE        Type;                                   /* Pool type : LIB_TYPE_POOL or LIB_TYPE_HEAP.          */
 
     MEM_POOL           *SegHeadPtr;                             /* Ptr to head mem seg.                                 */

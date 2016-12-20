@@ -91,7 +91,7 @@ int  main(void)
                  (void *) 0,                                        //用户补充的存储区
                  (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),       //任务选项
                  (OS_ERR *)&err);                                   //存放该函数错误时的返回值
-                 
+
     OS_CRITICAL_EXIT(); //退出临界区
     OSStart(&err);                                              /* Start multitasking (i.e. give control to uC/OS-III). */
 }
@@ -116,7 +116,7 @@ static  void  AppTaskStart(void *p_arg)
     CPU_INT32U  cnts;
     OS_ERR      err;
 //    uint8_t i = 0;
-    
+
     VERIFY_RESULT_TYPE_VARIABLE_Typedef eWaitCmdCheckStatu;
 
     (void)p_arg;
@@ -144,10 +144,10 @@ static  void  AppTaskStart(void *p_arg)
 
 #if OS_CFG_SCHED_ROUND_ROBIN_EN                                                     //当使用时间片轮转的时候
     //使能时间片轮转调度功能,时间片长度为1个系统时钟节拍，既1*5=5ms
-    OSSchedRoundRobinCfg(DEF_ENABLED,1,&err);
+    OSSchedRoundRobinCfg(DEF_ENABLED, 1, &err);
 #endif
 
-    
+
 #if (APP_CFG_SERIAL_EN == DEF_ENABLED)                                                    /*串口初始化*/
     BSP_Ser_Init(115200);                                       /* Enable Serial Interface                              */
 #endif
@@ -155,7 +155,7 @@ static  void  AppTaskStart(void *p_arg)
     OSSemCreate(&g_stAnaSigConvertFinishSem, "Ana Signal convert finish sem", 0, &err);
     OSSemCreate(&IgniteFirstBehindWaitSem, "Fast heater finish sem", 0, &err);
     OSSemCreate(&IgniteSecondBehindWaitSem, "IgniteSecondBehindWaitSem...", 0, &err);
-    
+
     LoadDriverLayerParameters(); //载入驱动层参数，需要放在前面
 
     LoadApplicationLayerParameters();//载入应用层参数
@@ -169,7 +169,7 @@ static  void  AppTaskStart(void *p_arg)
     DigSigMonitorTaskCreate();          // 数字信号监测任务创建
 
     CommunicateTaskCreate();           // 无线通信任务创建
-    
+
     DcModuleAdjustTaskCreate();         //DC限流调节任务
 
 //    Make_Vacuum_FunctionTaskCreate(); //抽真空函数任务的搭建
@@ -190,27 +190,21 @@ static  void  AppTaskStart(void *p_arg)
     OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
 
     APP_TRACE_INFO(("Running top Task...\r\n"));
-    
-    while(DEF_TRUE)
-    {                   
-        if( EN_THROUGH == CheckAuthorization() )
-        {          
-            eWaitCmdCheckStatu = WaittingCommand();                                        
-            if( EN_THROUGH == eWaitCmdCheckStatu ) 
-            {
-                Starting();            
+
+    while(DEF_TRUE) {
+        if(EN_THROUGH == CheckAuthorization()) {
+            eWaitCmdCheckStatu = WaittingCommand();
+
+            if(EN_THROUGH == eWaitCmdCheckStatu) {
+                Starting();
                 Running();
-                KeepingWarm();                                                  
-            }
-            else
-            {
-                SetSystemWorkStatu( EN_ALARMING );
+                KeepingWarm();
+            } else {
+                SetSystemWorkStatu(EN_ALARMING);
                 DeviceFaultAlarm();
             }
-        }
-        else
-        {
-            SetSystemWorkStatu( EN_ALARMING );
+        } else {
+            SetSystemWorkStatu(EN_ALARMING);
             DeviceFaultAlarm();
         }
     }
@@ -223,7 +217,7 @@ static  void  AppTaskStart(void *p_arg)
 *                                          USER NVICConfiguration
 *
 * Description : The use of this funciton is to set the interrupt group.
-*               
+*
 * Arguments   : none.
 *
 * Returns     : none
@@ -231,7 +225,7 @@ static  void  AppTaskStart(void *p_arg)
 * Notes       : none.
 ***************************************************************************************************
 */
-void USER_NVIC_Cfg( void )
+void USER_NVIC_Cfg(void)
 {
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_3);     //设置NVIC中断分组3位抢占优先级，1位从占优先级
 }

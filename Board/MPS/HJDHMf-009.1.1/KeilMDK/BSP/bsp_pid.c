@@ -61,7 +61,7 @@ INCREMENT_TYPE_PID_PARAMETER_Typedef IPID;
 ***************************************************************************************************
 */
 void IncrementType_PID_Init(void)
-{     
+{
     IPID.Sv = 0;
     IPID.Pv = 0;
 
@@ -72,12 +72,12 @@ void IncrementType_PID_Init(void)
     IPID.OutValue = 500;
     IPID.OutValueMax = 1900;
     IPID.OutValueMin = 500;
-    
+
     IPID.Pout = 0.0,
-    IPID.Iout = 0.0,
-    IPID.Dout = 0.0,
-    
-    IPID.CalcCycleCount = 0;//计算/控制周期
+         IPID.Iout = 0.0,
+              IPID.Dout = 0.0,
+
+                   IPID.CalcCycleCount = 0;//计算/控制周期
 
 //    IPID.Td = 200.0;
 //    IPID.Ti = 400.0;
@@ -115,31 +115,34 @@ void IncrementType_PID_Process(uint8_t i_OptimumTemperature)  //增量式PID计算
 
     IPID.Sv = i_OptimumTemperature;
     IPID.Pv = GetSrcAnaSig(STACK_TEMP);//也可在模拟量检测任务中更新
-    
+
     //本次误差(偏差为正，控制量要增大(风机速度);偏差为负,控制量要减小)
-    IPID.Err = IPID.Pv - IPID.Sv; 
-   
+    IPID.Err = IPID.Pv - IPID.Sv;
+
     IPID.Pout = IPID.Kp * (IPID.Err - IPID.Err_Last);//dk1
     IPID.Iout = IPID.Ki * IPID.Err;
-    if(IPID.Err > 0){ //当前值比设置值高，要减控制量,采用PI调节 
+
+    if(IPID.Err > 0) { //当前值比设置值高，要减控制量,采用PI调节
         IPID.Dout = IPID.Kd * (IPID.Err - 2 * IPID.Err_Last + IPID.Err_Next);//dk2
     } else {
         IPID.Dout = 0;
     }
+
 //    IncrementSpeed = IPID.Kp * (IPID.Err - IPID.Err_Last) + IPID.Ki * IPID.Err + IPID.Kd * (IPID.Err - 2 * IPID.Err_Last + IPID.Err_Next);
- 
+
     IncrementSpeed = IPID.Pout + IPID.Iout + IPID.Dout; //本次得到的增量
     IPID.OutValue += (int16_t)IncrementSpeed;           //本次应该输出的实际控制量
 
     if(IPID.OutValue < IPID.OutValueMin) {
         IPID.OutValue = IPID.OutValueMin;
     }
+
     if(IPID.OutValue > IPID.OutValueMax) {
         IPID.OutValue = IPID.OutValueMax;
-    } 
+    }
 
     SetStackFanCtlSpd(IPID.OutValue);//根据计算出的输出量给到控制对象
-    
+
     IPID.Err_Last = IPID.Err_Next;    //更新偏差
     IPID.Err_Next = IPID.Err;
 

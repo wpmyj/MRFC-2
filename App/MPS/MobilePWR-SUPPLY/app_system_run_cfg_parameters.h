@@ -54,7 +54,7 @@
 ***************************************************************************************************
 */
 typedef struct {
-    
+
     uint16_t IgFstTimeFrtToBhdTmpPnt;
     uint16_t IgFstTimeOverTmpPnt;
     uint8_t IgFstTimeWatiTimeMax1;
@@ -98,13 +98,12 @@ typedef struct {
 } LIQUID_PRESSURE_CMP_LINES_Typedef;
 
 
-typedef struct
-{
+typedef struct {
     uint8_t AlarmlowerLiquidLevellimit;//液位低下限
     uint8_t OpenAutomaticliquidValue; //开自动加液液位值
     uint8_t CloseAutomaticliquidValue; //关自动加液液位值
     uint8_t AlarmUpperLiquidLevellimit;//液位高上限
-    
+
 } LIQUID_HEIGHT_CMP_LINES_Typedef;
 
 /*

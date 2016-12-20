@@ -92,8 +92,7 @@ void  OSMemCreate(OS_MEM       *p_mem,
 
 #ifdef OS_SAFETY_CRITICAL
 
-    if(p_err == (OS_ERR *)0)
-    {
+    if(p_err == (OS_ERR *)0) {
         OS_SAFETY_CRITICAL_EXCEPTION();
         return;
     }
@@ -102,8 +101,7 @@ void  OSMemCreate(OS_MEM       *p_mem,
 
 #ifdef OS_SAFETY_CRITICAL_IEC61508
 
-    if(OSSafetyCriticalStartFlag == DEF_TRUE)
-    {
+    if(OSSafetyCriticalStartFlag == DEF_TRUE) {
         *p_err = OS_ERR_ILLEGAL_CREATE_RUN_TIME;
         return;
     }
@@ -112,8 +110,7 @@ void  OSMemCreate(OS_MEM       *p_mem,
 
 #if OS_CFG_CALLED_FROM_ISR_CHK_EN > 0u
 
-    if(OSIntNestingCtr > (OS_NESTING_CTR)0)                 /* Not allowed to call from an ISR                        */
-    {
+    if(OSIntNestingCtr > (OS_NESTING_CTR)0) {               /* Not allowed to call from an ISR                        */
         *p_err = OS_ERR_MEM_CREATE_ISR;
         return;
     }
@@ -122,36 +119,30 @@ void  OSMemCreate(OS_MEM       *p_mem,
 
 #if OS_CFG_ARG_CHK_EN > 0u
 
-    if(p_addr == (void *)0)                                 /* Must pass a valid address for the memory part.         */
-    {
+    if(p_addr == (void *)0) {                               /* Must pass a valid address for the memory part.         */
         *p_err   = OS_ERR_MEM_INVALID_P_ADDR;
         return;
     }
 
-    if(n_blks < (OS_MEM_QTY)2)                              /* Must have at least 2 blocks per partition              */
-    {
+    if(n_blks < (OS_MEM_QTY)2) {                            /* Must have at least 2 blocks per partition              */
         *p_err = OS_ERR_MEM_INVALID_BLKS;
         return;
     }
 
-    if(blk_size < sizeof(void *))                           /* Must contain space for at least a pointer              */
-    {
+    if(blk_size < sizeof(void *)) {                         /* Must contain space for at least a pointer              */
         *p_err = OS_ERR_MEM_INVALID_SIZE;
         return;
     }
 
     align_msk = sizeof(void *) - 1u;
 
-    if(align_msk > 0u)
-    {
-        if(((CPU_ADDR)p_addr & align_msk) != 0u)            /* Must be pointer size aligned                           */
-        {
+    if(align_msk > 0u) {
+        if(((CPU_ADDR)p_addr & align_msk) != 0u) {          /* Must be pointer size aligned                           */
             *p_err = OS_ERR_MEM_INVALID_P_ADDR;
             return;
         }
 
-        if((blk_size & align_msk) != 0u)                    /* Block size must be a multiple address size             */
-        {
+        if((blk_size & align_msk) != 0u) {                  /* Block size must be a multiple address size             */
             *p_err = OS_ERR_MEM_INVALID_SIZE;
             return;
         }
@@ -163,8 +154,7 @@ void  OSMemCreate(OS_MEM       *p_mem,
     p_blk  = (CPU_INT08U *)p_addr;
     loops  = n_blks - 1u;
 
-    for(i = 0u; i < loops; i++)
-    {
+    for(i = 0u; i < loops; i++) {
         p_blk +=  blk_size;
         *p_link = (void *)p_blk;                             /* Save pointer to NEXT block in CURRENT block            */
         p_link = (void **)(void *)p_blk;                    /* Position     to NEXT block                             */
@@ -222,8 +212,7 @@ void  *OSMemGet(OS_MEM  *p_mem,
 
 #ifdef OS_SAFETY_CRITICAL
 
-    if(p_err == (OS_ERR *)0)
-    {
+    if(p_err == (OS_ERR *)0) {
         OS_SAFETY_CRITICAL_EXCEPTION();
         return ((void *)0);
     }
@@ -232,8 +221,7 @@ void  *OSMemGet(OS_MEM  *p_mem,
 
 #if OS_CFG_ARG_CHK_EN > 0u
 
-    if(p_mem == (OS_MEM *)0)                                /* Must point to a valid memory partition                 */
-    {
+    if(p_mem == (OS_MEM *)0) {                              /* Must point to a valid memory partition                 */
         *p_err  = OS_ERR_MEM_INVALID_P_MEM;
         return ((void *)0);
     }
@@ -242,8 +230,7 @@ void  *OSMemGet(OS_MEM  *p_mem,
 
     CPU_CRITICAL_ENTER();
 
-    if(p_mem->NbrFree == (OS_MEM_QTY)0)                     /* See if there are any free memory blocks                */
-    {
+    if(p_mem->NbrFree == (OS_MEM_QTY)0) {                   /* See if there are any free memory blocks                */
         CPU_CRITICAL_EXIT();
         *p_err = OS_ERR_MEM_NO_FREE_BLKS;                    /* No,  Notify caller of empty memory partition           */
         return ((void *)0);                                 /*      Return NULL pointer to caller                     */
@@ -288,8 +275,7 @@ void  OSMemPut(OS_MEM  *p_mem,
 
 #ifdef OS_SAFETY_CRITICAL
 
-    if(p_err == (OS_ERR *)0)
-    {
+    if(p_err == (OS_ERR *)0) {
         OS_SAFETY_CRITICAL_EXCEPTION();
         return;
     }
@@ -298,14 +284,12 @@ void  OSMemPut(OS_MEM  *p_mem,
 
 #if OS_CFG_ARG_CHK_EN > 0u
 
-    if(p_mem == (OS_MEM *)0)                                /* Must point to a valid memory partition                 */
-    {
+    if(p_mem == (OS_MEM *)0) {                              /* Must point to a valid memory partition                 */
         *p_err  = OS_ERR_MEM_INVALID_P_MEM;
         return;
     }
 
-    if(p_blk == (void *)0)                                  /* Must release a valid block                             */
-    {
+    if(p_blk == (void *)0) {                                /* Must release a valid block                             */
         *p_err  = OS_ERR_MEM_INVALID_P_BLK;
         return;
     }
@@ -314,8 +298,7 @@ void  OSMemPut(OS_MEM  *p_mem,
 
     CPU_CRITICAL_ENTER();
 
-    if(p_mem->NbrFree >= p_mem->NbrMax)                     /* Make sure all blocks not already returned              */
-    {
+    if(p_mem->NbrFree >= p_mem->NbrMax) {                   /* Make sure all blocks not already returned              */
         CPU_CRITICAL_EXIT();
         *p_err = OS_ERR_MEM_FULL;
         return;
@@ -348,12 +331,9 @@ void  OS_MemDbgListAdd(OS_MEM  *p_mem)
 {
     p_mem->DbgPrevPtr               = (OS_MEM *)0;
 
-    if(OSMemDbgListPtr == (OS_MEM *)0)
-    {
+    if(OSMemDbgListPtr == (OS_MEM *)0) {
         p_mem->DbgNextPtr           = (OS_MEM *)0;
-    }
-    else
-    {
+    } else {
         p_mem->DbgNextPtr           =  OSMemDbgListPtr;
         OSMemDbgListPtr->DbgPrevPtr =  p_mem;
     }
@@ -382,8 +362,7 @@ void  OS_MemInit(OS_ERR  *p_err)
 {
 #ifdef OS_SAFETY_CRITICAL
 
-    if(p_err == (OS_ERR *)0)
-    {
+    if(p_err == (OS_ERR *)0) {
         OS_SAFETY_CRITICAL_EXCEPTION();
         return;
     }

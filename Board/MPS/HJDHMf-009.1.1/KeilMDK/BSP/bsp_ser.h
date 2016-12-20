@@ -140,7 +140,7 @@ void        BSP_Ser_Printf(CPU_CHAR    *format,
 void  BSP_SerToWIFI_Init(void);
 void  BSP_SerToWIFI_TxMsgInit(uint8_t *TxBuffAddr, uint8_t);
 void  BSP_SerToWIFI_RxMsgInit(uint8_t *RxBuffAddr, uint8_t);
-void  BSP_PrgmDataDMASend(uint8_t i_u8TxBuffSize,uint8_t *TxBuff);
+void  BSP_PrgmDataDMASend(uint8_t i_u8TxBuffSize, uint8_t *TxBuff);
 
 /*
 ***************************************************************************************************

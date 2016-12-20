@@ -47,8 +47,7 @@ extern "C" {
 /**
   * @brief  CEC Init structure definition
   */
-typedef struct
-{
+typedef struct {
     uint16_t CEC_BitTimingMode; /*!< Configures the CEC Bit Timing Error Mode.
                                This parameter can be a value of @ref CEC_BitTiming_Mode */
     uint16_t CEC_BitPeriodMode; /*!< Configures the CEC Bit Period Error Mode.

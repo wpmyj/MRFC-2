@@ -106,7 +106,7 @@ void  AnaSigMonitorTaskCreate()
                  (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                  (OS_ERR *)&err);
     APP_TRACE_INFO(("Created analog signal monitor Task, and err code is %d...\n\r", err));
-   
+
 }
 
 /*
@@ -126,10 +126,9 @@ void  AnaSigMonitorTask(void *p_arg)
 {
     OS_ERR      err;
 
-    while(DEF_TRUE)
-    {
+    while(DEF_TRUE) {
         OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_HMSM_STRICT, &err);
-        
+
         AnaSigSampleStart();
         OSSemPend(&g_stAnaSigConvertFinishSem,
                   0,                              //等待模拟信号采样完成
@@ -139,24 +138,20 @@ void  AnaSigMonitorTask(void *p_arg)
         UpdateAnaSigDigValue();//更新采样值
 
         /* 制氢机、电堆运行信号监测 */
-        if(g_u8HydrgProducerAnaSigRunningMonitorAlarmHookSw == DEF_ENABLED)
-        {
+        if(g_u8HydrgProducerAnaSigRunningMonitorAlarmHookSw == DEF_ENABLED) {
             HydrgProducerAnaSigAlarmRunningMonitorHook();
         }
 
-        if(g_u8StackAnaSigRunningMonitorAlarmHookSw == DEF_ENABLED)
-        {
+        if(g_u8StackAnaSigRunningMonitorAlarmHookSw == DEF_ENABLED) {
             StackAnaSigAlarmRunningMonitorHook();
         }
 
-        if(g_u8StackHydrgPressHighEnoughHookSw == DEF_ENABLED)
-        {
-            StackHydrgPressHighEnoughWaitHook();    
+        if(g_u8StackHydrgPressHighEnoughHookSw == DEF_ENABLED) {
+            StackHydrgPressHighEnoughWaitHook();
         }
 
-        if(g_u8HydrgProducerAnaSigalarmRunningStartAutoAdjHookSw == DEF_ENABLED)
-        {
-            HydrgProducerAnaSigRunningStartAutoAdjHook();      
+        if(g_u8HydrgProducerAnaSigalarmRunningStartAutoAdjHookSw == DEF_ENABLED) {
+            HydrgProducerAnaSigRunningStartAutoAdjHook();
         }
     }
 }
@@ -166,7 +161,7 @@ void  AnaSigMonitorTask(void *p_arg)
 *                               hydrogen producer analog signal alarm hook
 *
 * Description : The use of the the funciton is to manager the analog signal alarm of the hydrogen producer.
-*               
+*
 * Arguments   : none.
 *
 * Returns     : none.
@@ -179,31 +174,30 @@ void HydrgProducerAnaSigAlarmRunningMonitorHook(void)
     float fLqdPress, flqdHeight;
 
     fLqdPress = GetSrcAnaSig(LIQUID_PRESS);
-    if(fLqdPress > g_stLqdPressCmpTbl.AlarmUpperLimit)
-    {
+
+    if(fLqdPress > g_stLqdPressCmpTbl.AlarmUpperLimit) {
         AlarmCmd(LIQUID_PRESS_HIGH_ALARM, ON);
-        if(fLqdPress > g_stLqdPressCmpTbl.ShutDownUpperLimit)
-        {
+
+        if(fLqdPress > g_stLqdPressCmpTbl.ShutDownUpperLimit) {
             APP_TRACE_INFO(("Hydrogen producer liquid press is above the high press protect line...\n\r"));
         }
-    }
-    else
-    {
+    } else {
         AlarmCmd(LIQUID_PRESS_HIGH_ALARM, OFF);
     }
 
 
     flqdHeight = GetSrcAnaSig(LIQUID_LEVEL);
-    if(flqdHeight < g_stLqdHeightCmpTbl.AlarmlowerLiquidLevellimit)
-    {
+
+    if(flqdHeight < g_stLqdHeightCmpTbl.AlarmlowerLiquidLevellimit) {
         AlarmCmd(FUEL_SHORTAGE_ALARM, ON);
-    }else{
+    } else {
         AlarmCmd(FUEL_SHORTAGE_ALARM, OFF);
-        if(flqdHeight <= g_stLqdHeightCmpTbl.OpenAutomaticliquidValue){//自动加液水泵
+
+        if(flqdHeight <= g_stLqdHeightCmpTbl.OpenAutomaticliquidValue) { //自动加液水泵
             BSP_OutsidePumpPwrOn();
-        }else if(flqdHeight >= g_stLqdHeightCmpTbl.CloseAutomaticliquidValue){
+        } else if(flqdHeight >= g_stLqdHeightCmpTbl.CloseAutomaticliquidValue) {
             BSP_OutsidePumpPwrOff();
-        }else{}
+        } else {}
     }
 
 //  UpdateBuzzerStatuInCruise();
@@ -214,7 +208,7 @@ void HydrgProducerAnaSigAlarmRunningMonitorHook(void)
 *                               HydrgProducerAnaSigRunningStartAutoAdjHook
 *
 * Description : The funciton is to auto adjust the pump at beginning of the run process with the analog signal.
-*                                
+*
 * Arguments   : none.
 *
 * Returns     : none.
@@ -228,21 +222,19 @@ void HydrgProducerAnaSigRunningStartAutoAdjHook(void)
     float fLqdPress;
     static u8 i = 0;
 
-    fLqdPress = GetSrcAnaSig( LIQUID_PRESS );
+    fLqdPress = GetSrcAnaSig(LIQUID_PRESS);
     i++;
 
-    if(i >= 10)//1秒调节1次泵速
-    {
+    if(i >= 10) { //1秒调节1次泵速
         i = 0;
-        if(( fLqdPress >= 4) && (g_u8PumpAutoAdjFinishStatu == DEF_NO ))
-        {
+
+        if((fLqdPress >= 4) && (g_u8PumpAutoAdjFinishStatu == DEF_NO)) {
             PumpSpdDec();
 
-            if( GetPumpCtlSpd() <= 30 )
-            {
+            if(GetPumpCtlSpd() <= 30) {
                 g_u8PumpAutoAdjFinishStatu = DEF_YES;
                 g_u8HydrgProducerAnaSigalarmRunningStartAutoAdjHookSw = DEF_DISABLED; //关自动调节开关
-            } 
+            }
         }
     }
 }
@@ -253,7 +245,7 @@ void HydrgProducerAnaSigRunningStartAutoAdjHook(void)
 *
 * Description : The use of the the funciton is to wait for the hydrogen press up to 45KPa, then start
 *                   the work of the stack.
-*              
+*
 * Arguments   : none.
 *
 * Returns     : none.
@@ -265,8 +257,7 @@ void StackHydrgPressHighEnoughWaitHook(void)
 {
     OS_ERR err;
 
-    if( GetSrcAnaSig(HYDROGEN_PRESS_1) >= 45.0)
-    {
+    if(GetSrcAnaSig(HYDROGEN_PRESS_1) >= 45.0) {
         OSTaskSemPost(&StackManagerTaskTCB, OS_OPT_POST_NO_SCHED, &err);
         g_u8StackHydrgPressHighEnoughHookSw = DEF_DISABLED;
     }
@@ -277,7 +268,7 @@ void StackHydrgPressHighEnoughWaitHook(void)
 *                               StackAnaSigAlarmRunningMonitorHook
 *
 * Description : The use of the the funciton is to manager the analog signal alarms of the stack.
-*               
+*
 * Arguments   : none.
 *
 * Returns     : none.
@@ -289,29 +280,23 @@ void StackAnaSigAlarmRunningMonitorHook(void)
 {
     float fStackTemp;
     float fHydrgPress;
-    
+
     /* 监测温度 */
     fStackTemp = GetSrcAnaSig(STACK_TEMP);
 
-    if(fStackTemp > 60)
-    {
+    if(fStackTemp > 60) {
         AlarmCmd(STACK_TEMP_HIGH_ALARM, ON);
-        if(fStackTemp > 70)
-        {
+
+        if(fStackTemp > 70) {
 //            APP_TRACE_INFO(("Stack temp is above the high temp protect line...\n\r"));
         }
-    }
-    else if(fStackTemp < 20)
-    {
+    } else if(fStackTemp < 20) {
         AlarmCmd(STACK_TEMP_LOW_ALARM, ON);
 
-        if(fStackTemp < 10)
-        {
+        if(fStackTemp < 10) {
 //            APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
         }
-    }
-    else
-    {
+    } else {
         AlarmCmd(STACK_TEMP_HIGH_ALARM, OFF);
         AlarmCmd(STACK_TEMP_LOW_ALARM, OFF);
     }
@@ -319,18 +304,14 @@ void StackAnaSigAlarmRunningMonitorHook(void)
     /* 监测气压-可设置低气压关机 */
     fHydrgPress = GetSrcAnaSig(HYDROGEN_PRESS_1);
 
-    if(fHydrgPress >= 10)
-    {
+    if(fHydrgPress >= 10) {
         g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;
         AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, OFF);
-    }
-    else
-    {
+    } else {
         AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, ON);
         g_u16StackManagerHydrgPressBelow10KPaHoldSeconds++;
 
-        if(g_u16StackManagerHydrgPressBelow10KPaHoldSeconds >= 300)
-        {
+        if(g_u16StackManagerHydrgPressBelow10KPaHoldSeconds >= 300) {
 //            CmdShutDown();      //关机命令
             g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;
         }
@@ -379,7 +360,7 @@ void SetHydrgProducerAnaSigRunningStartAutoAdjHookSwitch(uint8_t i_NewStatu)
 *                               SetStackHydrgPressHighEnoughHookSwitch
 *
 * Description : open the switch of the hydrogen press monitor to start the stack.
-*               
+*
 * Arguments   : none.
 *
 * Returns     : none.
@@ -397,7 +378,7 @@ void SetStackHydrgPressHighEnoughHookSwitch(uint8_t i_NewStatu)
 *                               SetStackAnaSigAlarmRunningMonitorHookSwitch
 *
 * Description : open the switch of the stack analog signal alarm manager switch.
-*               
+*
 * Arguments   : none.
 *
 * Returns     : none.

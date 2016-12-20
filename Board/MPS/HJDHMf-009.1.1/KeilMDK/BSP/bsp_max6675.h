@@ -101,8 +101,7 @@
 *********************************************************************************************************
 */
 
-typedef  struct  bsp_stlm75_cfg
-{
+typedef  struct  bsp_stlm75_cfg {
     CPU_INT08U     FaultLevel;
     CPU_INT16S     HystTemp;
     CPU_BOOLEAN    IntPol;

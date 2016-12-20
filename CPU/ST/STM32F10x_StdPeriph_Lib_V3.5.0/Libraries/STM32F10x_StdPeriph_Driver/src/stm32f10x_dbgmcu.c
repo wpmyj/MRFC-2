@@ -137,12 +137,9 @@ void DBGMCU_Config(uint32_t DBGMCU_Periph, FunctionalState NewState)
     assert_param(IS_DBGMCU_PERIPH(DBGMCU_Periph));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         DBGMCU->CR |= DBGMCU_Periph;
-    }
-    else
-    {
+    } else {
         DBGMCU->CR &= ~DBGMCU_Periph;
     }
 }

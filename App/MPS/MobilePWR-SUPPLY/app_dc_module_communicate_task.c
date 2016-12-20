@@ -34,7 +34,7 @@
 *                                         OS-RELATED    VARIABLES
 ***************************************************************************************************
 */
-            OS_TCB      DcModuleAdjustTaskTCB ;
+OS_TCB      DcModuleAdjustTaskTCB ;
 static      CPU_STK     HUA_WEI_MODULE_ADJUST_TASK_STK[HUA_WEI_MODULE_ADJUST_TASK_SIZE];
 /*
 ***************************************************************************************************
@@ -69,10 +69,10 @@ static void HuaWeiModuleAdjustTask(void *p_arg);
 void DcModuleAdjustTaskCreate(void)
 {
     OS_ERR  err;
-    uint8_t i=0;
+    uint8_t i = 0;
     uint8_t u8RxLength = 0;
-    uint16_t u16Rs485RxBuf[2] = {0,0};
-    Bsp_DcModuleConmunicateInit();//485初始化   
+    uint16_t u16Rs485RxBuf[2] = {0, 0};
+    Bsp_DcModuleConmunicateInit();//485初始化
     OSTaskCreate((OS_TCB *)&DcModuleAdjustTaskTCB,                    // Create the start task
                  (CPU_CHAR *)"DC Module Adjust Task Create",
                  (OS_TASK_PTR) HuaWeiModuleAdjustTask,
@@ -87,17 +87,18 @@ void DcModuleAdjustTaskCreate(void)
                  (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                  (OS_ERR *)&err);
     APP_TRACE_INFO(("Created DC Module Adjust Task, and err code is %d...\n\r", err));
-    
+
     //485通信成功验证
     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
-    Bsp_RS485_Receive_Data(u16Rs485RxBuf,&u8RxLength);                
-    if(u16Rs485RxBuf[0] == 0x07){//返回地址验证成功
+    Bsp_RS485_Receive_Data(u16Rs485RxBuf, &u8RxLength);
+
+    if(u16Rs485RxBuf[0] == 0x07) { //返回地址验证成功
         APP_TRACE_INFO(("Rs485 communicate successed...\n\r"));
-        Bsp_SetDcModuleOutPutVIvalue(VOLTAGE_LIMIT_MAX,CURRENT_LIMIT_MIN);//上电预设值，电流设置为最小值
+        Bsp_SetDcModuleOutPutVIvalue(VOLTAGE_LIMIT_MAX, CURRENT_LIMIT_MIN); //上电预设值，电流设置为最小值
     } else {
         APP_TRACE_INFO(("Rs485 communicate failed...\n\r"));
     }
-                
+
 }
 
 
@@ -121,41 +122,40 @@ static void HuaWeiModuleAdjustTask(void *p_arg)
     static float   fIvalueNow = CURRENT_LIMIT_MIN;
     static float   fVvalueNow = VOLTAGE_LIMIT_MAX;
 
-    OSTaskSuspend(NULL, &err);   
-    
-    while(DEF_TRUE)
-    {
+    OSTaskSuspend(NULL, &err);
+
+    while(DEF_TRUE) {
         OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 10,//隔10s请求匹氢偏移监测任务的限流调节任务信号量
                       OS_OPT_PEND_BLOCKING,
                       NULL,
                       &err);
-        if(OS_ERR_NONE == err){
-            if(DEF_SET == GetDcModuleCurrentLimitingPointImproveFlagStatus()){
-                if(fIvalueNow < CURRENT_LIMIT_MAX){//提高限流点
+
+        if(OS_ERR_NONE == err) {
+            if(DEF_SET == GetDcModuleCurrentLimitingPointImproveFlagStatus()) {
+                if(fIvalueNow < CURRENT_LIMIT_MAX) { //提高限流点
                     fIvalueNow += 1.0;
                     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
-                    Bsp_SetDcModuleOutPutVIvalue(fVvalueNow,fIvalueNow);
+                    Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
                     SetDcModuleCurrentLimitingPointImproveFlag(DEF_CLR);
-                    APP_TRACE_INFO(("OutPut current limit point increase,the IvalueNow is %.2f ...\n\r",fIvalueNow));
+                    APP_TRACE_INFO(("OutPut current limit point increase,the IvalueNow is %.2f ...\n\r", fIvalueNow));
                 }
-            }
-            else if(DEF_SET == GetDcModuleCurrentLimitingPointImproveFlagStatus()){
-                if(fIvalueNow >= CURRENT_LIMIT_MIN){//降低限流点
+            } else if(DEF_SET == GetDcModuleCurrentLimitingPointImproveFlagStatus()) {
+                if(fIvalueNow >= CURRENT_LIMIT_MIN) { //降低限流点
                     fIvalueNow -= 1.0;
                     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
-                    Bsp_SetDcModuleOutPutVIvalue(fVvalueNow,fIvalueNow);
+                    Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
                     SetDcModuleCurrentLimitingPointReduceFlag(DEF_CLR);
-                    APP_TRACE_INFO(("OutPut current limit point decrease,the IvalueNow is %.2f ...\n\r",fIvalueNow));
+                    APP_TRACE_INFO(("OutPut current limit point decrease,the IvalueNow is %.2f ...\n\r", fIvalueNow));
                 }
             } else {}
-        } else if(OS_ERR_TIMEOUT){//超时说明不需要调节，保持原来设置
+        } else if(OS_ERR_TIMEOUT) { //超时说明不需要调节，保持原来设置
             Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
-            Bsp_SetDcModuleOutPutVIvalue(fVvalueNow,fIvalueNow);
-            APP_TRACE_INFO(("DC module OutPut VIvalue stay the same,the IvalueNow is %.2f ...\n\r",fIvalueNow));
+            Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
+            APP_TRACE_INFO(("DC module OutPut VIvalue stay the same,the IvalueNow is %.2f ...\n\r", fIvalueNow));
         } else {
-            APP_TRACE_INFO(("DC module Task Sem Pend err code is %d...\n\r",err));   
+            APP_TRACE_INFO(("DC module Task Sem Pend err code is %d...\n\r", err));
         }
-     }   
+    }
 }
 
 /*

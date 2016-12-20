@@ -310,13 +310,10 @@ void SDIO_ITConfig(uint32_t SDIO_IT, FunctionalState NewState)
     assert_param(IS_SDIO_IT(SDIO_IT));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the SDIO interrupts */
         SDIO->MASK |= SDIO_IT;
-    }
-    else
-    {
+    } else {
         /* Disable the SDIO interrupts */
         SDIO->MASK &= ~SDIO_IT;
     }
@@ -670,12 +667,9 @@ FlagStatus SDIO_GetFlagStatus(uint32_t SDIO_FLAG)
     /* Check the parameters */
     assert_param(IS_SDIO_FLAG(SDIO_FLAG));
 
-    if((SDIO->STA & SDIO_FLAG) != (uint32_t)RESET)
-    {
+    if((SDIO->STA & SDIO_FLAG) != (uint32_t)RESET) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 
@@ -748,12 +742,9 @@ ITStatus SDIO_GetITStatus(uint32_t SDIO_IT)
     /* Check the parameters */
     assert_param(IS_SDIO_GET_IT(SDIO_IT));
 
-    if((SDIO->STA & SDIO_IT) != (uint32_t)RESET)
-    {
+    if((SDIO->STA & SDIO_IT) != (uint32_t)RESET) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 

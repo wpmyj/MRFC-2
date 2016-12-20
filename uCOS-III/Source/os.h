@@ -418,8 +418,7 @@ extern "C" {
 ------------------------------------------------------------------------------------------------------------------------
 */
 
-typedef  enum  os_err
-{
+typedef  enum  os_err {
     OS_ERR_NONE                      =     0u,
 
     OS_ERR_A                         = 10000u,
@@ -700,8 +699,7 @@ typedef  void (*OS_APP_HOOK_TCB)(OS_TCB *p_tcb);
 */
 
 #if OS_CFG_ISR_POST_DEFERRED_EN > 0u
-struct  os_int_q
-{
+struct  os_int_q {
     OS_OBJ_TYPE          Type;                              /* Type of object placed in the circular list             */
     OS_INT_Q            *NextPtr;                           /* Pointer to next OS_INT_Q in  circular list             */
     void                *ObjPtr;                            /* Pointer to object placed in the queue                  */
@@ -719,8 +717,7 @@ struct  os_int_q
 ------------------------------------------------------------------------------------------------------------------------
 */
 
-struct  os_rdy_list
-{
+struct  os_rdy_list {
     OS_TCB              *HeadPtr;                           /* Pointer to task that will run at selected priority     */
     OS_TCB              *TailPtr;                           /* Pointer to last task          at selected priority     */
     OS_OBJ_QTY           NbrEntries;                        /* Number of entries             at selected priority     */
@@ -733,8 +730,7 @@ struct  os_rdy_list
 ------------------------------------------------------------------------------------------------------------------------
 */
 
-struct  os_pend_data
-{
+struct  os_pend_data {
     OS_PEND_DATA        *PrevPtr;
     OS_PEND_DATA        *NextPtr;
     OS_TCB              *TCBPtr;
@@ -746,8 +742,7 @@ struct  os_pend_data
 };
 
 
-struct  os_pend_list
-{
+struct  os_pend_list {
     OS_PEND_DATA        *HeadPtr;
     OS_PEND_DATA        *TailPtr;
     OS_OBJ_QTY           NbrEntries;
@@ -769,8 +764,7 @@ struct  os_pend_list
 ------------------------------------------------------------------------------------------------------------------------
 */
 
-struct  os_pend_obj
-{
+struct  os_pend_obj {
     OS_OBJ_TYPE          Type;
     CPU_CHAR            *NamePtr;
     OS_PEND_LIST         PendList;                          /* List of tasks pending on object                        */
@@ -791,8 +785,7 @@ struct  os_pend_obj
 */
 
 
-struct  os_flag_grp                                         /* Event Flag Group                                       */
-{
+struct  os_flag_grp {                                       /* Event Flag Group                                       */
     /* ------------------ GENERIC  MEMBERS ------------------ */
     OS_OBJ_TYPE          Type;                              /* Should be set to OS_OBJ_TYPE_FLAG                      */
     CPU_CHAR            *NamePtr;                           /* Pointer to Event Flag Name (NUL terminated ASCII)      */
@@ -815,8 +808,7 @@ struct  os_flag_grp                                         /* Event Flag Group 
 */
 
 
-struct os_mem                                               /* MEMORY CONTROL BLOCK                                   */
-{
+struct os_mem {                                             /* MEMORY CONTROL BLOCK                                   */
     OS_OBJ_TYPE          Type;                              /* Should be set to OS_OBJ_TYPE_MEM                       */
     void                *AddrPtr;                           /* Pointer to beginning of memory partition               */
     CPU_CHAR            *NamePtr;
@@ -837,8 +829,7 @@ struct os_mem                                               /* MEMORY CONTROL BL
 ------------------------------------------------------------------------------------------------------------------------
 */
 
-struct  os_msg                                              /* MESSAGE CONTROL BLOCK                                  */
-{
+struct  os_msg {                                            /* MESSAGE CONTROL BLOCK                                  */
     OS_MSG              *NextPtr;                           /* Pointer to next message                                */
     void                *MsgPtr;                            /* Actual message                                         */
     OS_MSG_SIZE          MsgSize;                           /* Size of the message (in # bytes)                       */
@@ -848,8 +839,7 @@ struct  os_msg                                              /* MESSAGE CONTROL B
 
 
 
-struct  os_msg_pool                                         /* OS_MSG POOL                                            */
-{
+struct  os_msg_pool {                                       /* OS_MSG POOL                                            */
     OS_MSG              *NextPtr;                           /* Pointer to next message                                */
     OS_MSG_QTY           NbrFree;                           /* Number of messages available from this pool            */
     OS_MSG_QTY           NbrUsed;                           /* Current number of messages used                        */
@@ -858,8 +848,7 @@ struct  os_msg_pool                                         /* OS_MSG POOL      
 
 
 
-struct  os_msg_q                                            /* OS_MSG_Q                                               */
-{
+struct  os_msg_q {                                          /* OS_MSG_Q                                               */
     OS_MSG              *InPtr;                             /* Pointer to next OS_MSG to be inserted  in   the queue  */
     OS_MSG              *OutPtr;                            /* Pointer to next OS_MSG to be extracted from the queue  */
     OS_MSG_QTY           NbrEntriesSize;                    /* Maximum allowable number of entries in the queue       */
@@ -876,8 +865,7 @@ struct  os_msg_q                                            /* OS_MSG_Q         
 ------------------------------------------------------------------------------------------------------------------------
 */
 
-struct  os_mutex                                            /* Mutual Exclusion Semaphore                             */
-{
+struct  os_mutex {                                          /* Mutual Exclusion Semaphore                             */
     /* ------------------ GENERIC  MEMBERS ------------------ */
     OS_OBJ_TYPE          Type;                              /* Should be set to OS_OBJ_TYPE_MUTEX                     */
     CPU_CHAR            *NamePtr;                           /* Pointer to Mutex Name (NUL terminated ASCII)           */
@@ -903,8 +891,7 @@ struct  os_mutex                                            /* Mutual Exclusion 
 ------------------------------------------------------------------------------------------------------------------------
 */
 
-struct  os_q                                                /* Message Queue                                          */
-{
+struct  os_q {                                              /* Message Queue                                          */
     /* ------------------ GENERIC  MEMBERS ------------------ */
     OS_OBJ_TYPE          Type;                              /* Should be set to OS_OBJ_TYPE_Q                         */
     CPU_CHAR            *NamePtr;                           /* Pointer to Message Queue Name (NUL terminated ASCII)   */
@@ -927,8 +914,7 @@ struct  os_q                                                /* Message Queue    
 ------------------------------------------------------------------------------------------------------------------------
 */
 
-struct  os_sem                                              /* Semaphore                                              */
-{
+struct  os_sem {                                            /* Semaphore                                              */
     /* ------------------ GENERIC  MEMBERS ------------------ */
     OS_OBJ_TYPE          Type;                              /* Should be set to OS_OBJ_TYPE_SEM                       */
     CPU_CHAR            *NamePtr;                           /* Pointer to Semaphore Name (NUL terminated ASCII)       */
@@ -950,8 +936,7 @@ struct  os_sem                                              /* Semaphore        
 ------------------------------------------------------------------------------------------------------------------------
 */
 
-struct os_tcb
-{
+struct os_tcb {
     CPU_STK             *StkPtr;                            /* Pointer to current top of stack                        */
 
     void                *ExtPtr;                            /* Pointer to user definable data for TCB extension       */
@@ -1066,8 +1051,7 @@ struct os_tcb
 ------------------------------------------------------------------------------------------------------------------------
 */
 
-struct  os_tick_spoke
-{
+struct  os_tick_spoke {
     OS_TCB              *FirstPtr;                          /* Pointer to list of tasks in tick spoke                 */
     OS_OBJ_QTY           NbrEntries;                        /* Current number of entries in the tick spoke            */
     OS_OBJ_QTY           NbrEntriesMax;                     /* Peak number of entries in the tick spoke               */
@@ -1080,8 +1064,7 @@ struct  os_tick_spoke
 ------------------------------------------------------------------------------------------------------------------------
 */
 
-struct  os_tmr
-{
+struct  os_tmr {
     OS_OBJ_TYPE          Type;
     CPU_CHAR            *NamePtr;                           /* Name to give the timer                                 */
     OS_TMR_CALLBACK_PTR  CallbackPtr;                       /* Function to call when timer expires                    */
@@ -1102,8 +1085,7 @@ struct  os_tmr
 
 
 
-struct  os_tmr_spoke
-{
+struct  os_tmr_spoke {
     OS_TMR              *FirstPtr;                          /* Pointer to first timer in linked list                  */
     OS_OBJ_QTY           NbrEntries;
     OS_OBJ_QTY           NbrEntriesMax;

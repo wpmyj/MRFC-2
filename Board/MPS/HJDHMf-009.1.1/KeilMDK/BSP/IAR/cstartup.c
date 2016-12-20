@@ -45,8 +45,7 @@
 *********************************************************************************************************
 */
 
-typedef  union
-{
+typedef  union {
     CPU_FNCT_VOID   Fnct;
     void           *Ptr;
 } APP_INTVECT_ELEM;
@@ -106,8 +105,7 @@ extern  void  __iar_program_start(void);
 *********************************************************************************************************
 */
 
-__root  const  APP_INTVECT_ELEM  __vector_table[] @ ".intvec" =
-{
+__root  const  APP_INTVECT_ELEM  __vector_table[] @ ".intvec" = {
     { .Ptr = (void *)__sfe("CSTACK")},                          /*  0, SP start value.                                  */
     __iar_program_start,                                        /*  1, PC start value.                                  */
     App_NMI_ISR,                                                /*  2, NMI.                                             */
@@ -217,8 +215,7 @@ __root  const  APP_INTVECT_ELEM  __vector_table[] @ ".intvec" =
 
 static  void  App_NMI_ISR(void)
 {
-    while(DEF_TRUE)
-    {
+    while(DEF_TRUE) {
         ;
     }
 }
@@ -241,8 +238,7 @@ static  void  App_NMI_ISR(void)
 
 static  void  App_Fault_ISR(void)
 {
-    while(DEF_TRUE)
-    {
+    while(DEF_TRUE) {
         ;
     }
 }
@@ -266,8 +262,7 @@ static  void  App_Fault_ISR(void)
 
 static  void  App_BusFault_ISR(void)
 {
-    while(DEF_TRUE)
-    {
+    while(DEF_TRUE) {
         ;
     }
 }
@@ -291,8 +286,7 @@ static  void  App_BusFault_ISR(void)
 
 static  void  App_UsageFault_ISR(void)
 {
-    while(DEF_TRUE)
-    {
+    while(DEF_TRUE) {
         ;
     }
 }
@@ -316,8 +310,7 @@ static  void  App_UsageFault_ISR(void)
 
 static  void  App_MemFault_ISR(void)
 {
-    while(DEF_TRUE)
-    {
+    while(DEF_TRUE) {
         ;
     }
 }
@@ -341,8 +334,7 @@ static  void  App_MemFault_ISR(void)
 
 static  void  App_Spurious_ISR(void)
 {
-    while(DEF_TRUE)
-    {
+    while(DEF_TRUE) {
         ;
     }
 }

@@ -125,65 +125,41 @@ void DMA_DeInit(DMA_Channel_TypeDef *DMAy_Channelx)
     /* Reset DMAy Channelx memory address register */
     DMAy_Channelx->CMAR = 0;
 
-    if(DMAy_Channelx == DMA1_Channel1)
-    {
+    if(DMAy_Channelx == DMA1_Channel1) {
         /* Reset interrupt pending bits for DMA1 Channel1 */
         DMA1->IFCR |= DMA1_Channel1_IT_Mask;
-    }
-    else if(DMAy_Channelx == DMA1_Channel2)
-    {
+    } else if(DMAy_Channelx == DMA1_Channel2) {
         /* Reset interrupt pending bits for DMA1 Channel2 */
         DMA1->IFCR |= DMA1_Channel2_IT_Mask;
-    }
-    else if(DMAy_Channelx == DMA1_Channel3)
-    {
+    } else if(DMAy_Channelx == DMA1_Channel3) {
         /* Reset interrupt pending bits for DMA1 Channel3 */
         DMA1->IFCR |= DMA1_Channel3_IT_Mask;
-    }
-    else if(DMAy_Channelx == DMA1_Channel4)
-    {
+    } else if(DMAy_Channelx == DMA1_Channel4) {
         /* Reset interrupt pending bits for DMA1 Channel4 */
         DMA1->IFCR |= DMA1_Channel4_IT_Mask;
-    }
-    else if(DMAy_Channelx == DMA1_Channel5)
-    {
+    } else if(DMAy_Channelx == DMA1_Channel5) {
         /* Reset interrupt pending bits for DMA1 Channel5 */
         DMA1->IFCR |= DMA1_Channel5_IT_Mask;
-    }
-    else if(DMAy_Channelx == DMA1_Channel6)
-    {
+    } else if(DMAy_Channelx == DMA1_Channel6) {
         /* Reset interrupt pending bits for DMA1 Channel6 */
         DMA1->IFCR |= DMA1_Channel6_IT_Mask;
-    }
-    else if(DMAy_Channelx == DMA1_Channel7)
-    {
+    } else if(DMAy_Channelx == DMA1_Channel7) {
         /* Reset interrupt pending bits for DMA1 Channel7 */
         DMA1->IFCR |= DMA1_Channel7_IT_Mask;
-    }
-    else if(DMAy_Channelx == DMA2_Channel1)
-    {
+    } else if(DMAy_Channelx == DMA2_Channel1) {
         /* Reset interrupt pending bits for DMA2 Channel1 */
         DMA2->IFCR |= DMA2_Channel1_IT_Mask;
-    }
-    else if(DMAy_Channelx == DMA2_Channel2)
-    {
+    } else if(DMAy_Channelx == DMA2_Channel2) {
         /* Reset interrupt pending bits for DMA2 Channel2 */
         DMA2->IFCR |= DMA2_Channel2_IT_Mask;
-    }
-    else if(DMAy_Channelx == DMA2_Channel3)
-    {
+    } else if(DMAy_Channelx == DMA2_Channel3) {
         /* Reset interrupt pending bits for DMA2 Channel3 */
         DMA2->IFCR |= DMA2_Channel3_IT_Mask;
-    }
-    else if(DMAy_Channelx == DMA2_Channel4)
-    {
+    } else if(DMAy_Channelx == DMA2_Channel4) {
         /* Reset interrupt pending bits for DMA2 Channel4 */
         DMA2->IFCR |= DMA2_Channel4_IT_Mask;
-    }
-    else
-    {
-        if(DMAy_Channelx == DMA2_Channel5)
-        {
+    } else {
+        if(DMAy_Channelx == DMA2_Channel5) {
             /* Reset interrupt pending bits for DMA2 Channel5 */
             DMA2->IFCR |= DMA2_Channel5_IT_Mask;
         }
@@ -297,13 +273,10 @@ void DMA_Cmd(DMA_Channel_TypeDef *DMAy_Channelx, FunctionalState NewState)
     assert_param(IS_DMA_ALL_PERIPH(DMAy_Channelx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected DMAy Channelx */
         DMAy_Channelx->CCR |= DMA_CCR1_EN;
-    }
-    else
-    {
+    } else {
         /* Disable the selected DMAy Channelx */
         DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);
     }
@@ -330,13 +303,10 @@ void DMA_ITConfig(DMA_Channel_TypeDef *DMAy_Channelx, uint32_t DMA_IT, Functiona
     assert_param(IS_DMA_CONFIG_IT(DMA_IT));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected DMA interrupts */
         DMAy_Channelx->CCR |= DMA_IT;
-    }
-    else
-    {
+    } else {
         /* Disable the selected DMA interrupts */
         DMAy_Channelx->CCR &= ~DMA_IT;
     }
@@ -440,25 +410,19 @@ FlagStatus DMA_GetFlagStatus(uint32_t DMAy_FLAG)
     assert_param(IS_DMA_GET_FLAG(DMAy_FLAG));
 
     /* Calculate the used DMAy */
-    if((DMAy_FLAG & FLAG_Mask) != (uint32_t)RESET)
-    {
+    if((DMAy_FLAG & FLAG_Mask) != (uint32_t)RESET) {
         /* Get DMA2 ISR register value */
         tmpreg = DMA2->ISR ;
-    }
-    else
-    {
+    } else {
         /* Get DMA1 ISR register value */
         tmpreg = DMA1->ISR ;
     }
 
     /* Check the status of the specified DMAy flag */
-    if((tmpreg & DMAy_FLAG) != (uint32_t)RESET)
-    {
+    if((tmpreg & DMAy_FLAG) != (uint32_t)RESET) {
         /* DMAy_FLAG is set */
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* DMAy_FLAG is reset */
         bitstatus = RESET;
     }
@@ -527,13 +491,10 @@ void DMA_ClearFlag(uint32_t DMAy_FLAG)
     assert_param(IS_DMA_CLEAR_FLAG(DMAy_FLAG));
 
     /* Calculate the used DMAy */
-    if((DMAy_FLAG & FLAG_Mask) != (uint32_t)RESET)
-    {
+    if((DMAy_FLAG & FLAG_Mask) != (uint32_t)RESET) {
         /* Clear the selected DMAy flags */
         DMA2->IFCR = DMAy_FLAG;
-    }
-    else
-    {
+    } else {
         /* Clear the selected DMAy flags */
         DMA1->IFCR = DMAy_FLAG;
     }
@@ -602,25 +563,19 @@ ITStatus DMA_GetITStatus(uint32_t DMAy_IT)
     assert_param(IS_DMA_GET_IT(DMAy_IT));
 
     /* Calculate the used DMA */
-    if((DMAy_IT & FLAG_Mask) != (uint32_t)RESET)
-    {
+    if((DMAy_IT & FLAG_Mask) != (uint32_t)RESET) {
         /* Get DMA2 ISR register value */
         tmpreg = DMA2->ISR;
-    }
-    else
-    {
+    } else {
         /* Get DMA1 ISR register value */
         tmpreg = DMA1->ISR;
     }
 
     /* Check the status of the specified DMAy interrupt */
-    if((tmpreg & DMAy_IT) != (uint32_t)RESET)
-    {
+    if((tmpreg & DMAy_IT) != (uint32_t)RESET) {
         /* DMAy_IT is set */
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* DMAy_IT is reset */
         bitstatus = RESET;
     }
@@ -689,13 +644,10 @@ void DMA_ClearITPendingBit(uint32_t DMAy_IT)
     assert_param(IS_DMA_CLEAR_IT(DMAy_IT));
 
     /* Calculate the used DMAy */
-    if((DMAy_IT & FLAG_Mask) != (uint32_t)RESET)
-    {
+    if((DMAy_IT & FLAG_Mask) != (uint32_t)RESET) {
         /* Clear the selected DMAy interrupt pending bits */
         DMA2->IFCR = DMAy_IT;
-    }
-    else
-    {
+    } else {
         /* Clear the selected DMAy interrupt pending bits */
         DMA1->IFCR = DMAy_IT;
     }

@@ -93,7 +93,7 @@ typedef struct {
 
 //系统运行状态状态
 typedef enum {
-    
+
     EN_WAITTING_COMMAND = 0,            //待机状态
     EN_START_PRGM_ONE_FRONT,        //加热准备(快速启动阶段即电加热阶段)
     EN_START_PRGM_ONE_BEHIND ,       //加热中(第一次点火后采用火焰加热阶段)

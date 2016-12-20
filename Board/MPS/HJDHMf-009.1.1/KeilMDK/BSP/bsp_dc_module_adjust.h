@@ -31,7 +31,7 @@
 ***************************************************************************************************
 */
 #if (EN_RS485_RX > 1)
-#error Rs485 recive has enabled!!!
+    #error Rs485 recive has enabled!!!
 #endif
 
 #define EN_RS485_RX    1           //0,不接收;1,接收.
@@ -68,13 +68,12 @@ extern uint8_t  RS485_RX_CNT;             //接收到的数据长度
 *                                           EXPORTED DATA TYPE
 ***************************************************************************************************
 */
-typedef enum
-{
+typedef enum {
     INQUIRY_COMMAND = 0,
     TRANSPOND_COMMAND,
     BROADCAST_COMMAND,
-    
-}CMD_TYPE_Typedef;
+
+} CMD_TYPE_Typedef;
 
 
 /*
@@ -90,9 +89,9 @@ void Bsp_GetReportInformationAfterTransportCmd(void);
 
 void Bsp_DcModuleConmunicateInit(void);
 void Bsp_SendRequestCmdToDcModule(uint8_t i_u8CmdType);
- 
+
 void Bsp_SetDcModuleOutPutVIvalue(float i_fVvalue, float i_fIvalue);
-void Bsp_SendCmdControlDcModulePowerOnOrDown(uint8_t i_u8PowerStatus,uint8_t i_u8StatusChangeDly);
+void Bsp_SendCmdControlDcModulePowerOnOrDown(uint8_t i_u8PowerStatus, uint8_t i_u8StatusChangeDly);
 
 void    SetRS485TxDateType(uint8_t i_u8Rs485TxType);
 uint8_t GetRS485TxDateType(void);

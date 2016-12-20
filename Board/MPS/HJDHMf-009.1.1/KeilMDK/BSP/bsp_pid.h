@@ -45,10 +45,10 @@ typedef struct {
     int8_t Err_Next;//上次偏差
     int8_t Err_Last;//上上次偏差
 
-    
+
     float Kp, Ki, Kd;//定义比例propotion、积分Integral、微分Differential系数
-    
-    
+
+
 //    float Ti;//积分时间常数
 //    float Td;//微分时间常数
     uint8_t Tsam; //采样周期---控制周期，每隔Tsam控制器输出一次PID运算结果
@@ -56,7 +56,7 @@ typedef struct {
     float Iout;//积分控制输出值
     float Pout;//比例控制输出值
     float Dout;//微分控制输出值
-    
+
     uint16_t OutValue;                      //控制量
     uint16_t OutValueMax;                   //控制量最大值
     uint16_t OutValueMin;                   //控制量最小值

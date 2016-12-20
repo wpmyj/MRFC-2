@@ -79,7 +79,7 @@ void    SetStackOutAirValveStatus(SWITCH_TYPE_VARIABLE_Typedef i_NewStatu);
 void    DecompressCountPerMinuteInc(void);
 void    ResetStackExhaustTimesCountPerMinutes(void);
 uint8_t GetPassiveDecompressCountPerMinutes(void);
-    
+
 float   GetStackHydrogenYieldMatchOffsetValue(void);
 
 uint8_t GetStackStartPurifySwitchStatus(void);

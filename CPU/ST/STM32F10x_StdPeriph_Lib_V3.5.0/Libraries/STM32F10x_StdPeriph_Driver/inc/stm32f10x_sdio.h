@@ -43,8 +43,7 @@ extern "C" {
   * @{
   */
 
-typedef struct
-{
+typedef struct {
     uint32_t SDIO_ClockEdge;            /*!< Specifies the clock transition on which the bit capture is made.
                                            This parameter can be a value of @ref SDIO_Clock_Edge */
 
@@ -67,8 +66,7 @@ typedef struct
 
 } SDIO_InitTypeDef;
 
-typedef struct
-{
+typedef struct {
     uint32_t SDIO_Argument;  /*!< Specifies the SDIO command argument which is sent
                                 to a card as part of a command message. If a command
                                 contains an argument, it must be loaded into this register
@@ -87,8 +85,7 @@ typedef struct
                                 This parameter can be a value of @ref SDIO_CPSM_State */
 } SDIO_CmdInitTypeDef;
 
-typedef struct
-{
+typedef struct {
     uint32_t SDIO_DataTimeOut;    /*!< Specifies the data timeout period in card bus clock periods. */
 
     uint32_t SDIO_DataLength;     /*!< Specifies the number of data bytes to be transferred. */

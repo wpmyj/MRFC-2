@@ -248,8 +248,7 @@ void  App_OS_TimeTickHook(void)
 
     ++i;
 
-    if(i >= OS_CFG_TICK_RATE_HZ)
-    {
+    if(i >= OS_CFG_TICK_RATE_HZ) {
         i = 0;
         OSSemPost(&g_stSystemTimeUpdateSem,
                   OS_OPT_POST_1,

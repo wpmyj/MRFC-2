@@ -48,8 +48,7 @@ extern "C" {
   * @note   This structure is used with all TIMx except for TIM6 and TIM7.
   */
 
-typedef struct
-{
+typedef struct {
     uint16_t TIM_Prescaler;         /*!< Specifies the prescaler value used to divide the TIM clock.
                                        This parameter can be a number between 0x0000 and 0xFFFF */
 
@@ -77,8 +76,7 @@ typedef struct
   * @brief  TIM Output Compare Init structure definition
   */
 
-typedef struct
-{
+typedef struct {
     uint16_t TIM_OCMode;        /*!< Specifies the TIM mode.
                                    This parameter can be a value of @ref TIM_Output_Compare_and_PWM_modes */
 
@@ -112,8 +110,7 @@ typedef struct
   * @brief  TIM Input Capture Init structure definition
   */
 
-typedef struct
-{
+typedef struct {
 
     uint16_t TIM_Channel;      /*!< Specifies the TIM channel.
                                   This parameter can be a value of @ref TIM_Channel */
@@ -136,8 +133,7 @@ typedef struct
   * @note   This structure is used only with TIM1 and TIM8.
   */
 
-typedef struct
-{
+typedef struct {
 
     uint16_t TIM_OSSRState;        /*!< Specifies the Off-State selection used in Run mode.
                                       This parameter can be a value of @ref OSSR_Off_State_Selection_for_Run_mode_state */

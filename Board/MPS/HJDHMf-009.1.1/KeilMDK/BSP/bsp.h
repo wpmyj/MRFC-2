@@ -119,7 +119,7 @@
 #define  BSP_GPIOA_STM_SPI_NSS_PORT_NMB                                         DEF_BIT_15
 
 /* ------------------------------------------ GPIOB PINS ---------------------------------------- */
-        
+
 #define  BSP_GPIOB_STACK_HYDROGEN_PRESS_ONE_ANA_SIGNAL_PORT_NMB                 DEF_BIT_00//气压传感器1
 #define  BSP_GPIOB_STACK_VOLETAGE_ANA_SIGNAL_PORT_NMB                           DEF_BIT_01//电堆电压传感器
 #define  BSP_GPIOB_BUZZER_CTRL_PORT_NMB                                         DEF_BIT_02
@@ -138,7 +138,7 @@
 #define  BSP_GPIOB_USB_BUS_PWR_OVRCR_CTRL_PORT_NMB                              DEF_BIT_15//USB BUS PWR OVRCR
 
 /* ------------------------------------------ GPIOC PINS ---------------------------------------- */
-        
+
 #define  BSP_GPIOC_HYDROGRN_CONCENTRATION_DETECTION_PORT_NMB                    DEF_BIT_00//氢气浓度监测引脚
 #define  BSP_GPIOC_BATTERY_CURRENT_ANA_SIGNAL_PORT_NMB                          DEF_BIT_01//电池电流
 #define  BSP_GPIOC_RAPID_HEATER_CURRETN_ANA_SIGNAL_PORT_NMB                     DEF_BIT_02//快速加热器电流
@@ -158,7 +158,7 @@
 
 
 /* ------------------------------------------ GPIOD PINS ---------------------------------------- */
-        
+
 #define  BSP_GPIOD_UART5_RX_PORT_NMB                                            DEF_BIT_02
 #define  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB                               DEF_BIT_07
 #define  BSP_GPIOD_MAX6675_CHIPS_SELECT_PORT_NMB                                DEF_BIT_10

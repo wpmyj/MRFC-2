@@ -123,8 +123,7 @@ void  BSP_IntClr(CPU_DATA  int_id)
 
 void  BSP_IntDis(CPU_DATA  int_id)
 {
-    if(int_id < BSP_INT_SRC_NBR)
-    {
+    if(int_id < BSP_INT_SRC_NBR) {
         CPU_IntSrcDis(int_id + 16);
     }
 }
@@ -170,8 +169,7 @@ void  BSP_IntDisAll(void)
 
 void  BSP_IntEn(CPU_DATA  int_id)
 {
-    if(int_id < BSP_INT_SRC_NBR)
-    {
+    if(int_id < BSP_INT_SRC_NBR) {
         CPU_IntSrcEn(int_id + 16);
     }
 }
@@ -201,8 +199,7 @@ void  BSP_IntVectSet(CPU_DATA       int_id,
     CPU_SR_ALLOC();
 
 
-    if(int_id < BSP_INT_SRC_NBR)
-    {
+    if(int_id < BSP_INT_SRC_NBR) {
         CPU_CRITICAL_ENTER();
         BSP_IntVectTbl[int_id] = isr;
         CPU_CRITICAL_EXIT();
@@ -234,8 +231,7 @@ void  BSP_IntPrioSet(CPU_DATA    int_id,
     CPU_SR_ALLOC();
 
 
-    if(int_id < BSP_INT_SRC_NBR)
-    {
+    if(int_id < BSP_INT_SRC_NBR) {
         CPU_CRITICAL_ENTER();
         CPU_IntSrcPrioSet(int_id + 16, prio);
         CPU_CRITICAL_EXIT();
@@ -272,8 +268,7 @@ void  BSP_IntInit(void)
     CPU_DATA  int_id;
 
 
-    for(int_id = 0; int_id < BSP_INT_SRC_NBR; int_id++)
-    {
+    for(int_id = 0; int_id < BSP_INT_SRC_NBR; int_id++) {
         BSP_IntVectSet(int_id, BSP_IntHandlerDummy);
     }
 }
@@ -577,12 +572,10 @@ static  void  BSP_IntHandler(CPU_DATA  int_id)
 
     CPU_CRITICAL_EXIT();
 
-    if(int_id < BSP_INT_SRC_NBR)
-    {
+    if(int_id < BSP_INT_SRC_NBR) {
         isr = BSP_IntVectTbl[int_id];
 
-        if(isr != (CPU_FNCT_VOID)0)
-        {
+        if(isr != (CPU_FNCT_VOID)0) {
             isr();
         }
     }

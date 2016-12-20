@@ -47,8 +47,7 @@ extern "C" {
   * @brief  ADC Init structure definition
   */
 
-typedef struct
-{
+typedef struct {
     uint32_t ADC_Mode;                      /*!< Configures the ADC to operate in independent or
                                                dual mode.
                                                This parameter can be a value of @ref ADC_mode */

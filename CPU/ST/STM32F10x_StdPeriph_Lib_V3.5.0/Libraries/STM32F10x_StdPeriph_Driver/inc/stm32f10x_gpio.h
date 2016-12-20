@@ -55,8 +55,7 @@ extern "C" {
   * @brief  Output Maximum frequency selection
   */
 
-typedef enum
-{
+typedef enum {
     GPIO_Speed_10MHz = 1,
     GPIO_Speed_2MHz,
     GPIO_Speed_50MHz
@@ -68,8 +67,7 @@ typedef enum
   * @brief  Configuration Mode enumeration
   */
 
-typedef enum
-{
+typedef enum {
     GPIO_Mode_AIN = 0x0,
     GPIO_Mode_IN_FLOATING = 0x04,
     GPIO_Mode_IPD = 0x28,
@@ -89,8 +87,7 @@ typedef enum
   * @brief  GPIO Init structure definition
   */
 
-typedef struct
-{
+typedef struct {
     uint16_t GPIO_Pin;             /*!< Specifies the GPIO pins to be configured.
                                       This parameter can be any value of @ref GPIO_pins_define */
 
@@ -106,8 +103,7 @@ typedef struct
   * @brief  Bit_SET and Bit_RESET enumeration
   */
 
-typedef enum
-{
+typedef enum {
     Bit_RESET = 0,
     Bit_SET
 } BitAction;

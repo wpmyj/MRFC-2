@@ -47,8 +47,7 @@ extern "C" {
   * @brief  NVIC Init Structure definition
   */
 
-typedef struct
-{
+typedef struct {
     uint8_t NVIC_IRQChannel;                    /*!< Specifies the IRQ channel to be enabled or disabled.
                                                    This parameter can be a value of @ref IRQn_Type
                                                    (For the complete STM32 Devices IRQ Channels list, please

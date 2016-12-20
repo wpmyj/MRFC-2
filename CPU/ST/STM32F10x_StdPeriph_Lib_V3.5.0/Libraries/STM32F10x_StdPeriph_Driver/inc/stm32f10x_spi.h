@@ -47,8 +47,7 @@ extern "C" {
   * @brief  SPI Init structure definition
   */
 
-typedef struct
-{
+typedef struct {
     uint16_t SPI_Direction;           /*!< Specifies the SPI unidirectional or bidirectional data mode.
                                          This parameter can be a value of @ref SPI_data_direction */
 
@@ -84,8 +83,7 @@ typedef struct
   * @brief  I2S Init structure definition
   */
 
-typedef struct
-{
+typedef struct {
 
     uint16_t I2S_Mode;         /*!< Specifies the I2S operating mode.
                                   This parameter can be a value of @ref I2S_Mode */

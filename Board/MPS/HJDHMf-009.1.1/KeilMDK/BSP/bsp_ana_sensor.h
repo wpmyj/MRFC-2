@@ -45,8 +45,7 @@
 *                                           EXPORTED DATA TYPE
 ***************************************************************************************************
 */
-typedef struct
-{
+typedef struct {
     float    BaseDigValue;      //原始数字量
     float    AnaToDigRatio; //模数转换比率
 } ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef;
@@ -55,8 +54,7 @@ typedef struct
 *                                               DEFINES
 ***************************************************************************************************
 */
-typedef enum
-{
+typedef enum {
     STACK_TEMP = 0,//对应ADC规则组通道
     STACK_VOLTAGE,
     STACK_CURRENT,
@@ -73,7 +71,7 @@ typedef enum
     NEGATIVE_PRESSURE,
     RESERVED_1,//预留
     RESERVED_2,
-    
+
 } ANALOG_SIGNAL_KIND_Typedef;
 
 

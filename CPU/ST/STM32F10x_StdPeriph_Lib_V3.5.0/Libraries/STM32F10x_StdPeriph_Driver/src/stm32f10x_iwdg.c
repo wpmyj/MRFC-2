@@ -164,12 +164,9 @@ FlagStatus IWDG_GetFlagStatus(uint16_t IWDG_FLAG)
     /* Check the parameters */
     assert_param(IS_IWDG_FLAG(IWDG_FLAG));
 
-    if((IWDG->SR & IWDG_FLAG) != (uint32_t)RESET)
-    {
+    if((IWDG->SR & IWDG_FLAG) != (uint32_t)RESET) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 

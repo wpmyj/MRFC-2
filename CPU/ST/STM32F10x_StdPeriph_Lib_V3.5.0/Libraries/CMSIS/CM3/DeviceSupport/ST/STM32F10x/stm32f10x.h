@@ -164,8 +164,7 @@ extern "C" {
  * @brief STM32F10x Interrupt Number Definition, according to the selected device
  *        in @ref Library_configuration_section
  */
-typedef enum IRQn
-{
+typedef enum IRQn {
     /******  Cortex-M3 Processor Exceptions Numbers ***************************************************/
     NonMaskableInt_IRQn         = -14,    /*!< 2 Non Maskable Interrupt                             */
     MemoryManagement_IRQn       = -12,    /*!< 4 Cortex-M3 Memory Management Interrupt              */
@@ -539,8 +538,7 @@ typedef enum {ERROR = 0, SUCCESS = !ERROR} ErrorStatus;
   * @brief Analog to Digital Converter
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t SR;
     __IO uint32_t CR1;
     __IO uint32_t CR2;
@@ -567,8 +565,7 @@ typedef struct
   * @brief Backup Registers
   */
 
-typedef struct
-{
+typedef struct {
     uint32_t  RESERVED0;
     __IO uint16_t DR1;
     uint16_t  RESERVED1;
@@ -666,8 +663,7 @@ typedef struct
   * @brief Controller Area Network TxMailBox
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t TIR;
     __IO uint32_t TDTR;
     __IO uint32_t TDLR;
@@ -678,8 +674,7 @@ typedef struct
   * @brief Controller Area Network FIFOMailBox
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t RIR;
     __IO uint32_t RDTR;
     __IO uint32_t RDLR;
@@ -690,8 +685,7 @@ typedef struct
   * @brief Controller Area Network FilterRegister
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t FR1;
     __IO uint32_t FR2;
 } CAN_FilterRegister_TypeDef;
@@ -700,8 +694,7 @@ typedef struct
   * @brief Controller Area Network
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t MCR;
     __IO uint32_t MSR;
     __IO uint32_t TSR;
@@ -733,8 +726,7 @@ typedef struct
 /**
   * @brief Consumer Electronics Control (CEC)
   */
-typedef struct
-{
+typedef struct {
     __IO uint32_t CFGR;
     __IO uint32_t OAR;
     __IO uint32_t PRES;
@@ -748,8 +740,7 @@ typedef struct
   * @brief CRC calculation unit
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t DR;
     __IO uint8_t  IDR;
     uint8_t   RESERVED0;
@@ -761,8 +752,7 @@ typedef struct
   * @brief Digital to Analog Converter
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t CR;
     __IO uint32_t SWTRIGR;
     __IO uint32_t DHR12R1;
@@ -785,8 +775,7 @@ typedef struct
   * @brief Debug MCU
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t IDCODE;
     __IO uint32_t CR;
 } DBGMCU_TypeDef;
@@ -795,16 +784,14 @@ typedef struct
   * @brief DMA Controller
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t CCR;
     __IO uint32_t CNDTR;
     __IO uint32_t CPAR;
     __IO uint32_t CMAR;
 } DMA_Channel_TypeDef;
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t ISR;
     __IO uint32_t IFCR;
 } DMA_TypeDef;
@@ -813,8 +800,7 @@ typedef struct
   * @brief Ethernet MAC
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t MACCR;
     __IO uint32_t MACFFR;
     __IO uint32_t MACHTHR;
@@ -884,8 +870,7 @@ typedef struct
   * @brief External Interrupt/Event Controller
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t IMR;
     __IO uint32_t EMR;
     __IO uint32_t RTSR;
@@ -898,8 +883,7 @@ typedef struct
   * @brief FLASH Registers
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t ACR;
     __IO uint32_t KEYR;
     __IO uint32_t OPTKEYR;
@@ -923,8 +907,7 @@ typedef struct
   * @brief Option Bytes Registers
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint16_t RDP;
     __IO uint16_t USER;
     __IO uint16_t Data0;
@@ -939,8 +922,7 @@ typedef struct
   * @brief Flexible Static Memory Controller
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t BTCR[8];
 } FSMC_Bank1_TypeDef;
 
@@ -948,8 +930,7 @@ typedef struct
   * @brief Flexible Static Memory Controller Bank1E
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t BWTR[7];
 } FSMC_Bank1E_TypeDef;
 
@@ -957,8 +938,7 @@ typedef struct
   * @brief Flexible Static Memory Controller Bank2
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t PCR2;
     __IO uint32_t SR2;
     __IO uint32_t PMEM2;
@@ -971,8 +951,7 @@ typedef struct
   * @brief Flexible Static Memory Controller Bank3
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t PCR3;
     __IO uint32_t SR3;
     __IO uint32_t PMEM3;
@@ -985,8 +964,7 @@ typedef struct
   * @brief Flexible Static Memory Controller Bank4
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t PCR4;
     __IO uint32_t SR4;
     __IO uint32_t PMEM4;
@@ -998,8 +976,7 @@ typedef struct
   * @brief General Purpose I/O
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t CRL;
     __IO uint32_t CRH;
     __IO uint32_t IDR;
@@ -1013,8 +990,7 @@ typedef struct
   * @brief Alternate Function I/O
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t EVCR;
     __IO uint32_t MAPR;
     __IO uint32_t EXTICR[4];
@@ -1025,8 +1001,7 @@ typedef struct
   * @brief Inter Integrated Circuit Interface
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint16_t CR1;
     uint16_t  RESERVED0;
     __IO uint16_t CR2;
@@ -1051,8 +1026,7 @@ typedef struct
   * @brief Independent WATCHDOG
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t KR;
     __IO uint32_t PR;
     __IO uint32_t RLR;
@@ -1063,8 +1037,7 @@ typedef struct
   * @brief Power Control
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t CR;
     __IO uint32_t CSR;
 } PWR_TypeDef;
@@ -1073,8 +1046,7 @@ typedef struct
   * @brief Reset and Clock Control
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t CR;
     __IO uint32_t CFGR;
     __IO uint32_t CIR;
@@ -1101,8 +1073,7 @@ typedef struct
   * @brief Real-Time Clock
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint16_t CRH;
     uint16_t  RESERVED0;
     __IO uint16_t CRL;
@@ -1129,8 +1100,7 @@ typedef struct
   * @brief SD host Interface
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t POWER;
     __IO uint32_t CLKCR;
     __IO uint32_t ARG;
@@ -1157,8 +1127,7 @@ typedef struct
   * @brief Serial Peripheral Interface
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint16_t CR1;
     uint16_t  RESERVED0;
     __IO uint16_t CR2;
@@ -1183,8 +1152,7 @@ typedef struct
   * @brief TIM
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint16_t CR1;
     uint16_t  RESERVED0;
     __IO uint16_t CR2;
@@ -1231,8 +1199,7 @@ typedef struct
   * @brief Universal Synchronous Asynchronous Receiver Transmitter
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint16_t SR;
     uint16_t  RESERVED0;
     __IO uint16_t DR;
@@ -1253,8 +1220,7 @@ typedef struct
   * @brief Window WATCHDOG
   */
 
-typedef struct
-{
+typedef struct {
     __IO uint32_t CR;
     __IO uint32_t CFR;
     __IO uint32_t SR;

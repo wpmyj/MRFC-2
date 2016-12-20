@@ -84,7 +84,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef CheckAuthorization(void)
 *                                          DeviceFaultAlarm()
 *
 * Description : The funciton is the device alarm process.
-*               
+*
 * Arguments   : none.
 *
 * Returns     : none
@@ -97,12 +97,11 @@ void DeviceFaultAlarm(void)
     OS_ERR      err;
     g_eDeviceFaultAlarm = ON;
     APP_TRACE_INFO(("Device fault alarming...\n\r"));
-    while(DEF_TRUE)
-    {
+
+    while(DEF_TRUE) {
         BSP_BuzzerTurnover();
 
-        if(g_eDeviceFaultAlarm == OFF)
-        {
+        if(g_eDeviceFaultAlarm == OFF) {
             BSP_BuzzerOff();
             break;
         }
@@ -239,7 +238,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef DeviceSelfCheck(void)
 *                                          WaittingCommand()
 *
 * Description : The use of the funciton is to wait the command and cyclic self-check.
-*                              
+*
 * Arguments   : none.
 *
 * Returns     : none.
@@ -276,10 +275,8 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
     SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL);
 #endif
 
-    while(DEF_TRUE)
-    {
-        if(EN_THROUGH == DeviceSelfCheck())
-        {
+    while(DEF_TRUE) {
+        if(EN_THROUGH == DeviceSelfCheck()) {
             APP_TRACE_INFO(("Self-check success...\n\r"));
 
             OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 1, //每分钟自检一次
@@ -287,26 +284,19 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
                           NULL,
                           &err);
 
-            if(err == OS_ERR_NONE)    //正确得到信号量，开始运行
-            {
+            if(err == OS_ERR_NONE) {  //正确得到信号量，开始运行
                 APP_TRACE_INFO(("Receive the run command...\n\r"));
                 WaitCmdStatu = EN_THROUGH;
                 SetSystemWorkStatu(EN_START_PRGM_ONE_FRONT);
                 break;
-            }
-            else if(err == OS_ERR_TIMEOUT)   //等待超时，重新自检
-            {
+            } else if(err == OS_ERR_TIMEOUT) { //等待超时，重新自检
                 APP_TRACE_INFO(("Not receive the run command, restart the self-check...\n\r"));
-            }
-            else
-            {
+            } else {
                 APP_TRACE_INFO(("Waitting run command failed, err code %d...\n\r", err));
                 WaitCmdStatu = EN_NOT_THROUGH;
                 break;
             }
-        }
-        else
-        {
+        } else {
             APP_TRACE_INFO(("Self-check failed...\n\r"));
             WaitCmdStatu = EN_NOT_THROUGH;
             break;
@@ -351,74 +341,58 @@ void Starting(void)
     OSTimeDlyHMSM(0, 0, 0, 200, OS_OPT_TIME_HMSM_STRICT, &err);
     BSP_BuzzerOff();
     OSTimeDlyHMSM(0, 0, 0, 200, OS_OPT_TIME_HMSM_STRICT, &err);
-    
+
     //一体机模式或者制氢模式
-    if(( eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL ) || ( eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER ))
-    {  
-        if( EN_START_PRGM_ONE_FRONT == GetSystemWorkStatu() )
-        {
-            HydrgProducerWorkTimesInc();     
+    if((eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL) || (eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER)) {
+        if(EN_START_PRGM_ONE_FRONT == GetSystemWorkStatu()) {
+            HydrgProducerWorkTimesInc();
+
             //第一次点火
-            if(( EN_PASS == IgniteFirstTime(IgniteCheckTable1, GoToNextStepTempTable1, 3, 1 )))
-            {
-                SetSystemWorkStatu( EN_START_PRGM_TWO );
-            }
-            else
-            {
+            if((EN_PASS == IgniteFirstTime(IgniteCheckTable1, GoToNextStepTempTable1, 3, 1))) {
+                SetSystemWorkStatu(EN_START_PRGM_TWO);
+            } else {
                 APP_TRACE_INFO(("Ignite for the first time is failed...\n\r"));
-                if( GetSystemWorkStatu() != EN_WAITTING_COMMAND )   //可能因为上位机直接将状态改为关保温，导致点火失败
-                {
-                    SetSystemWorkStatu( EN_KEEPING_WARM );
+
+                if(GetSystemWorkStatu() != EN_WAITTING_COMMAND) {   //可能因为上位机直接将状态改为关保温，导致点火失败
+                    SetSystemWorkStatu(EN_KEEPING_WARM);
                 }
             }
 
             //第二次点火
-            if( GetSystemWorkStatu() == EN_START_PRGM_TWO )
-            {
+            if(GetSystemWorkStatu() == EN_START_PRGM_TWO) {
                 IgniteCheckTable2 = g_stReformerTempCmpTbl.IgScdTimeFrtToBhdTmpPnt;
                 GoToNextStepTempTable2 = g_stReformerTempCmpTbl.IgScdTimeOverTmpPnt;
 
-                if( EN_PASS != IgniteSecondTime(IgniteCheckTable2, GoToNextStepTempTable2, 3, 1) )
-                {
+                if(EN_PASS != IgniteSecondTime(IgniteCheckTable2, GoToNextStepTempTable2, 3, 1)) {
                     APP_TRACE_INFO(("Ignite for the second time is failed...\n\r"));
 
-                    if( GetSystemWorkStatu() != EN_WAITTING_COMMAND )   //可能因为上位机直接将状态改为关保温，导致点火失败
-                    {
-                        SetSystemWorkStatu( EN_KEEPING_WARM );
+                    if(GetSystemWorkStatu() != EN_WAITTING_COMMAND) {   //可能因为上位机直接将状态改为关保温，导致点火失败
+                        SetSystemWorkStatu(EN_KEEPING_WARM);
                     }
-                }
-                else
-                {
-                    SetSystemWorkStatu( EN_RUNNING );
+                } else {
+                    SetSystemWorkStatu(EN_RUNNING);
                 }
 
-                SetShutDownActionFlag( EN_DELAY_STOP_PART_ONE );
-            } 
-            else 
-            {
-                APP_TRACE_INFO( ("Ignite for the second time has been leaped over ...\n\r") );
-                SetShutDownActionFlag(  EN_STOP_ALL_DIRECT );
+                SetShutDownActionFlag(EN_DELAY_STOP_PART_ONE);
+            } else {
+                APP_TRACE_INFO(("Ignite for the second time has been leaped over ...\n\r"));
+                SetShutDownActionFlag(EN_STOP_ALL_DIRECT);
             }
+        } else {
+            APP_TRACE_INFO(("Program's running here is not to start...\n\r"));
+            SetShutDownActionFlag(EN_STOP_ALL_DIRECT);
         }
-        else
-        {
-            APP_TRACE_INFO( ("Program's running here is not to start...\n\r") );
-            SetShutDownActionFlag( EN_STOP_ALL_DIRECT );
-        }
-        
+
     }
     //发电模式
-    else if( eWorkMode == EN_WORK_MODE_FUEL_CELL )
-    {
+    else if(eWorkMode == EN_WORK_MODE_FUEL_CELL) {
         APP_TRACE_INFO(("Only stack of the machine is excepted to work in the current work mode...\n\r"));
-        SetSystemWorkStatu( EN_RUNNING );
-        SetShutDownActionFlag( EN_DELAY_STOP_PART_TWO );
-    }
-    else
-    {
+        SetSystemWorkStatu(EN_RUNNING);
+        SetShutDownActionFlag(EN_DELAY_STOP_PART_TWO);
+    } else {
         APP_TRACE_INFO(("Fault: The program should not come here in the malfunciton mode...\n\r"));
-        SetSystemWorkStatu( EN_KEEPING_WARM );
-        SetShutDownActionFlag( EN_STOP_ALL_DIRECT );
+        SetSystemWorkStatu(EN_KEEPING_WARM);
+        SetShutDownActionFlag(EN_STOP_ALL_DIRECT);
     }
 }
 
@@ -439,8 +413,8 @@ void    KeepingWarm(void)
 {
     ShutDown();
     APP_TRACE_INFO(("Keeping warm...\n\r"));
-    SetSystemWorkStatu( EN_WAITTING_COMMAND );
-   
+    SetSystemWorkStatu(EN_WAITTING_COMMAND);
+
 }
 
 /*
@@ -461,18 +435,16 @@ void Running()
     OS_ERR      err;
     SYSTEM_WORK_MODE_Typedef eWorkMode;
 
-    if( GetSystemWorkStatu() == EN_RUNNING )
-    {
-         
-        APP_TRACE_INFO(("Run: System enter the cruise process...\n\r"));    
+    if(GetSystemWorkStatu() == EN_RUNNING) {
+
+        APP_TRACE_INFO(("Run: System enter the cruise process...\n\r"));
         eWorkMode = GetWorkMode();
 
-        switch((u8)eWorkMode)
-        {
+        switch((u8)eWorkMode) {
             case(u8)EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL:
-                OSTaskResume(&HydrgProducerManagerTaskTCB,  
+                OSTaskResume(&HydrgProducerManagerTaskTCB,
                              &err);
-                OSTaskResume(&StackManagerTaskTCB,          
+                OSTaskResume(&StackManagerTaskTCB,
                              &err);
                 SetShutDownActionFlag(EN_DELAY_STOP_BOTH_PARTS);//运行到此说明一体机模式正常启动，先前在启动阶段未严格区分一体和制氢模式，故在此再次设置
                 OSTaskSuspend(&AppTaskStartTCB, //阻塞主任务，由制氢机管理任务和电堆管理任务管理机器
@@ -481,32 +453,30 @@ void Running()
                 break;
 
             case(u8)EN_WORK_MODE_HYDROGEN_PRODUCER:
-                OSTaskResume(&HydrgProducerManagerTaskTCB,  
+                OSTaskResume(&HydrgProducerManagerTaskTCB,
                              &err);
 //                  SetShutDownActionFlag(EN_DELAY_STOP_PART_ONE);//因制氢模式下的关机标志已经在启动阶段设置好，故在该模式下不需要另行设置
-                OSTaskSuspend(&AppTaskStartTCB,            
+                OSTaskSuspend(&AppTaskStartTCB,
                               &err);
                 SetSystemWorkStatu(EN_SHUTTING_DOWN);
                 break;
 
             case(u8)EN_WORK_MODE_FUEL_CELL:
-                OSTaskResume(&StackManagerTaskTCB,          
+                OSTaskResume(&StackManagerTaskTCB,
                              &err);
 //                  SetShutDownActionFlag(EN_DELAY_STOP_PART_TWO);//因发电模式下的关机标志已经在启动阶段设置好，故在该模式下不需要另行设置
-                OSTaskSuspend(&AppTaskStartTCB,            
+                OSTaskSuspend(&AppTaskStartTCB,
                               &err);
-                SetSystemWorkStatu( EN_SHUTTING_DOWN );
+                SetSystemWorkStatu(EN_SHUTTING_DOWN);
                 break;
 
             default:
                 APP_TRACE_INFO(("Fault: System run at the malfunction mode...\n\r"));
                 //关机状态标识已经在启动阶段设置好，不需在此另行设定
-                SetSystemWorkStatu( EN_KEEPING_WARM );
+                SetSystemWorkStatu(EN_KEEPING_WARM);
                 break;
         }
-    }
-    else
-    {
+    } else {
         APP_TRACE_INFO(("Ignite befor the run process is failed or the run process is leaped over...\n\r"));
     }
 }
@@ -516,7 +486,7 @@ void Running()
 *                                          SetShutDownActionFlag()
 *
 * Description : The use of the funciton is to select the shut down action flag.
-*               
+*
 * Arguments   : none.
 *
 * Returns     : none.
@@ -547,14 +517,15 @@ void ShutDown()
     OS_ERR  err;
     uint8_t i;
     SYSTEM_WORK_STATU_Typedef eWorkStatu;
-   
+
     eWorkStatu = GetSystemWorkStatu();
+
     if(eWorkStatu == EN_SHUTTING_DOWN) {
         APP_TRACE_DEBUG(("Exit the cruise process to shut down...\r\n"));//提示系统退出巡航运行阶段
 
         switch((u8)g_eShutDownActionFlag) {
             case EN_STOP_ALL_DIRECT:
-                
+
                 APP_TRACE_DEBUG(("Shutdown all direcetly!!!\r\n"));
                 break;
 
@@ -564,7 +535,7 @@ void ShutDown()
                 break;
 
             case EN_DELAY_STOP_PART_TWO:
-                if(EN_IN_WORK == GetStackWorkStatu()){//电堆有在工作才恢复延时关闭任务
+                if(EN_IN_WORK == GetStackWorkStatu()) { //电堆有在工作才恢复延时关闭任务
                     OSTaskResume(&StackManagerDlyStopTaskTCB,
                                  &err);
                 }
@@ -574,11 +545,14 @@ void ShutDown()
             case(u8)EN_DELAY_STOP_BOTH_PARTS:
                 OSTaskResume(&HydrgProducerManagerDlyStopTaskTCB,   //恢复制氢机、电堆延时关闭任务
                              &err);
-                if(EN_IN_WORK == GetStackWorkStatu()){//电堆有在工作才恢复延时关闭任务
+
+                if(EN_IN_WORK == GetStackWorkStatu()) { //电堆有在工作才恢复延时关闭任务
                     OSTaskResume(&StackManagerDlyStopTaskTCB,
                                  &err);
                 }
+
                 break;
+
             default:
                 break;
         }
@@ -587,7 +561,7 @@ void ShutDown()
 
         for(i = 0; i < 4; i++) {
             BSP_BuzzerTurnover();
-            
+
             OSTimeDlyHMSM(0, 0, 1, 0,
                           OS_OPT_TIME_HMSM_STRICT,
                           &err);
@@ -618,7 +592,7 @@ void ShutDown()
                               NULL,
                               &err);
 
-                if(err == OS_ERR_NONE) { 
+                if(err == OS_ERR_NONE) {
                     break;
                 }
 
@@ -639,6 +613,7 @@ void ShutDown()
                 } else {
                     APP_TRACE_DEBUG(("The hydrogen producer and stack delay stop over time...\r\n"));
                 }
+
             default:
                 break;
         }
@@ -665,12 +640,9 @@ void UpdateBuzzerStatuInCruise(void)
     u32 u32AlarmCode;
     u32AlarmCode = GetRunAlarmCode();
 
-    if(u32AlarmCode != 0)
-    {
+    if(u32AlarmCode != 0) {
         BSP_BuzzerOn();
-    }
-    else
-    {
+    } else {
         BSP_BuzzerOff();
     }
 }

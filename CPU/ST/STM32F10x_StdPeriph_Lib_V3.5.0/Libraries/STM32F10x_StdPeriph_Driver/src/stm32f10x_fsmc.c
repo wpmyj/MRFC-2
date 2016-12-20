@@ -105,13 +105,11 @@ void FSMC_NORSRAMDeInit(uint32_t FSMC_Bank)
     assert_param(IS_FSMC_NORSRAM_BANK(FSMC_Bank));
 
     /* FSMC_Bank1_NORSRAM1 */
-    if(FSMC_Bank == FSMC_Bank1_NORSRAM1)
-    {
+    if(FSMC_Bank == FSMC_Bank1_NORSRAM1) {
         FSMC_Bank1->BTCR[FSMC_Bank] = 0x000030DB;
     }
     /* FSMC_Bank1_NORSRAM2,  FSMC_Bank1_NORSRAM3 or FSMC_Bank1_NORSRAM4 */
-    else
-    {
+    else {
         FSMC_Bank1->BTCR[FSMC_Bank] = 0x000030D2;
     }
 
@@ -132,8 +130,7 @@ void FSMC_NANDDeInit(uint32_t FSMC_Bank)
     /* Check the parameter */
     assert_param(IS_FSMC_NAND_BANK(FSMC_Bank));
 
-    if(FSMC_Bank == FSMC_Bank2_NAND)
-    {
+    if(FSMC_Bank == FSMC_Bank2_NAND) {
         /* Set the FSMC_Bank2 registers to their reset values */
         FSMC_Bank2->PCR2 = 0x00000018;
         FSMC_Bank2->SR2 = 0x00000040;
@@ -141,8 +138,7 @@ void FSMC_NANDDeInit(uint32_t FSMC_Bank)
         FSMC_Bank2->PATT2 = 0xFCFCFCFC;
     }
     /* FSMC_Bank3_NAND */
-    else
-    {
+    else {
         /* Set the FSMC_Bank3 registers to their reset values */
         FSMC_Bank3->PCR3 = 0x00000018;
         FSMC_Bank3->SR3 = 0x00000040;
@@ -213,8 +209,7 @@ void FSMC_NORSRAMInit(FSMC_NORSRAMInitTypeDef *FSMC_NORSRAMInitStruct)
         FSMC_NORSRAMInitStruct->FSMC_ExtendedMode |
         FSMC_NORSRAMInitStruct->FSMC_WriteBurst;
 
-    if(FSMC_NORSRAMInitStruct->FSMC_MemoryType == FSMC_MemoryType_NOR)
-    {
+    if(FSMC_NORSRAMInitStruct->FSMC_MemoryType == FSMC_MemoryType_NOR) {
         FSMC_Bank1->BTCR[FSMC_NORSRAMInitStruct->FSMC_Bank] |= (uint32_t)BCR_FACCEN_Set;
     }
 
@@ -230,8 +225,7 @@ void FSMC_NORSRAMInit(FSMC_NORSRAMInitTypeDef *FSMC_NORSRAMInitStruct)
 
 
     /* Bank1 NOR/SRAM timing register for write configuration, if extended mode is used */
-    if(FSMC_NORSRAMInitStruct->FSMC_ExtendedMode == FSMC_ExtendedMode_Enable)
-    {
+    if(FSMC_NORSRAMInitStruct->FSMC_ExtendedMode == FSMC_ExtendedMode_Enable) {
         assert_param(IS_FSMC_ADDRESS_SETUP_TIME(FSMC_NORSRAMInitStruct->FSMC_WriteTimingStruct->FSMC_AddressSetupTime));
         assert_param(IS_FSMC_ADDRESS_HOLD_TIME(FSMC_NORSRAMInitStruct->FSMC_WriteTimingStruct->FSMC_AddressHoldTime));
         assert_param(IS_FSMC_DATASETUP_TIME(FSMC_NORSRAMInitStruct->FSMC_WriteTimingStruct->FSMC_DataSetupTime));
@@ -245,9 +239,7 @@ void FSMC_NORSRAMInit(FSMC_NORSRAMInitTypeDef *FSMC_NORSRAMInitStruct)
             (FSMC_NORSRAMInitStruct->FSMC_WriteTimingStruct->FSMC_CLKDivision << 20) |
             (FSMC_NORSRAMInitStruct->FSMC_WriteTimingStruct->FSMC_DataLatency << 24) |
             FSMC_NORSRAMInitStruct->FSMC_WriteTimingStruct->FSMC_AccessMode;
-    }
-    else
-    {
+    } else {
         FSMC_Bank1E->BWTR[FSMC_NORSRAMInitStruct->FSMC_Bank] = 0x0FFFFFFF;
     }
 }
@@ -302,15 +294,12 @@ void FSMC_NANDInit(FSMC_NANDInitTypeDef *FSMC_NANDInitStruct)
               (FSMC_NANDInitStruct->FSMC_AttributeSpaceTimingStruct->FSMC_HoldSetupTime << 16) |
               (FSMC_NANDInitStruct->FSMC_AttributeSpaceTimingStruct->FSMC_HiZSetupTime << 24);
 
-    if(FSMC_NANDInitStruct->FSMC_Bank == FSMC_Bank2_NAND)
-    {
+    if(FSMC_NANDInitStruct->FSMC_Bank == FSMC_Bank2_NAND) {
         /* FSMC_Bank2_NAND registers configuration */
         FSMC_Bank2->PCR2 = tmppcr;
         FSMC_Bank2->PMEM2 = tmppmem;
         FSMC_Bank2->PATT2 = tmppatt;
-    }
-    else
-    {
+    } else {
         /* FSMC_Bank3_NAND registers configuration */
         FSMC_Bank3->PCR3 = tmppcr;
         FSMC_Bank3->PMEM3 = tmppmem;
@@ -478,13 +467,10 @@ void FSMC_NORSRAMCmd(uint32_t FSMC_Bank, FunctionalState NewState)
     assert_param(IS_FSMC_NORSRAM_BANK(FSMC_Bank));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected NOR/SRAM Bank by setting the PBKEN bit in the BCRx register */
         FSMC_Bank1->BTCR[FSMC_Bank] |= BCR_MBKEN_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected NOR/SRAM Bank by clearing the PBKEN bit in the BCRx register */
         FSMC_Bank1->BTCR[FSMC_Bank] &= BCR_MBKEN_Reset;
     }
@@ -504,27 +490,18 @@ void FSMC_NANDCmd(uint32_t FSMC_Bank, FunctionalState NewState)
     assert_param(IS_FSMC_NAND_BANK(FSMC_Bank));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected NAND Bank by setting the PBKEN bit in the PCRx register */
-        if(FSMC_Bank == FSMC_Bank2_NAND)
-        {
+        if(FSMC_Bank == FSMC_Bank2_NAND) {
             FSMC_Bank2->PCR2 |= PCR_PBKEN_Set;
-        }
-        else
-        {
+        } else {
             FSMC_Bank3->PCR3 |= PCR_PBKEN_Set;
         }
-    }
-    else
-    {
+    } else {
         /* Disable the selected NAND Bank by clearing the PBKEN bit in the PCRx register */
-        if(FSMC_Bank == FSMC_Bank2_NAND)
-        {
+        if(FSMC_Bank == FSMC_Bank2_NAND) {
             FSMC_Bank2->PCR2 &= PCR_PBKEN_Reset;
-        }
-        else
-        {
+        } else {
             FSMC_Bank3->PCR3 &= PCR_PBKEN_Reset;
         }
     }
@@ -540,13 +517,10 @@ void FSMC_PCCARDCmd(FunctionalState NewState)
 {
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the PCCARD Bank by setting the PBKEN bit in the PCR4 register */
         FSMC_Bank4->PCR4 |= PCR_PBKEN_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the PCCARD Bank by clearing the PBKEN bit in the PCR4 register */
         FSMC_Bank4->PCR4 &= PCR_PBKEN_Reset;
     }
@@ -567,27 +541,18 @@ void FSMC_NANDECCCmd(uint32_t FSMC_Bank, FunctionalState NewState)
     assert_param(IS_FSMC_NAND_BANK(FSMC_Bank));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected NAND Bank ECC function by setting the ECCEN bit in the PCRx register */
-        if(FSMC_Bank == FSMC_Bank2_NAND)
-        {
+        if(FSMC_Bank == FSMC_Bank2_NAND) {
             FSMC_Bank2->PCR2 |= PCR_ECCEN_Set;
-        }
-        else
-        {
+        } else {
             FSMC_Bank3->PCR3 |= PCR_ECCEN_Set;
         }
-    }
-    else
-    {
+    } else {
         /* Disable the selected NAND Bank ECC function by clearing the ECCEN bit in the PCRx register */
-        if(FSMC_Bank == FSMC_Bank2_NAND)
-        {
+        if(FSMC_Bank == FSMC_Bank2_NAND) {
             FSMC_Bank2->PCR2 &= PCR_ECCEN_Reset;
-        }
-        else
-        {
+        } else {
             FSMC_Bank3->PCR3 &= PCR_ECCEN_Reset;
         }
     }
@@ -605,13 +570,10 @@ uint32_t FSMC_GetECC(uint32_t FSMC_Bank)
 {
     uint32_t eccval = 0x00000000;
 
-    if(FSMC_Bank == FSMC_Bank2_NAND)
-    {
+    if(FSMC_Bank == FSMC_Bank2_NAND) {
         /* Get the ECCR2 register value */
         eccval = FSMC_Bank2->ECCR2;
-    }
-    else
-    {
+    } else {
         /* Get the ECCR3 register value */
         eccval = FSMC_Bank3->ECCR3;
     }
@@ -642,40 +604,31 @@ void FSMC_ITConfig(uint32_t FSMC_Bank, uint32_t FSMC_IT, FunctionalState NewStat
     assert_param(IS_FSMC_IT(FSMC_IT));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected FSMC_Bank2 interrupts */
-        if(FSMC_Bank == FSMC_Bank2_NAND)
-        {
+        if(FSMC_Bank == FSMC_Bank2_NAND) {
             FSMC_Bank2->SR2 |= FSMC_IT;
         }
         /* Enable the selected FSMC_Bank3 interrupts */
-        else if(FSMC_Bank == FSMC_Bank3_NAND)
-        {
+        else if(FSMC_Bank == FSMC_Bank3_NAND) {
             FSMC_Bank3->SR3 |= FSMC_IT;
         }
         /* Enable the selected FSMC_Bank4 interrupts */
-        else
-        {
+        else {
             FSMC_Bank4->SR4 |= FSMC_IT;
         }
-    }
-    else
-    {
+    } else {
         /* Disable the selected FSMC_Bank2 interrupts */
-        if(FSMC_Bank == FSMC_Bank2_NAND)
-        {
+        if(FSMC_Bank == FSMC_Bank2_NAND) {
 
             FSMC_Bank2->SR2 &= (uint32_t)~FSMC_IT;
         }
         /* Disable the selected FSMC_Bank3 interrupts */
-        else if(FSMC_Bank == FSMC_Bank3_NAND)
-        {
+        else if(FSMC_Bank == FSMC_Bank3_NAND) {
             FSMC_Bank3->SR3 &= (uint32_t)~FSMC_IT;
         }
         /* Disable the selected FSMC_Bank4 interrupts */
-        else
-        {
+        else {
             FSMC_Bank4->SR4 &= (uint32_t)~FSMC_IT;
         }
     }
@@ -705,27 +658,20 @@ FlagStatus FSMC_GetFlagStatus(uint32_t FSMC_Bank, uint32_t FSMC_FLAG)
     assert_param(IS_FSMC_GETFLAG_BANK(FSMC_Bank));
     assert_param(IS_FSMC_GET_FLAG(FSMC_FLAG));
 
-    if(FSMC_Bank == FSMC_Bank2_NAND)
-    {
+    if(FSMC_Bank == FSMC_Bank2_NAND) {
         tmpsr = FSMC_Bank2->SR2;
-    }
-    else if(FSMC_Bank == FSMC_Bank3_NAND)
-    {
+    } else if(FSMC_Bank == FSMC_Bank3_NAND) {
         tmpsr = FSMC_Bank3->SR3;
     }
     /* FSMC_Bank4_PCCARD*/
-    else
-    {
+    else {
         tmpsr = FSMC_Bank4->SR4;
     }
 
     /* Get the flag status */
-    if((tmpsr & FSMC_FLAG) != (uint16_t)RESET)
-    {
+    if((tmpsr & FSMC_FLAG) != (uint16_t)RESET) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 
@@ -753,17 +699,13 @@ void FSMC_ClearFlag(uint32_t FSMC_Bank, uint32_t FSMC_FLAG)
     assert_param(IS_FSMC_GETFLAG_BANK(FSMC_Bank));
     assert_param(IS_FSMC_CLEAR_FLAG(FSMC_FLAG)) ;
 
-    if(FSMC_Bank == FSMC_Bank2_NAND)
-    {
+    if(FSMC_Bank == FSMC_Bank2_NAND) {
         FSMC_Bank2->SR2 &= ~FSMC_FLAG;
-    }
-    else if(FSMC_Bank == FSMC_Bank3_NAND)
-    {
+    } else if(FSMC_Bank == FSMC_Bank3_NAND) {
         FSMC_Bank3->SR3 &= ~FSMC_FLAG;
     }
     /* FSMC_Bank4_PCCARD*/
-    else
-    {
+    else {
         FSMC_Bank4->SR4 &= ~FSMC_FLAG;
     }
 }
@@ -791,17 +733,13 @@ ITStatus FSMC_GetITStatus(uint32_t FSMC_Bank, uint32_t FSMC_IT)
     assert_param(IS_FSMC_IT_BANK(FSMC_Bank));
     assert_param(IS_FSMC_GET_IT(FSMC_IT));
 
-    if(FSMC_Bank == FSMC_Bank2_NAND)
-    {
+    if(FSMC_Bank == FSMC_Bank2_NAND) {
         tmpsr = FSMC_Bank2->SR2;
-    }
-    else if(FSMC_Bank == FSMC_Bank3_NAND)
-    {
+    } else if(FSMC_Bank == FSMC_Bank3_NAND) {
         tmpsr = FSMC_Bank3->SR3;
     }
     /* FSMC_Bank4_PCCARD*/
-    else
-    {
+    else {
         tmpsr = FSMC_Bank4->SR4;
     }
 
@@ -809,12 +747,9 @@ ITStatus FSMC_GetITStatus(uint32_t FSMC_Bank, uint32_t FSMC_IT)
 
     itenable = tmpsr & (FSMC_IT >> 3);
 
-    if((itstatus != (uint32_t)RESET)  && (itenable != (uint32_t)RESET))
-    {
+    if((itstatus != (uint32_t)RESET)  && (itenable != (uint32_t)RESET)) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 
@@ -841,17 +776,13 @@ void FSMC_ClearITPendingBit(uint32_t FSMC_Bank, uint32_t FSMC_IT)
     assert_param(IS_FSMC_IT_BANK(FSMC_Bank));
     assert_param(IS_FSMC_IT(FSMC_IT));
 
-    if(FSMC_Bank == FSMC_Bank2_NAND)
-    {
+    if(FSMC_Bank == FSMC_Bank2_NAND) {
         FSMC_Bank2->SR2 &= ~(FSMC_IT >> 3);
-    }
-    else if(FSMC_Bank == FSMC_Bank3_NAND)
-    {
+    } else if(FSMC_Bank == FSMC_Bank3_NAND) {
         FSMC_Bank3->SR3 &= ~(FSMC_IT >> 3);
     }
     /* FSMC_Bank4_PCCARD*/
-    else
-    {
+    else {
         FSMC_Bank4->SR4 &= ~(FSMC_IT >> 3);
     }
 }

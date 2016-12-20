@@ -68,8 +68,7 @@ void  OSIdleTaskHook(void)
 {
 #if OS_CFG_APP_HOOKS_EN > 0u
 
-    if(OS_AppIdleTaskHookPtr != (OS_APP_HOOK_VOID)0)
-    {
+    if(OS_AppIdleTaskHookPtr != (OS_APP_HOOK_VOID)0) {
         (*OS_AppIdleTaskHookPtr)();
     }
 
@@ -114,8 +113,7 @@ void  OSStatTaskHook(void)
 {
 #if OS_CFG_APP_HOOKS_EN > 0u
 
-    if(OS_AppStatTaskHookPtr != (OS_APP_HOOK_VOID)0)
-    {
+    if(OS_AppStatTaskHookPtr != (OS_APP_HOOK_VOID)0) {
         (*OS_AppStatTaskHookPtr)();
     }
 
@@ -140,8 +138,7 @@ void  OSTaskCreateHook(OS_TCB  *p_tcb)
 {
 #if OS_CFG_APP_HOOKS_EN > 0u
 
-    if(OS_AppTaskCreateHookPtr != (OS_APP_HOOK_TCB)0)
-    {
+    if(OS_AppTaskCreateHookPtr != (OS_APP_HOOK_TCB)0) {
         (*OS_AppTaskCreateHookPtr)(p_tcb);
     }
 
@@ -168,8 +165,7 @@ void  OSTaskDelHook(OS_TCB  *p_tcb)
 {
 #if OS_CFG_APP_HOOKS_EN > 0u
 
-    if(OS_AppTaskDelHookPtr != (OS_APP_HOOK_TCB)0)
-    {
+    if(OS_AppTaskDelHookPtr != (OS_APP_HOOK_TCB)0) {
         (*OS_AppTaskDelHookPtr)(p_tcb);
     }
 
@@ -197,8 +193,7 @@ void  OSTaskReturnHook(OS_TCB  *p_tcb)
 {
 #if OS_CFG_APP_HOOKS_EN > 0u
 
-    if(OS_AppTaskReturnHookPtr != (OS_APP_HOOK_TCB)0)
-    {
+    if(OS_AppTaskReturnHookPtr != (OS_APP_HOOK_TCB)0) {
         (*OS_AppTaskReturnHookPtr)(p_tcb);
     }
 
@@ -303,8 +298,7 @@ void  OSTaskSwHook(void)
 
 #if OS_CFG_APP_HOOKS_EN > 0u
 
-    if(OS_AppTaskSwHookPtr != (OS_APP_HOOK_VOID)0)
-    {
+    if(OS_AppTaskSwHookPtr != (OS_APP_HOOK_VOID)0) {
         (*OS_AppTaskSwHookPtr)();
     }
 
@@ -313,8 +307,7 @@ void  OSTaskSwHook(void)
 #if OS_CFG_TASK_PROFILE_EN > 0u
     ts = OS_TS_GET();
 
-    if(OSTCBCurPtr != OSTCBHighRdyPtr)
-    {
+    if(OSTCBCurPtr != OSTCBHighRdyPtr) {
         OSTCBCurPtr->CyclesDelta  = ts - OSTCBCurPtr->CyclesStart;
         OSTCBCurPtr->CyclesTotal += (OS_CYCLES)OSTCBCurPtr->CyclesDelta;
     }
@@ -325,8 +318,7 @@ void  OSTaskSwHook(void)
 #ifdef  CPU_CFG_INT_DIS_MEAS_EN
     int_dis_time = CPU_IntDisMeasMaxCurReset();             /* Keep track of per-task interrupt disable time          */
 
-    if(OSTCBCurPtr->IntDisTimeMax < int_dis_time)
-    {
+    if(OSTCBCurPtr->IntDisTimeMax < int_dis_time) {
         OSTCBCurPtr->IntDisTimeMax = int_dis_time;
     }
 
@@ -335,8 +327,7 @@ void  OSTaskSwHook(void)
 #if OS_CFG_SCHED_LOCK_TIME_MEAS_EN > 0u
 
     /* Keep track of per-task scheduler lock time             */
-    if(OSTCBCurPtr->SchedLockTimeMax < OSSchedLockTimeMaxCur)
-    {
+    if(OSTCBCurPtr->SchedLockTimeMax < OSSchedLockTimeMaxCur) {
         OSTCBCurPtr->SchedLockTimeMax = OSSchedLockTimeMaxCur;
     }
 
@@ -362,8 +353,7 @@ void  OSTimeTickHook(void)
 {
 #if OS_CFG_APP_HOOKS_EN > 0u
 
-    if(OS_AppTimeTickHookPtr != (OS_APP_HOOK_VOID)0)
-    {
+    if(OS_AppTimeTickHookPtr != (OS_APP_HOOK_VOID)0) {
         (*OS_AppTimeTickHookPtr)();
     }
 

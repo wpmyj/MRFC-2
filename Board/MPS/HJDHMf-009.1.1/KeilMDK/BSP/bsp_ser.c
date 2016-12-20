@@ -179,8 +179,7 @@ void  BSP_Ser_Init(CPU_INT32U  baud_rate)
     USART_ITConfig(USART1, USART_IT_TXE, DISABLE);
     tc_status = USART_GetFlagStatus(USART1, USART_FLAG_TC);
 
-    while(tc_status == SET)
-    {
+    while(tc_status == SET) {
         USART_ClearITPendingBit(USART1, USART_IT_TC);
         USART_ClearFlag(USART1, USART_IT_TC);
         BSP_OS_TimeDlyMs(10);
@@ -213,8 +212,7 @@ void  BSP_Ser_ISR_Handler(void)
 
     rxne_status = USART_GetFlagStatus(USART1, USART_FLAG_RXNE);
 
-    if(rxne_status == SET)
-    {
+    if(rxne_status == SET) {
         BSP_SerRxData = USART_ReceiveData(USART1) & 0xFF;       /* Read one byte from the receive data register.      */
         USART_ClearITPendingBit(USART1, USART_IT_RXNE);         /* Clear the USART1 receive interrupt.                */
         BSP_OS_SemPost(&BSP_SerRxWait);                         /* Post to the sempahore                              */
@@ -222,8 +220,7 @@ void  BSP_Ser_ISR_Handler(void)
 
     tc_status = USART_GetFlagStatus(USART1, USART_FLAG_TC);
 
-    if(tc_status == SET)
-    {
+    if(tc_status == SET) {
         USART_ITConfig(USART1, USART_IT_TC, DISABLE);
         USART_ClearITPendingBit(USART1, USART_IT_TC);           /* Clear the USART1 receive interrupt.                */
         BSP_OS_SemPost(&BSP_SerTxWait);                         /* Post to the semaphore                              */
@@ -296,8 +293,7 @@ void  BSP_SerToWIFI_Init()
     USART_ITConfig(UART4, USART_IT_TXE, DISABLE);
     tc_status  = USART_GetFlagStatus(UART4, USART_FLAG_TC);
 
-    while(tc_status == SET)
-    {
+    while(tc_status == SET) {
         USART_ClearITPendingBit(UART4, USART_IT_TC);
         USART_ClearFlag(UART4, USART_IT_TC);
         BSP_OS_TimeDlyMs(10);
@@ -371,7 +367,7 @@ void BSP_SerToWIFI_TxMsgInit(u8 *TxBuffAddr, uint8_t i_u8TxBuffSize)
 
     BSP_IntVectSet(BSP_INT_ID_DMA2_CH5, WIFI_DataTx_IRQHandler);
     BSP_IntEn(BSP_INT_ID_DMA2_CH5);
-    
+
 //    DMA_Cmd(DMA2_Channel5, DISABLE);   //关闭USART1 TX DMA1 所指示的通道
 //    DMA_SetCurrDataCounter(DMA2_Channel5, i_u8TxBuffSize); //DMA通道的DMA缓存的大小
     DMA_Cmd(DMA2_Channel5, ENABLE);
@@ -409,7 +405,7 @@ void BSP_SerToWIFI_RxMsgInit(uint8_t *i_u32RxBuffAddr, uint8_t i_u8RxBuffSize)
     BSP_IntEn(BSP_INT_ID_DMA2_CH3);
 }
 
-void BSP_PrgmDataDMASend(uint8_t i_u8TxBuffSize,uint8_t *TxBuff)
+void BSP_PrgmDataDMASend(uint8_t i_u8TxBuffSize, uint8_t *TxBuff)
 {
     OS_ERR      err;
     //获得一个互斥信号量
@@ -418,7 +414,7 @@ void BSP_PrgmDataDMASend(uint8_t i_u8TxBuffSize,uint8_t *TxBuff)
                 OS_OPT_PEND_BLOCKING,   //决定是否阻止用户，如果这个互斥锁不可用
                 NULL,                   //是一个指针指向一个时间戳当互斥锁发送时，当发送终止或互斥锁被删除
                 &err);
-    
+
     BSP_SerToWIFI_TxMsgInit(TxBuff, i_u8TxBuffSize);    //发送数据地址初始化
 }
 /*
@@ -441,10 +437,8 @@ void WIFI_DataRx_IRQHandler(void)
     OS_ERR      err;
     CPU_SR_ALLOC();
 
-    if(DMA_GetITStatus(DMA2_IT_TC3) != RESET)
-    {
-        if(g_eWirenessCommandReceived == NO)
-        {
+    if(DMA_GetITStatus(DMA2_IT_TC3) != RESET) {
+        if(g_eWirenessCommandReceived == NO) {
             CPU_CRITICAL_ENTER();
             OSTimeDlyResume(&CommunicateTaskTCB,
                             &err);
@@ -480,8 +474,7 @@ void WIFI_DataTx_IRQHandler(void)
 {
     OS_ERR      err;
 
-    if(DMA_GetITStatus(DMA2_IT_TC5) != RESET)   //检查DMA1_IT_TC5中断发生与否
-    {
+    if(DMA_GetITStatus(DMA2_IT_TC5) != RESET) { //检查DMA1_IT_TC5中断发生与否
         OSMutexPost(&g_stWIFISerTxMutex,
                     OS_OPT_POST_NONE,
                     &err);
@@ -513,11 +506,10 @@ void BSP_SerToWIFI_ISR_Handler(void)
 {
     uint8_t u8RxByte;
 
-    if(USART_GetITStatus(UART4, USART_IT_RXNE) != RESET)
-    {}
+    if(USART_GetITStatus(UART4, USART_IT_RXNE) != RESET) {
+    }
 
-    if(USART_GetITStatus(UART4, USART_IT_IDLE) != RESET)
-    {
+    if(USART_GetITStatus(UART4, USART_IT_IDLE) != RESET) {
         USART_DMACmd(UART4, USART_DMAReq_Rx, ENABLE);       //使能串口4DMA请求
         DMA_ITConfig(DMA2_Channel3, DMA_IT_TC, DISABLE);
         DMA_ITConfig(DMA2_Channel3, DMA_IT_TE, DISABLE);
@@ -690,18 +682,15 @@ void  BSP_Ser_RdStr(CPU_CHAR    *p_str,
 
     err = BSP_OS_SemWait(&BSP_SerLock, 0);                      /* Obtain access to the serial interface                */
 
-    if(err != DEF_OK)
-    {
+    if(err != DEF_OK) {
         return;
     }
 
-    while(DEF_TRUE)
-    {
+    while(DEF_TRUE) {
         rx_data = BSP_Ser_RdByteUnlocked();
 
         if((rx_data == ASCII_CHAR_CARRIAGE_RETURN) ||           /* Is it '\r' or '\n' character  ?                      */
-                (rx_data == ASCII_CHAR_LINE_FEED))
-        {
+                (rx_data == ASCII_CHAR_LINE_FEED)) {
 
             BSP_Ser_WrByteUnlocked((CPU_INT08U)ASCII_CHAR_LINE_FEED);
             BSP_Ser_WrByteUnlocked((CPU_INT08U)ASCII_CHAR_CARRIAGE_RETURN);
@@ -712,56 +701,44 @@ void  BSP_Ser_RdStr(CPU_CHAR    *p_str,
             break;                                              /* exit the loop                                        */
         }
 
-        if(rx_data == ASCII_CHAR_BACKSPACE)                     /* Is backspace character                               */
-        {
-            if(p_char > p_str)
-            {
+        if(rx_data == ASCII_CHAR_BACKSPACE) {                   /* Is backspace character                               */
+            if(p_char > p_str) {
                 BSP_Ser_WrByteUnlocked((CPU_INT08U)ASCII_CHAR_BACKSPACE);
                 p_char--;                                       /* Decrement the index                                  */
             }
         }
 
         if((ASCII_IsPrint(rx_data)) &&
-                (rxd_history_char0 == DEF_NO))                      /* Is it a printable character ... ?                    */
-        {
+                (rxd_history_char0 == DEF_NO)) {                    /* Is it a printable character ... ?                    */
             BSP_Ser_WrByteUnlocked((CPU_INT08U)rx_data);        /* Echo-back                                            */
             *p_char = rx_data;                                   /* Save the received character in the buffer            */
             p_char++;                                           /* Increment the buffer index                           */
 
-            if(p_char >= &p_str[len])
-            {
+            if(p_char >= &p_str[len]) {
                 p_char  = &p_str[len];
             }
 
-        }
-        else if((rx_data           == ASCII_CHAR_ESCAPE) &&
-                (rxd_history_char0 == DEF_NO))
-        {
+        } else if((rx_data           == ASCII_CHAR_ESCAPE) &&
+                  (rxd_history_char0 == DEF_NO)) {
             rxd_history_char0 = DEF_YES;
 
 #if (BSP_CFG_SER_CMD_HISTORY_LEN > 0u)
-        }
-        else if((rx_data           == ASCII_CHAR_LEFT_SQUARE_BRACKET) &&
-                (rxd_history_char0 == DEF_YES))
-        {
+        } else if((rx_data           == ASCII_CHAR_LEFT_SQUARE_BRACKET) &&
+                  (rxd_history_char0 == DEF_YES)) {
 
-            while(p_char != p_str)
-            {
+            while(p_char != p_str) {
                 BSP_Ser_WrByteUnlocked((CPU_INT08U)ASCII_CHAR_BACKSPACE);
                 p_char--;                                       /* Decrement the index                                  */
             }
 
             Str_Copy(p_str, BSP_SerCmdHistory);
 
-            while(*p_char != '\0')
-            {
+            while(*p_char != '\0') {
                 BSP_Ser_WrByteUnlocked(*p_char++);
             }
 
 #endif
-        }
-        else
-        {
+        } else {
             rxd_history_char0 = DEF_NO;
         }
     }
@@ -843,29 +820,23 @@ void  BSP_Ser_WrStr(CPU_CHAR  *p_str)
     CPU_BOOLEAN  err;
 
 
-    if(p_str == (CPU_CHAR *)0)
-    {
+    if(p_str == (CPU_CHAR *)0) {
         return;
     }
 
 
     err = BSP_OS_SemWait(&BSP_SerLock, 0);                      /* Obtain access to the serial interface              */
 
-    if(err != DEF_OK)
-    {
+    if(err != DEF_OK) {
         return;
     }
 
-    while((*p_str) != (CPU_CHAR)0)
-    {
-        if(*p_str == ASCII_CHAR_LINE_FEED)
-        {
+    while((*p_str) != (CPU_CHAR)0) {
+        if(*p_str == ASCII_CHAR_LINE_FEED) {
             BSP_Ser_WrByteUnlocked(ASCII_CHAR_CARRIAGE_RETURN);
             BSP_Ser_WrByteUnlocked(ASCII_CHAR_LINE_FEED);
             p_str++;
-        }
-        else
-        {
+        } else {
             BSP_Ser_WrByteUnlocked(*p_str++);
         }
     }

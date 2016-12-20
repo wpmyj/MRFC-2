@@ -124,15 +124,12 @@ void CAN_DeInit(CAN_TypeDef *CANx)
     /* Check the parameters */
     assert_param(IS_CAN_ALL_PERIPH(CANx));
 
-    if(CANx == CAN1)
-    {
+    if(CANx == CAN1) {
         /* Enable CAN1 reset state */
         RCC_APB1PeriphResetCmd(RCC_APB1Periph_CAN1, ENABLE);
         /* Release CAN1 from reset state */
         RCC_APB1PeriphResetCmd(RCC_APB1Periph_CAN1, DISABLE);
-    }
-    else
-    {
+    } else {
         /* Enable CAN2 reset state */
         RCC_APB1PeriphResetCmd(RCC_APB1Periph_CAN2, ENABLE);
         /* Release CAN2 from reset state */
@@ -176,75 +173,53 @@ uint8_t CAN_Init(CAN_TypeDef *CANx, CAN_InitTypeDef *CAN_InitStruct)
     CANx->MCR |= CAN_MCR_INRQ ;
 
     /* Wait the acknowledge */
-    while(((CANx->MSR & CAN_MSR_INAK) != CAN_MSR_INAK) && (wait_ack != INAK_TIMEOUT))
-    {
+    while(((CANx->MSR & CAN_MSR_INAK) != CAN_MSR_INAK) && (wait_ack != INAK_TIMEOUT)) {
         wait_ack++;
     }
 
     /* Check acknowledge */
-    if((CANx->MSR & CAN_MSR_INAK) != CAN_MSR_INAK)
-    {
+    if((CANx->MSR & CAN_MSR_INAK) != CAN_MSR_INAK) {
         InitStatus = CAN_InitStatus_Failed;
-    }
-    else
-    {
+    } else {
         /* Set the time triggered communication mode */
-        if(CAN_InitStruct->CAN_TTCM == ENABLE)
-        {
+        if(CAN_InitStruct->CAN_TTCM == ENABLE) {
             CANx->MCR |= CAN_MCR_TTCM;
-        }
-        else
-        {
+        } else {
             CANx->MCR &= ~(uint32_t)CAN_MCR_TTCM;
         }
 
         /* Set the automatic bus-off management */
-        if(CAN_InitStruct->CAN_ABOM == ENABLE)
-        {
+        if(CAN_InitStruct->CAN_ABOM == ENABLE) {
             CANx->MCR |= CAN_MCR_ABOM;
-        }
-        else
-        {
+        } else {
             CANx->MCR &= ~(uint32_t)CAN_MCR_ABOM;
         }
 
         /* Set the automatic wake-up mode */
-        if(CAN_InitStruct->CAN_AWUM == ENABLE)
-        {
+        if(CAN_InitStruct->CAN_AWUM == ENABLE) {
             CANx->MCR |= CAN_MCR_AWUM;
-        }
-        else
-        {
+        } else {
             CANx->MCR &= ~(uint32_t)CAN_MCR_AWUM;
         }
 
         /* Set the no automatic retransmission */
-        if(CAN_InitStruct->CAN_NART == ENABLE)
-        {
+        if(CAN_InitStruct->CAN_NART == ENABLE) {
             CANx->MCR |= CAN_MCR_NART;
-        }
-        else
-        {
+        } else {
             CANx->MCR &= ~(uint32_t)CAN_MCR_NART;
         }
 
         /* Set the receive FIFO locked mode */
-        if(CAN_InitStruct->CAN_RFLM == ENABLE)
-        {
+        if(CAN_InitStruct->CAN_RFLM == ENABLE) {
             CANx->MCR |= CAN_MCR_RFLM;
-        }
-        else
-        {
+        } else {
             CANx->MCR &= ~(uint32_t)CAN_MCR_RFLM;
         }
 
         /* Set the transmit FIFO priority */
-        if(CAN_InitStruct->CAN_TXFP == ENABLE)
-        {
+        if(CAN_InitStruct->CAN_TXFP == ENABLE) {
             CANx->MCR |= CAN_MCR_TXFP;
-        }
-        else
-        {
+        } else {
             CANx->MCR &= ~(uint32_t)CAN_MCR_TXFP;
         }
 
@@ -261,18 +236,14 @@ uint8_t CAN_Init(CAN_TypeDef *CANx, CAN_InitTypeDef *CAN_InitStruct)
         /* Wait the acknowledge */
         wait_ack = 0;
 
-        while(((CANx->MSR & CAN_MSR_INAK) == CAN_MSR_INAK) && (wait_ack != INAK_TIMEOUT))
-        {
+        while(((CANx->MSR & CAN_MSR_INAK) == CAN_MSR_INAK) && (wait_ack != INAK_TIMEOUT)) {
             wait_ack++;
         }
 
         /* ...and check acknowledged */
-        if((CANx->MSR & CAN_MSR_INAK) == CAN_MSR_INAK)
-        {
+        if((CANx->MSR & CAN_MSR_INAK) == CAN_MSR_INAK) {
             InitStatus = CAN_InitStatus_Failed;
-        }
-        else
-        {
+        } else {
             InitStatus = CAN_InitStatus_Success ;
         }
     }
@@ -308,8 +279,7 @@ void CAN_FilterInit(CAN_FilterInitTypeDef *CAN_FilterInitStruct)
     CAN1->FA1R &= ~(uint32_t)filter_number_bit_pos;
 
     /* Filter Scale */
-    if(CAN_FilterInitStruct->CAN_FilterScale == CAN_FilterScale_16bit)
-    {
+    if(CAN_FilterInitStruct->CAN_FilterScale == CAN_FilterScale_16bit) {
         /* 16-bit scale for the filter */
         CAN1->FS1R &= ~(uint32_t)filter_number_bit_pos;
 
@@ -326,8 +296,7 @@ void CAN_FilterInit(CAN_FilterInitTypeDef *CAN_FilterInitStruct)
             (0x0000FFFF & (uint32_t)CAN_FilterInitStruct->CAN_FilterIdHigh);
     }
 
-    if(CAN_FilterInitStruct->CAN_FilterScale == CAN_FilterScale_32bit)
-    {
+    if(CAN_FilterInitStruct->CAN_FilterScale == CAN_FilterScale_32bit) {
         /* 32-bit scale for the filter */
         CAN1->FS1R |= filter_number_bit_pos;
         /* 32-bit identifier or First 32-bit identifier */
@@ -341,33 +310,27 @@ void CAN_FilterInit(CAN_FilterInitTypeDef *CAN_FilterInitStruct)
     }
 
     /* Filter Mode */
-    if(CAN_FilterInitStruct->CAN_FilterMode == CAN_FilterMode_IdMask)
-    {
+    if(CAN_FilterInitStruct->CAN_FilterMode == CAN_FilterMode_IdMask) {
         /*Id/Mask mode for the filter*/
         CAN1->FM1R &= ~(uint32_t)filter_number_bit_pos;
-    }
-    else /* CAN_FilterInitStruct->CAN_FilterMode == CAN_FilterMode_IdList */
-    {
+    } else { /* CAN_FilterInitStruct->CAN_FilterMode == CAN_FilterMode_IdList */
         /*Identifier list mode for the filter*/
         CAN1->FM1R |= (uint32_t)filter_number_bit_pos;
     }
 
     /* Filter FIFO assignment */
-    if(CAN_FilterInitStruct->CAN_FilterFIFOAssignment == CAN_Filter_FIFO0)
-    {
+    if(CAN_FilterInitStruct->CAN_FilterFIFOAssignment == CAN_Filter_FIFO0) {
         /* FIFO 0 assignation for the filter */
         CAN1->FFA1R &= ~(uint32_t)filter_number_bit_pos;
     }
 
-    if(CAN_FilterInitStruct->CAN_FilterFIFOAssignment == CAN_Filter_FIFO1)
-    {
+    if(CAN_FilterInitStruct->CAN_FilterFIFOAssignment == CAN_Filter_FIFO1) {
         /* FIFO 1 assignation for the filter */
         CAN1->FFA1R |= (uint32_t)filter_number_bit_pos;
     }
 
     /* Filter activation */
-    if(CAN_FilterInitStruct->CAN_FilterActivation == ENABLE)
-    {
+    if(CAN_FilterInitStruct->CAN_FilterActivation == ENABLE) {
         CAN1->FA1R |= filter_number_bit_pos;
     }
 
@@ -454,13 +417,10 @@ void CAN_DBGFreeze(CAN_TypeDef *CANx, FunctionalState NewState)
     assert_param(IS_CAN_ALL_PERIPH(CANx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable Debug Freeze  */
         CANx->MCR |= MCR_DBF;
-    }
-    else
-    {
+    } else {
         /* Disable Debug Freeze */
         CANx->MCR &= ~MCR_DBF;
     }
@@ -484,8 +444,7 @@ void CAN_TTComModeCmd(CAN_TypeDef *CANx, FunctionalState NewState)
     assert_param(IS_CAN_ALL_PERIPH(CANx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the TTCM mode */
         CANx->MCR |= CAN_MCR_TTCM;
 
@@ -493,9 +452,7 @@ void CAN_TTComModeCmd(CAN_TypeDef *CANx, FunctionalState NewState)
         CANx->sTxMailBox[0].TDTR |= ((uint32_t)CAN_TDT0R_TGT);
         CANx->sTxMailBox[1].TDTR |= ((uint32_t)CAN_TDT1R_TGT);
         CANx->sTxMailBox[2].TDTR |= ((uint32_t)CAN_TDT2R_TGT);
-    }
-    else
-    {
+    } else {
         /* Disable the TTCM mode */
         CANx->MCR &= (uint32_t)(~(uint32_t)CAN_MCR_TTCM);
 
@@ -523,36 +480,25 @@ uint8_t CAN_Transmit(CAN_TypeDef *CANx, CanTxMsg *TxMessage)
     assert_param(IS_CAN_DLC(TxMessage->DLC));
 
     /* Select one empty transmit mailbox */
-    if((CANx->TSR & CAN_TSR_TME0) == CAN_TSR_TME0)
-    {
+    if((CANx->TSR & CAN_TSR_TME0) == CAN_TSR_TME0) {
         transmit_mailbox = 0;
-    }
-    else if((CANx->TSR & CAN_TSR_TME1) == CAN_TSR_TME1)
-    {
+    } else if((CANx->TSR & CAN_TSR_TME1) == CAN_TSR_TME1) {
         transmit_mailbox = 1;
-    }
-    else if((CANx->TSR & CAN_TSR_TME2) == CAN_TSR_TME2)
-    {
+    } else if((CANx->TSR & CAN_TSR_TME2) == CAN_TSR_TME2) {
         transmit_mailbox = 2;
-    }
-    else
-    {
+    } else {
         transmit_mailbox = CAN_TxStatus_NoMailBox;
     }
 
-    if(transmit_mailbox != CAN_TxStatus_NoMailBox)
-    {
+    if(transmit_mailbox != CAN_TxStatus_NoMailBox) {
         /* Set up the Id */
         CANx->sTxMailBox[transmit_mailbox].TIR &= TMIDxR_TXRQ;
 
-        if(TxMessage->IDE == CAN_Id_Standard)
-        {
+        if(TxMessage->IDE == CAN_Id_Standard) {
             assert_param(IS_CAN_STDID(TxMessage->StdId));
             CANx->sTxMailBox[transmit_mailbox].TIR |= ((TxMessage->StdId << 21) | \
                     TxMessage->RTR);
-        }
-        else
-        {
+        } else {
             assert_param(IS_CAN_EXTID(TxMessage->ExtId));
             CANx->sTxMailBox[transmit_mailbox].TIR |= ((TxMessage->ExtId << 3) | \
                     TxMessage->IDE | \
@@ -597,8 +543,7 @@ uint8_t CAN_TransmitStatus(CAN_TypeDef *CANx, uint8_t TransmitMailbox)
     assert_param(IS_CAN_ALL_PERIPH(CANx));
     assert_param(IS_CAN_TRANSMITMAILBOX(TransmitMailbox));
 
-    switch(TransmitMailbox)
-    {
+    switch(TransmitMailbox) {
         case(CAN_TXMAILBOX_0):
             state =   CANx->TSR & (CAN_TSR_RQCP0 | CAN_TSR_TXOK0 | CAN_TSR_TME0);
             break;
@@ -616,8 +561,7 @@ uint8_t CAN_TransmitStatus(CAN_TypeDef *CANx, uint8_t TransmitMailbox)
             break;
     }
 
-    switch(state)
-    {
+    switch(state) {
         /* transmit pending  */
         case(0x0):
             state = CAN_TxStatus_Pending;
@@ -670,8 +614,7 @@ void CAN_CancelTransmit(CAN_TypeDef *CANx, uint8_t Mailbox)
     assert_param(IS_CAN_TRANSMITMAILBOX(Mailbox));
 
     /* abort transmission */
-    switch(Mailbox)
-    {
+    switch(Mailbox) {
         case(CAN_TXMAILBOX_0):
             CANx->TSR |= CAN_TSR_ABRQ0;
             break;
@@ -706,12 +649,9 @@ void CAN_Receive(CAN_TypeDef *CANx, uint8_t FIFONumber, CanRxMsg *RxMessage)
     /* Get the Id */
     RxMessage->IDE = (uint8_t)0x04 & CANx->sFIFOMailBox[FIFONumber].RIR;
 
-    if(RxMessage->IDE == CAN_Id_Standard)
-    {
+    if(RxMessage->IDE == CAN_Id_Standard) {
         RxMessage->StdId = (uint32_t)0x000007FF & (CANx->sFIFOMailBox[FIFONumber].RIR >> 21);
-    }
-    else
-    {
+    } else {
         RxMessage->ExtId = (uint32_t)0x1FFFFFFF & (CANx->sFIFOMailBox[FIFONumber].RIR >> 3);
     }
 
@@ -732,13 +672,11 @@ void CAN_Receive(CAN_TypeDef *CANx, uint8_t FIFONumber, CanRxMsg *RxMessage)
 
     /* Release the FIFO */
     /* Release FIFO0 */
-    if(FIFONumber == CAN_FIFO0)
-    {
+    if(FIFONumber == CAN_FIFO0) {
         CANx->RF0R |= CAN_RF0R_RFOM0;
     }
     /* Release FIFO1 */
-    else /* FIFONumber == CAN_FIFO1 */
-    {
+    else { /* FIFONumber == CAN_FIFO1 */
         CANx->RF1R |= CAN_RF1R_RFOM1;
     }
 }
@@ -756,13 +694,11 @@ void CAN_FIFORelease(CAN_TypeDef *CANx, uint8_t FIFONumber)
     assert_param(IS_CAN_FIFO(FIFONumber));
 
     /* Release FIFO0 */
-    if(FIFONumber == CAN_FIFO0)
-    {
+    if(FIFONumber == CAN_FIFO0) {
         CANx->RF0R |= CAN_RF0R_RFOM0;
     }
     /* Release FIFO1 */
-    else /* FIFONumber == CAN_FIFO1 */
-    {
+    else { /* FIFONumber == CAN_FIFO1 */
         CANx->RF1R |= CAN_RF1R_RFOM1;
     }
 }
@@ -780,16 +716,11 @@ uint8_t CAN_MessagePending(CAN_TypeDef *CANx, uint8_t FIFONumber)
     assert_param(IS_CAN_ALL_PERIPH(CANx));
     assert_param(IS_CAN_FIFO(FIFONumber));
 
-    if(FIFONumber == CAN_FIFO0)
-    {
+    if(FIFONumber == CAN_FIFO0) {
         message_pending = (uint8_t)(CANx->RF0R & (uint32_t)0x03);
-    }
-    else if(FIFONumber == CAN_FIFO1)
-    {
+    } else if(FIFONumber == CAN_FIFO1) {
         message_pending = (uint8_t)(CANx->RF1R & (uint32_t)0x03);
-    }
-    else
-    {
+    } else {
         message_pending = 0;
     }
 
@@ -817,68 +748,49 @@ uint8_t CAN_OperatingModeRequest(CAN_TypeDef *CANx, uint8_t CAN_OperatingMode)
     assert_param(IS_CAN_ALL_PERIPH(CANx));
     assert_param(IS_CAN_OPERATING_MODE(CAN_OperatingMode));
 
-    if(CAN_OperatingMode == CAN_OperatingMode_Initialization)
-    {
+    if(CAN_OperatingMode == CAN_OperatingMode_Initialization) {
         /* Request initialisation */
         CANx->MCR = (uint32_t)((CANx->MCR & (uint32_t)(~(uint32_t)CAN_MCR_SLEEP)) | CAN_MCR_INRQ);
 
         /* Wait the acknowledge */
-        while(((CANx->MSR & CAN_MODE_MASK) != CAN_MSR_INAK) && (timeout != 0))
-        {
+        while(((CANx->MSR & CAN_MODE_MASK) != CAN_MSR_INAK) && (timeout != 0)) {
             timeout--;
         }
 
-        if((CANx->MSR & CAN_MODE_MASK) != CAN_MSR_INAK)
-        {
+        if((CANx->MSR & CAN_MODE_MASK) != CAN_MSR_INAK) {
             status = CAN_ModeStatus_Failed;
-        }
-        else
-        {
+        } else {
             status = CAN_ModeStatus_Success;
         }
-    }
-    else  if(CAN_OperatingMode == CAN_OperatingMode_Normal)
-    {
+    } else  if(CAN_OperatingMode == CAN_OperatingMode_Normal) {
         /* Request leave initialisation and sleep mode  and enter Normal mode */
         CANx->MCR &= (uint32_t)(~(CAN_MCR_SLEEP | CAN_MCR_INRQ));
 
         /* Wait the acknowledge */
-        while(((CANx->MSR & CAN_MODE_MASK) != 0) && (timeout != 0))
-        {
+        while(((CANx->MSR & CAN_MODE_MASK) != 0) && (timeout != 0)) {
             timeout--;
         }
 
-        if((CANx->MSR & CAN_MODE_MASK) != 0)
-        {
+        if((CANx->MSR & CAN_MODE_MASK) != 0) {
             status = CAN_ModeStatus_Failed;
-        }
-        else
-        {
+        } else {
             status = CAN_ModeStatus_Success;
         }
-    }
-    else  if(CAN_OperatingMode == CAN_OperatingMode_Sleep)
-    {
+    } else  if(CAN_OperatingMode == CAN_OperatingMode_Sleep) {
         /* Request Sleep mode */
         CANx->MCR = (uint32_t)((CANx->MCR & (uint32_t)(~(uint32_t)CAN_MCR_INRQ)) | CAN_MCR_SLEEP);
 
         /* Wait the acknowledge */
-        while(((CANx->MSR & CAN_MODE_MASK) != CAN_MSR_SLAK) && (timeout != 0))
-        {
+        while(((CANx->MSR & CAN_MODE_MASK) != CAN_MSR_SLAK) && (timeout != 0)) {
             timeout--;
         }
 
-        if((CANx->MSR & CAN_MODE_MASK) != CAN_MSR_SLAK)
-        {
+        if((CANx->MSR & CAN_MODE_MASK) != CAN_MSR_SLAK) {
             status = CAN_ModeStatus_Failed;
-        }
-        else
-        {
+        } else {
             status = CAN_ModeStatus_Success;
         }
-    }
-    else
-    {
+    } else {
         status = CAN_ModeStatus_Failed;
     }
 
@@ -902,8 +814,7 @@ uint8_t CAN_Sleep(CAN_TypeDef *CANx)
     CANx->MCR = (((CANx->MCR) & (uint32_t)(~(uint32_t)CAN_MCR_INRQ)) | CAN_MCR_SLEEP);
 
     /* Sleep mode status */
-    if((CANx->MSR & (CAN_MSR_SLAK | CAN_MSR_INAK)) == CAN_MSR_SLAK)
-    {
+    if((CANx->MSR & (CAN_MSR_SLAK | CAN_MSR_INAK)) == CAN_MSR_SLAK) {
         /* Sleep mode not entered */
         sleepstatus =  CAN_Sleep_Ok;
     }
@@ -930,13 +841,11 @@ uint8_t CAN_WakeUp(CAN_TypeDef *CANx)
     CANx->MCR &= ~(uint32_t)CAN_MCR_SLEEP;
 
     /* Sleep mode status */
-    while(((CANx->MSR & CAN_MSR_SLAK) == CAN_MSR_SLAK) && (wait_slak != 0x00))
-    {
+    while(((CANx->MSR & CAN_MSR_SLAK) == CAN_MSR_SLAK) && (wait_slak != 0x00)) {
         wait_slak--;
     }
 
-    if((CANx->MSR & CAN_MSR_SLAK) != CAN_MSR_SLAK)
-    {
+    if((CANx->MSR & CAN_MSR_SLAK) != CAN_MSR_SLAK) {
         /* wake up done : Sleep mode exited */
         wakeupstatus = CAN_WakeUp_Ok;
     }
@@ -1048,13 +957,10 @@ void CAN_ITConfig(CAN_TypeDef *CANx, uint32_t CAN_IT, FunctionalState NewState)
     assert_param(IS_CAN_IT(CAN_IT));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected CANx interrupt */
         CANx->IER |= CAN_IT;
-    }
-    else
-    {
+    } else {
         /* Disable the selected CANx interrupt */
         CANx->IER &= ~CAN_IT;
     }
@@ -1090,72 +996,48 @@ FlagStatus CAN_GetFlagStatus(CAN_TypeDef *CANx, uint32_t CAN_FLAG)
     assert_param(IS_CAN_GET_FLAG(CAN_FLAG));
 
 
-    if((CAN_FLAG & CAN_FLAGS_ESR) != (uint32_t)RESET)
-    {
+    if((CAN_FLAG & CAN_FLAGS_ESR) != (uint32_t)RESET) {
         /* Check the status of the specified CAN flag */
-        if((CANx->ESR & (CAN_FLAG & 0x000FFFFF)) != (uint32_t)RESET)
-        {
+        if((CANx->ESR & (CAN_FLAG & 0x000FFFFF)) != (uint32_t)RESET) {
             /* CAN_FLAG is set */
             bitstatus = SET;
-        }
-        else
-        {
+        } else {
             /* CAN_FLAG is reset */
             bitstatus = RESET;
         }
-    }
-    else if((CAN_FLAG & CAN_FLAGS_MSR) != (uint32_t)RESET)
-    {
+    } else if((CAN_FLAG & CAN_FLAGS_MSR) != (uint32_t)RESET) {
         /* Check the status of the specified CAN flag */
-        if((CANx->MSR & (CAN_FLAG & 0x000FFFFF)) != (uint32_t)RESET)
-        {
+        if((CANx->MSR & (CAN_FLAG & 0x000FFFFF)) != (uint32_t)RESET) {
             /* CAN_FLAG is set */
             bitstatus = SET;
-        }
-        else
-        {
+        } else {
             /* CAN_FLAG is reset */
             bitstatus = RESET;
         }
-    }
-    else if((CAN_FLAG & CAN_FLAGS_TSR) != (uint32_t)RESET)
-    {
+    } else if((CAN_FLAG & CAN_FLAGS_TSR) != (uint32_t)RESET) {
         /* Check the status of the specified CAN flag */
-        if((CANx->TSR & (CAN_FLAG & 0x000FFFFF)) != (uint32_t)RESET)
-        {
+        if((CANx->TSR & (CAN_FLAG & 0x000FFFFF)) != (uint32_t)RESET) {
             /* CAN_FLAG is set */
             bitstatus = SET;
-        }
-        else
-        {
+        } else {
             /* CAN_FLAG is reset */
             bitstatus = RESET;
         }
-    }
-    else if((CAN_FLAG & CAN_FLAGS_RF0R) != (uint32_t)RESET)
-    {
+    } else if((CAN_FLAG & CAN_FLAGS_RF0R) != (uint32_t)RESET) {
         /* Check the status of the specified CAN flag */
-        if((CANx->RF0R & (CAN_FLAG & 0x000FFFFF)) != (uint32_t)RESET)
-        {
+        if((CANx->RF0R & (CAN_FLAG & 0x000FFFFF)) != (uint32_t)RESET) {
             /* CAN_FLAG is set */
             bitstatus = SET;
-        }
-        else
-        {
+        } else {
             /* CAN_FLAG is reset */
             bitstatus = RESET;
         }
-    }
-    else /* If(CAN_FLAG & CAN_FLAGS_RF1R != (uint32_t)RESET) */
-    {
+    } else { /* If(CAN_FLAG & CAN_FLAGS_RF1R != (uint32_t)RESET) */
         /* Check the status of the specified CAN flag */
-        if((uint32_t)(CANx->RF1R & (CAN_FLAG & 0x000FFFFF)) != (uint32_t)RESET)
-        {
+        if((uint32_t)(CANx->RF1R & (CAN_FLAG & 0x000FFFFF)) != (uint32_t)RESET) {
             /* CAN_FLAG is set */
             bitstatus = SET;
-        }
-        else
-        {
+        } else {
             /* CAN_FLAG is reset */
             bitstatus = RESET;
         }
@@ -1189,32 +1071,22 @@ void CAN_ClearFlag(CAN_TypeDef *CANx, uint32_t CAN_FLAG)
     assert_param(IS_CAN_ALL_PERIPH(CANx));
     assert_param(IS_CAN_CLEAR_FLAG(CAN_FLAG));
 
-    if(CAN_FLAG == CAN_FLAG_LEC)  /* ESR register */
-    {
+    if(CAN_FLAG == CAN_FLAG_LEC) { /* ESR register */
         /* Clear the selected CAN flags */
         CANx->ESR = (uint32_t)RESET;
-    }
-    else /* MSR or TSR or RF0R or RF1R */
-    {
+    } else { /* MSR or TSR or RF0R or RF1R */
         flagtmp = CAN_FLAG & 0x000FFFFF;
 
-        if((CAN_FLAG & CAN_FLAGS_RF0R) != (uint32_t)RESET)
-        {
+        if((CAN_FLAG & CAN_FLAGS_RF0R) != (uint32_t)RESET) {
             /* Receive Flags */
             CANx->RF0R = (uint32_t)(flagtmp);
-        }
-        else if((CAN_FLAG & CAN_FLAGS_RF1R) != (uint32_t)RESET)
-        {
+        } else if((CAN_FLAG & CAN_FLAGS_RF1R) != (uint32_t)RESET) {
             /* Receive Flags */
             CANx->RF1R = (uint32_t)(flagtmp);
-        }
-        else if((CAN_FLAG & CAN_FLAGS_TSR) != (uint32_t)RESET)
-        {
+        } else if((CAN_FLAG & CAN_FLAGS_TSR) != (uint32_t)RESET) {
             /* Transmit Flags */
             CANx->TSR = (uint32_t)(flagtmp);
-        }
-        else /* If((CAN_FLAG & CAN_FLAGS_MSR)!=(uint32_t)RESET) */
-        {
+        } else { /* If((CAN_FLAG & CAN_FLAGS_MSR)!=(uint32_t)RESET) */
             /* Operating mode Flags */
             CANx->MSR = (uint32_t)(flagtmp);
         }
@@ -1250,11 +1122,9 @@ ITStatus CAN_GetITStatus(CAN_TypeDef *CANx, uint32_t CAN_IT)
     assert_param(IS_CAN_IT(CAN_IT));
 
     /* check the enable interrupt bit */
-    if((CANx->IER & CAN_IT) != RESET)
-    {
+    if((CANx->IER & CAN_IT) != RESET) {
         /* in case the Interrupt is enabled, .... */
-        switch(CAN_IT)
-        {
+        switch(CAN_IT) {
             case CAN_IT_TME:
                 /* Check CAN_TSR_RQCPx bits */
                 itstatus = CheckITStatus(CANx->TSR, CAN_TSR_RQCP0 | CAN_TSR_RQCP1 | CAN_TSR_RQCP2);
@@ -1330,9 +1200,7 @@ ITStatus CAN_GetITStatus(CAN_TypeDef *CANx, uint32_t CAN_IT)
                 itstatus = RESET;
                 break;
         }
-    }
-    else
-    {
+    } else {
         /* in case the Interrupt is not enabled, return RESET */
         itstatus  = RESET;
     }
@@ -1365,8 +1233,7 @@ void CAN_ClearITPendingBit(CAN_TypeDef *CANx, uint32_t CAN_IT)
     assert_param(IS_CAN_ALL_PERIPH(CANx));
     assert_param(IS_CAN_CLEAR_IT(CAN_IT));
 
-    switch(CAN_IT)
-    {
+    switch(CAN_IT) {
         case CAN_IT_TME:
             /* Clear CAN_TSR_RQCPx (rc_w1)*/
             CANx->TSR = CAN_TSR_RQCP0 | CAN_TSR_RQCP1 | CAN_TSR_RQCP2;
@@ -1454,13 +1321,10 @@ static ITStatus CheckITStatus(uint32_t CAN_Reg, uint32_t It_Bit)
 {
     ITStatus pendingbitstatus = RESET;
 
-    if((CAN_Reg & It_Bit) != (uint32_t)RESET)
-    {
+    if((CAN_Reg & It_Bit) != (uint32_t)RESET) {
         /* CAN_IT is set */
         pendingbitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* CAN_IT is reset */
         pendingbitstatus = RESET;
     }

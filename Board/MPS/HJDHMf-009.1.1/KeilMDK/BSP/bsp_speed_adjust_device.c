@@ -71,12 +71,9 @@ void PumpSpdInc()
     uint16_t u16PumpCtlSpd;
     u16PumpCtlSpd = GetPumpCtlSpd();
 
-    if(u16PumpCtlSpd >= 1990)
-    {
+    if(u16PumpCtlSpd >= 1990) {
         u16PumpCtlSpd = 2000;
-    }
-    else
-    {
+    } else {
         u16PumpCtlSpd += 10;
     }
 
@@ -88,7 +85,7 @@ void PumpSpdInc()
 *                                         PumpSpdDec()
 *
 * Description : decrease the pump speed a grade.
-*                           
+*
 * Arguments   : none.
 *
 * Returns     : none
@@ -101,12 +98,9 @@ void PumpSpdDec()
     uint16_t u16PumpCtlSpd;
     u16PumpCtlSpd = GetPumpCtlSpd();
 
-    if(u16PumpCtlSpd < 10)
-    {
+    if(u16PumpCtlSpd < 10) {
         u16PumpCtlSpd = 0;
-    }
-    else
-    {
+    } else {
         u16PumpCtlSpd -= 10;
     }
 
@@ -173,12 +167,9 @@ void HydrgFanSpdInc()
     uint16_t u16HydrgFanCtlSpd;
     u16HydrgFanCtlSpd = GetHydrgFanCtlSpd();
 
-    if(u16HydrgFanCtlSpd >= 1900)
-    {
+    if(u16HydrgFanCtlSpd >= 1900) {
         u16HydrgFanCtlSpd = 2000;
-    }
-    else
-    {
+    } else {
         u16HydrgFanCtlSpd += 100;
     }
 
@@ -203,12 +194,9 @@ void HydrgFanSpdDec()
     uint16_t u16HydrgFanCtlSpd;
     u16HydrgFanCtlSpd = GetHydrgFanCtlSpd();
 
-    if(u16HydrgFanCtlSpd < 100)
-    {
+    if(u16HydrgFanCtlSpd < 100) {
         u16HydrgFanCtlSpd = 0;
-    }
-    else
-    {   
+    } else {
         u16HydrgFanCtlSpd -= 100;
     }
 
@@ -240,7 +228,7 @@ uint16_t GetHydrgFanCtlSpd(void)
 *                                         SetHydrgFanCtlSpd()
 *
 * Description : set the hydrogen fan speed grade.
-*               
+*
 * Arguments   : the expected hydrogen fan speed.
 *
 * Returns     : none.
@@ -275,14 +263,12 @@ void StackFanSpdInc()
     uint16_t u16StackFanCtlSpd;
     u16StackFanCtlSpd = GetStackFanCtlSpd();
 
-    if(u16StackFanCtlSpd >= 1900)
-    {
+    if(u16StackFanCtlSpd >= 1900) {
         u16StackFanCtlSpd = 2000;
-    }
-    else
-    {
+    } else {
         u16StackFanCtlSpd += 100;
     }
+
     SetStackFanCtlSpd(u16StackFanCtlSpd);
 }
 
@@ -304,12 +290,9 @@ void StackFanSpdDec()
     uint16_t u16StackFanCtlSpd;
     u16StackFanCtlSpd = GetStackFanCtlSpd();
 
-    if(u16StackFanCtlSpd < 100)
-    {
-        u16StackFanCtlSpd = 0;     
-    }
-    else
-    {
+    if(u16StackFanCtlSpd < 100) {
+        u16StackFanCtlSpd = 0;
+    } else {
         u16StackFanCtlSpd -= 100;
     }
 
@@ -354,7 +337,7 @@ void SetStackFanCtlSpd(uint16_t i_u16NewSpd)
     g_u16StackFanCtlSpd = i_u16NewSpd;
     BSP_SetStackFanSpd(i_u16NewSpd);
     CPU_CRITICAL_EXIT();
-    APP_TRACE_INFO(("stack fans speed :i_u16NewSpd %d...\r\n",i_u16NewSpd));
+    APP_TRACE_INFO(("stack fans speed :i_u16NewSpd %d...\r\n", i_u16NewSpd));
 
 }
 

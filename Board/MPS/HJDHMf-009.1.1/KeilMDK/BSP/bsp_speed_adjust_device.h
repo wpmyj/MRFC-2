@@ -36,7 +36,7 @@ typedef enum {
     PUMP_SPD_MONITOR = 0,
     HYDROGEN_FAN_SPD_MONITOR,
     STACK_FAN_SPD_MONITOR,
-    
+
 } SPEED_MONITOR_CHANNEL_Typedef;
 
 
@@ -90,7 +90,7 @@ uint16_t    GetStackFanCtlSpd(void);
 
 void        SetSpdMonitorSwitch(SPEED_MONITOR_CHANNEL_Typedef i_SpdMonitorChannel);
 void        ResetSpdMonitorSwitch(SPEED_MONITOR_CHANNEL_Typedef i_SpdMonitorChannel);
-        
+
 void        BSP_DevSpdCaptureFinishedHandler(void);
 #endif
 

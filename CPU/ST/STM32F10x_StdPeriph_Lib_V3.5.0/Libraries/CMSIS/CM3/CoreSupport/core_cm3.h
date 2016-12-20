@@ -129,8 +129,7 @@ extern "C" {
   memory mapped structure for Nested Vectored Interrupt Controller (NVIC)
   @{
  */
-typedef struct
-{
+typedef struct {
     __IO uint32_t ISER[8];                      /*!< Offset: 0x000  Interrupt Set Enable Register           */
     uint32_t RESERVED0[24];
     __IO uint32_t ICER[8];                      /*!< Offset: 0x080  Interrupt Clear Enable Register         */
@@ -152,8 +151,7 @@ typedef struct
   memory mapped structure for System Control Block (SCB)
   @{
  */
-typedef struct
-{
+typedef struct {
     __I  uint32_t CPUID;                        /*!< Offset: 0x00  CPU ID Base Register                                  */
     __IO uint32_t ICSR;                         /*!< Offset: 0x04  Interrupt Control State Register                      */
     __IO uint32_t VTOR;                         /*!< Offset: 0x08  Vector Table Offset Register                          */
@@ -362,8 +360,7 @@ typedef struct
   memory mapped structure for SysTick
   @{
  */
-typedef struct
-{
+typedef struct {
     __IO uint32_t CTRL;                         /*!< Offset: 0x00  SysTick Control and Status Register */
     __IO uint32_t LOAD;                         /*!< Offset: 0x04  SysTick Reload Value Register       */
     __IO uint32_t VAL;                          /*!< Offset: 0x08  SysTick Current Value Register      */
@@ -407,10 +404,8 @@ typedef struct
   memory mapped structure for Instrumentation Trace Macrocell (ITM)
   @{
  */
-typedef struct
-{
-    __O  union
-    {
+typedef struct {
+    __O  union {
         __O  uint8_t    u8;                       /*!< Offset:       ITM Stimulus Port 8-bit                   */
         __O  uint16_t   u16;                      /*!< Offset:       ITM Stimulus Port 16-bit                  */
         __O  uint32_t   u32;                      /*!< Offset:       ITM Stimulus Port 32-bit                  */
@@ -500,8 +495,7 @@ typedef struct
   memory mapped structure for Interrupt Type
   @{
  */
-typedef struct
-{
+typedef struct {
     uint32_t RESERVED0;
     __I  uint32_t ICTR;                         /*!< Offset: 0x04  Interrupt Control Type Register */
 #if ((defined __CM3_REV) && (__CM3_REV >= 0x200))
@@ -532,8 +526,7 @@ typedef struct
   memory mapped structure for Memory Protection Unit (MPU)
   @{
  */
-typedef struct
-{
+typedef struct {
     __I  uint32_t TYPE;                         /*!< Offset: 0x00  MPU Type Register                              */
     __IO uint32_t CTRL;                         /*!< Offset: 0x04  MPU Control Register                           */
     __IO uint32_t RNR;                          /*!< Offset: 0x08  MPU Region RNRber Register                     */
@@ -617,8 +610,7 @@ typedef struct
   memory mapped structure for Core Debug Register
   @{
  */
-typedef struct
-{
+typedef struct {
     __IO uint32_t DHCSR;                        /*!< Offset: 0x00  Debug Halting Control and Status Register    */
     __O  uint32_t DCRSR;                        /*!< Offset: 0x04  Debug Core Register Selector Register        */
     __IO uint32_t DCRDR;                        /*!< Offset: 0x08  Debug Core Register Data Register            */
@@ -1639,12 +1631,10 @@ static __INLINE uint32_t NVIC_GetActive(IRQn_Type IRQn)
  */
 static __INLINE void NVIC_SetPriority(IRQn_Type IRQn, uint32_t priority)
 {
-    if(IRQn < 0)
-    {
+    if(IRQn < 0) {
         SCB->SHP[((uint32_t)(IRQn) & 0xF) - 4] = ((priority << (8 - __NVIC_PRIO_BITS)) & 0xff);
     } /* set Priority for Cortex-M3 System Interrupts */
-    else
-    {
+    else {
         NVIC->IP[(uint32_t)(IRQn)] = ((priority << (8 - __NVIC_PRIO_BITS)) & 0xff);
     }        /* set Priority for device specific Interrupts  */
 }
@@ -1667,12 +1657,10 @@ static __INLINE void NVIC_SetPriority(IRQn_Type IRQn, uint32_t priority)
 static __INLINE uint32_t NVIC_GetPriority(IRQn_Type IRQn)
 {
 
-    if(IRQn < 0)
-    {
+    if(IRQn < 0) {
         return((uint32_t)(SCB->SHP[((uint32_t)(IRQn) & 0xF) - 4] >> (8 - __NVIC_PRIO_BITS)));
     } /* get priority for Cortex-M3 system interrupts */
-    else
-    {
+    else {
         return((uint32_t)(NVIC->IP[(uint32_t)(IRQn)]           >> (8 - __NVIC_PRIO_BITS)));
     } /* get priority for device specific interrupts  */
 }
@@ -1755,8 +1743,7 @@ static __INLINE void NVIC_DecodePriority(uint32_t Priority, uint32_t PriorityGro
  */
 static __INLINE uint32_t SysTick_Config(uint32_t ticks)
 {
-    if(ticks > SysTick_LOAD_RELOAD_Msk)
-    {
+    if(ticks > SysTick_LOAD_RELOAD_Msk) {
         return (1);    /* Reload value impossible */
     }
 
@@ -1823,8 +1810,7 @@ static __INLINE uint32_t ITM_SendChar(uint32_t ch)
 {
     if((CoreDebug->DEMCR & CoreDebug_DEMCR_TRCENA_Msk)  &&       /* Trace enabled */
             (ITM->TCR & ITM_TCR_ITMENA_Msk)                  &&      /* ITM enabled */
-            (ITM->TER & (1ul << 0)))                                 /* ITM Port #0 enabled */
-    {
+            (ITM->TER & (1ul << 0))) {                               /* ITM Port #0 enabled */
         while(ITM->PORT[0].u32 == 0);
 
         ITM->PORT[0].u8 = (uint8_t) ch;
@@ -1847,8 +1833,7 @@ static __INLINE int ITM_ReceiveChar(void)
 {
     int ch = -1;                               /* no character available */
 
-    if(ITM_RxBuffer != ITM_RXBUFFER_EMPTY)
-    {
+    if(ITM_RxBuffer != ITM_RXBUFFER_EMPTY) {
         ch = ITM_RxBuffer;
         ITM_RxBuffer = ITM_RXBUFFER_EMPTY;       /* ready for next character */
     }
@@ -1868,12 +1853,9 @@ static __INLINE int ITM_ReceiveChar(void)
 static __INLINE int ITM_CheckChar(void)
 {
 
-    if(ITM_RxBuffer == ITM_RXBUFFER_EMPTY)
-    {
+    if(ITM_RxBuffer == ITM_RXBUFFER_EMPTY) {
         return (0);                                 /* no character available */
-    }
-    else
-    {
+    } else {
         return (1);                                 /*    character available */
     }
 }

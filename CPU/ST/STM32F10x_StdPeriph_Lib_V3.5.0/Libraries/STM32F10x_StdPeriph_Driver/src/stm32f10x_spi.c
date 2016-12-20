@@ -121,24 +121,18 @@ void SPI_I2S_DeInit(SPI_TypeDef *SPIx)
     /* Check the parameters */
     assert_param(IS_SPI_ALL_PERIPH(SPIx));
 
-    if(SPIx == SPI1)
-    {
+    if(SPIx == SPI1) {
         /* Enable SPI1 reset state */
         RCC_APB2PeriphResetCmd(RCC_APB2Periph_SPI1, ENABLE);
         /* Release SPI1 from reset state */
         RCC_APB2PeriphResetCmd(RCC_APB2Periph_SPI1, DISABLE);
-    }
-    else if(SPIx == SPI2)
-    {
+    } else if(SPIx == SPI2) {
         /* Enable SPI2 reset state */
         RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI2, ENABLE);
         /* Release SPI2 from reset state */
         RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI2, DISABLE);
-    }
-    else
-    {
-        if(SPIx == SPI3)
-        {
+    } else {
+        if(SPIx == SPI3) {
             /* Enable SPI3 reset state */
             RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI3, ENABLE);
             /* Release SPI3 from reset state */
@@ -241,34 +235,26 @@ void I2S_Init(SPI_TypeDef *SPIx, I2S_InitTypeDef *I2S_InitStruct)
     tmpreg = SPIx->I2SCFGR;
 
     /* If the default value has to be written, reinitialize i2sdiv and i2sodd*/
-    if(I2S_InitStruct->I2S_AudioFreq == I2S_AudioFreq_Default)
-    {
+    if(I2S_InitStruct->I2S_AudioFreq == I2S_AudioFreq_Default) {
         i2sodd = (uint16_t)0;
         i2sdiv = (uint16_t)2;
     }
     /* If the requested audio frequency is not the default, compute the prescaler */
-    else
-    {
+    else {
         /* Check the frame length (For the Prescaler computing) */
-        if(I2S_InitStruct->I2S_DataFormat == I2S_DataFormat_16b)
-        {
+        if(I2S_InitStruct->I2S_DataFormat == I2S_DataFormat_16b) {
             /* Packet length is 16 bits */
             packetlength = 1;
-        }
-        else
-        {
+        } else {
             /* Packet length is 32 bits */
             packetlength = 2;
         }
 
         /* Get the I2S clock source mask depending on the peripheral number */
-        if(((uint32_t)SPIx) == SPI2_BASE)
-        {
+        if(((uint32_t)SPIx) == SPI2_BASE) {
             /* The mask is relative to I2S2 */
             tmp = I2S2_CLOCK_SRC;
-        }
-        else
-        {
+        } else {
             /* The mask is relative to I2S3 */
             tmp = I2S3_CLOCK_SRC;
         }
@@ -277,21 +263,16 @@ void I2S_Init(SPI_TypeDef *SPIx, I2S_InitTypeDef *I2S_InitStruct)
            Only Connectivity line devices have the PLL3 VCO clock */
 #ifdef STM32F10X_CL
 
-        if((RCC->CFGR2 & tmp) != 0)
-        {
+        if((RCC->CFGR2 & tmp) != 0) {
             /* Get the configuration bits of RCC PLL3 multiplier */
             tmp = (uint32_t)((RCC->CFGR2 & I2S_MUL_MASK) >> 12);
 
             /* Get the value of the PLL3 multiplier */
-            if((tmp > 5) && (tmp < 15))
-            {
+            if((tmp > 5) && (tmp < 15)) {
                 /* Multiplier is between 8 and 14 (value 15 is forbidden) */
                 tmp += 2;
-            }
-            else
-            {
-                if(tmp == 15)
-                {
+            } else {
+                if(tmp == 15) {
                     /* Multiplier is 20 */
                     tmp = 20;
                 }
@@ -302,9 +283,7 @@ void I2S_Init(SPI_TypeDef *SPIx, I2S_InitTypeDef *I2S_InitStruct)
 
             /* Calculate the Source Clock frequency based on PLL3 and PREDIV2 values */
             sourceclock = (uint32_t)((HSE_Value / sourceclock) * tmp * 2);
-        }
-        else
-        {
+        } else {
             /* I2S Clock source is System clock: Get System Clock frequency */
             RCC_GetClocksFreq(&RCC_Clocks);
 
@@ -321,13 +300,10 @@ void I2S_Init(SPI_TypeDef *SPIx, I2S_InitTypeDef *I2S_InitStruct)
 #endif /* STM32F10X_CL */
 
         /* Compute the Real divider depending on the MCLK output state with a floating point */
-        if(I2S_InitStruct->I2S_MCLKOutput == I2S_MCLKOutput_Enable)
-        {
+        if(I2S_InitStruct->I2S_MCLKOutput == I2S_MCLKOutput_Enable) {
             /* MCLK output is enabled */
             tmp = (uint16_t)(((((sourceclock / 256) * 10) / I2S_InitStruct->I2S_AudioFreq)) + 5);
-        }
-        else
-        {
+        } else {
             /* MCLK output is disabled */
             tmp = (uint16_t)(((((sourceclock / (32 * packetlength)) * 10) / I2S_InitStruct->I2S_AudioFreq)) + 5);
         }
@@ -346,8 +322,7 @@ void I2S_Init(SPI_TypeDef *SPIx, I2S_InitTypeDef *I2S_InitStruct)
     }
 
     /* Test if the divider is 1 or 0 or greater than 0xFF */
-    if((i2sdiv < 2) || (i2sdiv > 0xFF))
-    {
+    if((i2sdiv < 2) || (i2sdiv > 0xFF)) {
         /* Set the default values */
         i2sdiv = 2;
         i2sodd = 0;
@@ -433,13 +408,10 @@ void SPI_Cmd(SPI_TypeDef *SPIx, FunctionalState NewState)
     assert_param(IS_SPI_ALL_PERIPH(SPIx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected SPI peripheral */
         SPIx->CR1 |= CR1_SPE_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected SPI peripheral */
         SPIx->CR1 &= CR1_SPE_Reset;
     }
@@ -458,13 +430,10 @@ void I2S_Cmd(SPI_TypeDef *SPIx, FunctionalState NewState)
     assert_param(IS_SPI_23_PERIPH(SPIx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected SPI peripheral (in I2S mode) */
         SPIx->I2SCFGR |= I2SCFGR_I2SE_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected SPI peripheral (in I2S mode) */
         SPIx->I2SCFGR &= I2SCFGR_I2SE_Reset;
     }
@@ -498,13 +467,10 @@ void SPI_I2S_ITConfig(SPI_TypeDef *SPIx, uint8_t SPI_I2S_IT, FunctionalState New
     /* Set the IT mask */
     itmask = (uint16_t)1 << (uint16_t)itpos;
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected SPI/I2S interrupt */
         SPIx->CR2 |= itmask;
-    }
-    else
-    {
+    } else {
         /* Disable the selected SPI/I2S interrupt */
         SPIx->CR2 &= (uint16_t)~itmask;
     }
@@ -530,13 +496,10 @@ void SPI_I2S_DMACmd(SPI_TypeDef *SPIx, uint16_t SPI_I2S_DMAReq, FunctionalState 
     assert_param(IS_FUNCTIONAL_STATE(NewState));
     assert_param(IS_SPI_I2S_DMAREQ(SPI_I2S_DMAReq));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected SPI/I2S DMA requests */
         SPIx->CR2 |= SPI_I2S_DMAReq;
-    }
-    else
-    {
+    } else {
         /* Disable the selected SPI/I2S DMA requests */
         SPIx->CR2 &= (uint16_t)~SPI_I2S_DMAReq;
     }
@@ -590,13 +553,10 @@ void SPI_NSSInternalSoftwareConfig(SPI_TypeDef *SPIx, uint16_t SPI_NSSInternalSo
     assert_param(IS_SPI_ALL_PERIPH(SPIx));
     assert_param(IS_SPI_NSS_INTERNAL(SPI_NSSInternalSoft));
 
-    if(SPI_NSSInternalSoft != SPI_NSSInternalSoft_Reset)
-    {
+    if(SPI_NSSInternalSoft != SPI_NSSInternalSoft_Reset) {
         /* Set NSS pin internally by software */
         SPIx->CR1 |= SPI_NSSInternalSoft_Set;
-    }
-    else
-    {
+    } else {
         /* Reset NSS pin internally by software */
         SPIx->CR1 &= SPI_NSSInternalSoft_Reset;
     }
@@ -615,13 +575,10 @@ void SPI_SSOutputCmd(SPI_TypeDef *SPIx, FunctionalState NewState)
     assert_param(IS_SPI_ALL_PERIPH(SPIx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected SPI SS output */
         SPIx->CR2 |= CR2_SSOE_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected SPI SS output */
         SPIx->CR2 &= CR2_SSOE_Reset;
     }
@@ -674,13 +631,10 @@ void SPI_CalculateCRC(SPI_TypeDef *SPIx, FunctionalState NewState)
     assert_param(IS_SPI_ALL_PERIPH(SPIx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected SPI CRC calculation */
         SPIx->CR1 |= CR1_CRCEN_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected SPI CRC calculation */
         SPIx->CR1 &= CR1_CRCEN_Reset;
     }
@@ -702,13 +656,10 @@ uint16_t SPI_GetCRC(SPI_TypeDef *SPIx, uint8_t SPI_CRC)
     assert_param(IS_SPI_ALL_PERIPH(SPIx));
     assert_param(IS_SPI_CRC(SPI_CRC));
 
-    if(SPI_CRC != SPI_CRC_Rx)
-    {
+    if(SPI_CRC != SPI_CRC_Rx) {
         /* Get the Tx CRC register */
         crcreg = SPIx->TXCRCR;
-    }
-    else
-    {
+    } else {
         /* Get the Rx CRC register */
         crcreg = SPIx->RXCRCR;
     }
@@ -746,13 +697,10 @@ void SPI_BiDirectionalLineConfig(SPI_TypeDef *SPIx, uint16_t SPI_Direction)
     assert_param(IS_SPI_ALL_PERIPH(SPIx));
     assert_param(IS_SPI_DIRECTION(SPI_Direction));
 
-    if(SPI_Direction == SPI_Direction_Tx)
-    {
+    if(SPI_Direction == SPI_Direction_Tx) {
         /* Set the Tx only mode */
         SPIx->CR1 |= SPI_Direction_Tx;
-    }
-    else
-    {
+    } else {
         /* Set the Rx only mode */
         SPIx->CR1 &= SPI_Direction_Rx;
     }
@@ -783,13 +731,10 @@ FlagStatus SPI_I2S_GetFlagStatus(SPI_TypeDef *SPIx, uint16_t SPI_I2S_FLAG)
     assert_param(IS_SPI_I2S_GET_FLAG(SPI_I2S_FLAG));
 
     /* Check the status of the specified SPI/I2S flag */
-    if((SPIx->SR & SPI_I2S_FLAG) != (uint16_t)RESET)
-    {
+    if((SPIx->SR & SPI_I2S_FLAG) != (uint16_t)RESET) {
         /* SPI_I2S_FLAG is set */
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* SPI_I2S_FLAG is reset */
         bitstatus = RESET;
     }
@@ -862,13 +807,10 @@ ITStatus SPI_I2S_GetITStatus(SPI_TypeDef *SPIx, uint8_t SPI_I2S_IT)
     enablestatus = (SPIx->CR2 & itmask) ;
 
     /* Check the status of the specified SPI/I2S interrupt */
-    if(((SPIx->SR & itpos) != (uint16_t)RESET) && enablestatus)
-    {
+    if(((SPIx->SR & itpos) != (uint16_t)RESET) && enablestatus) {
         /* SPI_I2S_IT is set */
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* SPI_I2S_IT is reset */
         bitstatus = RESET;
     }

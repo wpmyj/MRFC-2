@@ -132,30 +132,20 @@ void USART_DeInit(USART_TypeDef *USARTx)
     /* Check the parameters */
     assert_param(IS_USART_ALL_PERIPH(USARTx));
 
-    if(USARTx == USART1)
-    {
+    if(USARTx == USART1) {
         RCC_APB2PeriphResetCmd(RCC_APB2Periph_USART1, ENABLE);
         RCC_APB2PeriphResetCmd(RCC_APB2Periph_USART1, DISABLE);
-    }
-    else if(USARTx == USART2)
-    {
+    } else if(USARTx == USART2) {
         RCC_APB1PeriphResetCmd(RCC_APB1Periph_USART2, ENABLE);
         RCC_APB1PeriphResetCmd(RCC_APB1Periph_USART2, DISABLE);
-    }
-    else if(USARTx == USART3)
-    {
+    } else if(USARTx == USART3) {
         RCC_APB1PeriphResetCmd(RCC_APB1Periph_USART3, ENABLE);
         RCC_APB1PeriphResetCmd(RCC_APB1Periph_USART3, DISABLE);
-    }
-    else if(USARTx == UART4)
-    {
+    } else if(USARTx == UART4) {
         RCC_APB1PeriphResetCmd(RCC_APB1Periph_UART4, ENABLE);
         RCC_APB1PeriphResetCmd(RCC_APB1Periph_UART4, DISABLE);
-    }
-    else
-    {
-        if(USARTx == UART5)
-        {
+    } else {
+        if(USARTx == UART5) {
             RCC_APB1PeriphResetCmd(RCC_APB1Periph_UART5, ENABLE);
             RCC_APB1PeriphResetCmd(RCC_APB1Periph_UART5, DISABLE);
         }
@@ -190,8 +180,7 @@ void USART_Init(USART_TypeDef *USARTx, USART_InitTypeDef *USART_InitStruct)
     assert_param(IS_USART_HARDWARE_FLOW_CONTROL(USART_InitStruct->USART_HardwareFlowControl));
 
     /* The hardware flow control is available only for USART1, USART2 and USART3 */
-    if(USART_InitStruct->USART_HardwareFlowControl != USART_HardwareFlowControl_None)
-    {
+    if(USART_InitStruct->USART_HardwareFlowControl != USART_HardwareFlowControl_None) {
         assert_param(IS_USART_123_PERIPH(USARTx));
     }
 
@@ -235,23 +224,17 @@ void USART_Init(USART_TypeDef *USARTx, USART_InitTypeDef *USART_InitStruct)
     /* Configure the USART Baud Rate -------------------------------------------*/
     RCC_GetClocksFreq(&RCC_ClocksStatus);
 
-    if(usartxbase == USART1_BASE)
-    {
+    if(usartxbase == USART1_BASE) {
         apbclock = RCC_ClocksStatus.PCLK2_Frequency;
-    }
-    else
-    {
+    } else {
         apbclock = RCC_ClocksStatus.PCLK1_Frequency;
     }
 
     /* Determine the integer part */
-    if((USARTx->CR1 & CR1_OVER8_Set) != 0)
-    {
+    if((USARTx->CR1 & CR1_OVER8_Set) != 0) {
         /* Integer part computing in case Oversampling mode is 8 Samples */
         integerdivider = ((25 * apbclock) / (2 * (USART_InitStruct->USART_BaudRate)));
-    }
-    else /* if ((USARTx->CR1 & CR1_OVER8_Set) == 0) */
-    {
+    } else { /* if ((USARTx->CR1 & CR1_OVER8_Set) == 0) */
         /* Integer part computing in case Oversampling mode is 16 Samples */
         integerdivider = ((25 * apbclock) / (4 * (USART_InitStruct->USART_BaudRate)));
     }
@@ -262,12 +245,9 @@ void USART_Init(USART_TypeDef *USARTx, USART_InitTypeDef *USART_InitStruct)
     fractionaldivider = integerdivider - (100 * (tmpreg >> 4));
 
     /* Implement the fractional part in the register */
-    if((USARTx->CR1 & CR1_OVER8_Set) != 0)
-    {
+    if((USARTx->CR1 & CR1_OVER8_Set) != 0) {
         tmpreg |= ((((fractionaldivider * 8) + 50) / 100)) & ((uint8_t)0x07);
-    }
-    else /* if ((USARTx->CR1 & CR1_OVER8_Set) == 0) */
-    {
+    } else { /* if ((USARTx->CR1 & CR1_OVER8_Set) == 0) */
         tmpreg |= ((((fractionaldivider * 16) + 50) / 100)) & ((uint8_t)0x0F);
     }
 
@@ -357,13 +337,10 @@ void USART_Cmd(USART_TypeDef *USARTx, FunctionalState NewState)
     assert_param(IS_USART_ALL_PERIPH(USARTx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected USART by setting the UE bit in the CR1 register */
         USARTx->CR1 |= CR1_UE_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the selected USART by clearing the UE bit in the CR1 register */
         USARTx->CR1 &= CR1_UE_Reset;
     }
@@ -398,8 +375,7 @@ void USART_ITConfig(USART_TypeDef *USARTx, uint16_t USART_IT, FunctionalState Ne
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
     /* The CTS interrupt is not available for UART4 and UART5 */
-    if(USART_IT == USART_IT_CTS)
-    {
+    if(USART_IT == USART_IT_CTS) {
         assert_param(IS_USART_123_PERIPH(USARTx));
     }
 
@@ -412,25 +388,17 @@ void USART_ITConfig(USART_TypeDef *USARTx, uint16_t USART_IT, FunctionalState Ne
     itpos = USART_IT & IT_Mask;
     itmask = (((uint32_t)0x01) << itpos);
 
-    if(usartreg == 0x01)  /* The IT is in CR1 register */
-    {
+    if(usartreg == 0x01) { /* The IT is in CR1 register */
         usartxbase += 0x0C;
-    }
-    else if(usartreg == 0x02)  /* The IT is in CR2 register */
-    {
+    } else if(usartreg == 0x02) { /* The IT is in CR2 register */
         usartxbase += 0x10;
-    }
-    else /* The IT is in CR3 register */
-    {
+    } else { /* The IT is in CR3 register */
         usartxbase += 0x14;
     }
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         *(__IO uint32_t *)usartxbase  |= itmask;
-    }
-    else
-    {
+    } else {
         *(__IO uint32_t *)usartxbase &= ~itmask;
     }
 }
@@ -457,14 +425,11 @@ void USART_DMACmd(USART_TypeDef *USARTx, uint16_t USART_DMAReq, FunctionalState 
     assert_param(IS_USART_DMAREQ(USART_DMAReq));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the DMA transfer for selected requests by setting the DMAT and/or
            DMAR bits in the USART CR3 register */
         USARTx->CR3 |= USART_DMAReq;
-    }
-    else
-    {
+    } else {
         /* Disable the DMA transfer for selected requests by clearing the DMAT and/or
            DMAR bits in the USART CR3 register */
         USARTx->CR3 &= (uint16_t)~USART_DMAReq;
@@ -527,13 +492,10 @@ void USART_ReceiverWakeUpCmd(USART_TypeDef *USARTx, FunctionalState NewState)
     assert_param(IS_USART_ALL_PERIPH(USARTx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the USART mute mode  by setting the RWU bit in the CR1 register */
         USARTx->CR1 |= CR1_RWU_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the USART mute mode by clearing the RWU bit in the CR1 register */
         USARTx->CR1 &= CR1_RWU_Reset;
     }
@@ -575,13 +537,10 @@ void USART_LINCmd(USART_TypeDef *USARTx, FunctionalState NewState)
     assert_param(IS_USART_ALL_PERIPH(USARTx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the LIN mode by setting the LINEN bit in the CR2 register */
         USARTx->CR2 |= CR2_LINEN_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the LIN mode by clearing the LINEN bit in the CR2 register */
         USARTx->CR2 &= CR2_LINEN_Reset;
     }
@@ -689,13 +648,10 @@ void USART_SmartCardCmd(USART_TypeDef *USARTx, FunctionalState NewState)
     assert_param(IS_USART_123_PERIPH(USARTx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the SC mode by setting the SCEN bit in the CR3 register */
         USARTx->CR3 |= CR3_SCEN_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the SC mode by clearing the SCEN bit in the CR3 register */
         USARTx->CR3 &= CR3_SCEN_Reset;
     }
@@ -715,13 +671,10 @@ void USART_SmartCardNACKCmd(USART_TypeDef *USARTx, FunctionalState NewState)
     assert_param(IS_USART_123_PERIPH(USARTx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the NACK transmission by setting the NACK bit in the CR3 register */
         USARTx->CR3 |= CR3_NACK_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the NACK transmission by clearing the NACK bit in the CR3 register */
         USARTx->CR3 &= CR3_NACK_Reset;
     }
@@ -742,13 +695,10 @@ void USART_HalfDuplexCmd(USART_TypeDef *USARTx, FunctionalState NewState)
     assert_param(IS_USART_ALL_PERIPH(USARTx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the Half-Duplex mode by setting the HDSEL bit in the CR3 register */
         USARTx->CR3 |= CR3_HDSEL_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the Half-Duplex mode by clearing the HDSEL bit in the CR3 register */
         USARTx->CR3 &= CR3_HDSEL_Reset;
     }
@@ -773,13 +723,10 @@ void USART_OverSampling8Cmd(USART_TypeDef *USARTx, FunctionalState NewState)
     assert_param(IS_USART_ALL_PERIPH(USARTx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the 8x Oversampling mode by setting the OVER8 bit in the CR1 register */
         USARTx->CR1 |= CR1_OVER8_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the 8x Oversampling mode by clearing the OVER8 bit in the CR1 register */
         USARTx->CR1 &= CR1_OVER8_Reset;
     }
@@ -800,13 +747,10 @@ void USART_OneBitMethodCmd(USART_TypeDef *USARTx, FunctionalState NewState)
     assert_param(IS_USART_ALL_PERIPH(USARTx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the one bit method by setting the ONEBITE bit in the CR3 register */
         USARTx->CR3 |= CR3_ONEBITE_Set;
-    }
-    else
-    {
+    } else {
         /* Disable tthe one bit method by clearing the ONEBITE bit in the CR3 register */
         USARTx->CR3 &= CR3_ONEBITE_Reset;
     }
@@ -848,13 +792,10 @@ void USART_IrDACmd(USART_TypeDef *USARTx, FunctionalState NewState)
     assert_param(IS_USART_ALL_PERIPH(USARTx));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the IrDA mode by setting the IREN bit in the CR3 register */
         USARTx->CR3 |= CR3_IREN_Set;
-    }
-    else
-    {
+    } else {
         /* Disable the IrDA mode by clearing the IREN bit in the CR3 register */
         USARTx->CR3 &= CR3_IREN_Reset;
     }
@@ -887,17 +828,13 @@ FlagStatus USART_GetFlagStatus(USART_TypeDef *USARTx, uint16_t USART_FLAG)
     assert_param(IS_USART_FLAG(USART_FLAG));
 
     /* The CTS flag is not available for UART4 and UART5 */
-    if(USART_FLAG == USART_FLAG_CTS)
-    {
+    if(USART_FLAG == USART_FLAG_CTS) {
         assert_param(IS_USART_123_PERIPH(USARTx));
     }
 
-    if((USARTx->SR & USART_FLAG) != (uint16_t)RESET)
-    {
+    if((USARTx->SR & USART_FLAG) != (uint16_t)RESET) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 
@@ -937,8 +874,7 @@ void USART_ClearFlag(USART_TypeDef *USARTx, uint16_t USART_FLAG)
     assert_param(IS_USART_CLEAR_FLAG(USART_FLAG));
 
     /* The CTS flag is not available for UART4 and UART5 */
-    if((USART_FLAG & USART_FLAG_CTS) == USART_FLAG_CTS)
-    {
+    if((USART_FLAG & USART_FLAG_CTS) == USART_FLAG_CTS) {
         assert_param(IS_USART_123_PERIPH(USARTx));
     }
 
@@ -973,8 +909,7 @@ ITStatus USART_GetITStatus(USART_TypeDef *USARTx, uint16_t USART_IT)
     assert_param(IS_USART_GET_IT(USART_IT));
 
     /* The CTS interrupt is not available for UART4 and UART5 */
-    if(USART_IT == USART_IT_CTS)
-    {
+    if(USART_IT == USART_IT_CTS) {
         assert_param(IS_USART_123_PERIPH(USARTx));
     }
 
@@ -984,16 +919,11 @@ ITStatus USART_GetITStatus(USART_TypeDef *USARTx, uint16_t USART_IT)
     itmask = USART_IT & IT_Mask;
     itmask = (uint32_t)0x01 << itmask;
 
-    if(usartreg == 0x01)  /* The IT  is in CR1 register */
-    {
+    if(usartreg == 0x01) { /* The IT  is in CR1 register */
         itmask &= USARTx->CR1;
-    }
-    else if(usartreg == 0x02)  /* The IT  is in CR2 register */
-    {
+    } else if(usartreg == 0x02) { /* The IT  is in CR2 register */
         itmask &= USARTx->CR2;
-    }
-    else /* The IT  is in CR3 register */
-    {
+    } else { /* The IT  is in CR3 register */
         itmask &= USARTx->CR3;
     }
 
@@ -1001,12 +931,9 @@ ITStatus USART_GetITStatus(USART_TypeDef *USARTx, uint16_t USART_IT)
     bitpos = (uint32_t)0x01 << bitpos;
     bitpos &= USARTx->SR;
 
-    if((itmask != (uint16_t)RESET) && (bitpos != (uint16_t)RESET))
-    {
+    if((itmask != (uint16_t)RESET) && (bitpos != (uint16_t)RESET)) {
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         bitstatus = RESET;
     }
 
@@ -1048,8 +975,7 @@ void USART_ClearITPendingBit(USART_TypeDef *USARTx, uint16_t USART_IT)
     assert_param(IS_USART_CLEAR_IT(USART_IT));
 
     /* The CTS interrupt is not available for UART4 and UART5 */
-    if(USART_IT == USART_IT_CTS)
-    {
+    if(USART_IT == USART_IT_CTS) {
         assert_param(IS_USART_123_PERIPH(USARTx));
     }
 

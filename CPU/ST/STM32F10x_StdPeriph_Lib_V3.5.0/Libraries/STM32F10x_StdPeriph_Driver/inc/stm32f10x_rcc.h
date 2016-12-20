@@ -43,8 +43,7 @@ extern "C" {
   * @{
   */
 
-typedef struct
-{
+typedef struct {
     uint32_t SYSCLK_Frequency;  /*!< returns SYSCLK clock frequency expressed in Hz */
     uint32_t HCLK_Frequency;    /*!< returns HCLK clock frequency expressed in Hz */
     uint32_t PCLK1_Frequency;   /*!< returns PCLK1 clock frequency expressed in Hz */

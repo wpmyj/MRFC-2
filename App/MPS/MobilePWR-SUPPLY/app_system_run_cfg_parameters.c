@@ -242,7 +242,7 @@ void LoadApplicationLayerParameters()
 
         GetDefaultLqdHeightCmpTbl(&g_stLqdHeightCmpTbl);
         StoreLqdHeightCmpTbl(&g_stLqdHeightCmpTbl);
-        
+
         GetDefaultStartHydrgPumpSpdPara(&g_stStartHydrgPumpSpdPara);
         StoreStartHydrgPumpSpdPara(&g_stStartHydrgPumpSpdPara);
 
@@ -555,7 +555,7 @@ static void GetDefaultLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeig
 static void StoreLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmpTbl)
 {
     RW_ParametersBuffer[RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR] = i_LqdHeightCmpTbl->AlarmlowerLiquidLevellimit;
-    RW_ParametersBuffer[RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR + 1] = i_LqdHeightCmpTbl->AlarmUpperLiquidLevellimit;   
+    RW_ParametersBuffer[RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR + 1] = i_LqdHeightCmpTbl->AlarmUpperLiquidLevellimit;
 }
 
 /*
@@ -756,8 +756,7 @@ static void STMFLASH_Write_NoCheck(u32 WriteAddr, u16 *pBuffer, u16 NumToWrite)
 {
     u16 i;
 
-    for(i = 0; i < NumToWrite; i++)
-    {
+    for(i = 0; i < NumToWrite; i++) {
         FLASH_ProgramHalfWord(WriteAddr, pBuffer[i]);
         WriteAddr += 2;//地址增加2.
     }
@@ -792,65 +791,50 @@ static void STMFLASH_Write(u32 WriteAddr, u16 *pBuffer, u16 NumToWrite)
     u16 i;
     u32 offaddr;   //去掉0X08000000后的地址
 
-    if((WriteAddr >= STM32_FLASH_BASE) && (WriteAddr < (STM32_FLASH_BASE + 1024 * STM32_FLASH_SIZE)))
-    {
+    if((WriteAddr >= STM32_FLASH_BASE) && (WriteAddr < (STM32_FLASH_BASE + 1024 * STM32_FLASH_SIZE))) {
         FLASH_Unlock();                                 //解锁
         offaddr = WriteAddr - STM32_FLASH_BASE;         //实际偏移地址.
         secpos = offaddr / STM_SECTOR_SIZE;             //扇区地址  0~127 共128个扇区，在STM32F105RB中，每个扇区1K
         secoff = (offaddr % STM_SECTOR_SIZE) / 2;       //在扇区内的偏移(2个字节为基本单位.)
         secremain = STM_SECTOR_SIZE / 2 - secoff;       //扇区剩余空间大小
 
-        if(NumToWrite <= secremain)
-        {
+        if(NumToWrite <= secremain) {
             secremain = NumToWrite;//不大于该扇区范围   //否则后续会启动下一个扇区的书写
         }
 
-        while(1)
-        {
+        while(1) {
             STMFLASH_Read(secpos * STM_SECTOR_SIZE + STM32_FLASH_BASE, STMFLASH_BUF, STM_SECTOR_SIZE / 2);//读出整个扇区的内容
 
-            for(i = 0; i < secremain; i++)//校验数据
-            {
-                if(STMFLASH_BUF[secoff + i] != 0XFFFF)
-                {
+            for(i = 0; i < secremain; i++) { //校验数据
+                if(STMFLASH_BUF[secoff + i] != 0XFFFF) {
                     break;//需要擦除
                 }
             }
 
-            if(i < secremain)//需要擦除
-            {
+            if(i < secremain) { //需要擦除
                 FLASH_ErasePage(secpos * STM_SECTOR_SIZE + STM32_FLASH_BASE);//擦除这个扇区
 
-                for(i = 0; i < secremain; i++)//复制
-                {
+                for(i = 0; i < secremain; i++) { //复制
                     STMFLASH_BUF[i + secoff] = pBuffer[i];
                 }
 
                 STMFLASH_Write_NoCheck(secpos * STM_SECTOR_SIZE + STM32_FLASH_BASE, STMFLASH_BUF, STM_SECTOR_SIZE / 2);//写入整个扇区
-            }
-            else
-            {
+            } else {
                 STMFLASH_Write_NoCheck(WriteAddr, pBuffer, secremain);//写已经擦除了的,直接写入扇区剩余区间.
             }
 
-            if(NumToWrite == secremain)
-            {
+            if(NumToWrite == secremain) {
                 break;//写入结束了
-            }
-            else//写入未结束
-            {
+            } else { //写入未结束
                 secpos ++;              //扇区地址增1
                 secoff = 0;             //偏移位置为0
                 pBuffer += secremain;   //指针偏移
                 WriteAddr += secremain; //写地址偏移
                 NumToWrite -= secremain;    //字节(16位)数递减
 
-                if(NumToWrite > (STM_SECTOR_SIZE / 2))
-                {
+                if(NumToWrite > (STM_SECTOR_SIZE / 2)) {
                     secremain = STM_SECTOR_SIZE / 2;//下一个扇区还是写不完
-                }
-                else
-                {
+                } else {
                     secremain = NumToWrite;//下一个扇区可以写完了
                 }
             }
@@ -880,8 +864,7 @@ void STMFLASH_Read(u32 ReadAddr, u16 *pBuffer, u16 NumToRead)
 {
     u16 i;
 
-    for(i = 0; i < NumToRead; i++)
-    {
+    for(i = 0; i < NumToRead; i++) {
         pBuffer[i] = STMFLASH_ReadHalfWord(ReadAddr);//读取2个字节.
         ReadAddr += 2;//偏移2个字节.
     }

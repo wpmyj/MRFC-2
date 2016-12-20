@@ -136,17 +136,14 @@ void  CPU_BitBandClr(CPU_ADDR    addr,
 
 
     if((addr >= CPU_BIT_BAND_SRAM_REG_LO) &&
-            (addr <= CPU_BIT_BAND_SRAM_REG_HI))
-    {
+            (addr <= CPU_BIT_BAND_SRAM_REG_HI)) {
         bit_word_off  = ((addr - CPU_BIT_BAND_SRAM_REG_LO) * 32) + (bit_nbr * 4);
         bit_word_addr = CPU_BIT_BAND_SRAM_BASE   + bit_word_off;
 
         *(volatile CPU_INT32U *)(bit_word_addr) = 0;
 
-    }
-    else if((addr >= CPU_BIT_BAND_PERIPH_REG_LO) &&
-            (addr <= CPU_BIT_BAND_PERIPH_REG_HI))
-    {
+    } else if((addr >= CPU_BIT_BAND_PERIPH_REG_LO) &&
+              (addr <= CPU_BIT_BAND_PERIPH_REG_HI)) {
         bit_word_off  = ((addr - CPU_BIT_BAND_PERIPH_REG_LO) * 32) + (bit_nbr * 4);
         bit_word_addr = CPU_BIT_BAND_PERIPH_BASE + bit_word_off;
 
@@ -182,17 +179,14 @@ void  CPU_BitBandSet(CPU_ADDR    addr,
 
 
     if((addr >= CPU_BIT_BAND_SRAM_REG_LO) &&
-            (addr <= CPU_BIT_BAND_SRAM_REG_HI))
-    {
+            (addr <= CPU_BIT_BAND_SRAM_REG_HI)) {
         bit_word_off  = ((addr - CPU_BIT_BAND_SRAM_REG_LO) * 32) + (bit_nbr * 4);
         bit_word_addr = CPU_BIT_BAND_SRAM_BASE   + bit_word_off;
 
         *(volatile CPU_INT32U *)(bit_word_addr) = 1;
 
-    }
-    else if((addr >= CPU_BIT_BAND_PERIPH_REG_LO) &&
-            (addr <= CPU_BIT_BAND_PERIPH_REG_HI))
-    {
+    } else if((addr >= CPU_BIT_BAND_PERIPH_REG_LO) &&
+              (addr <= CPU_BIT_BAND_PERIPH_REG_HI)) {
         bit_word_off  = ((addr - CPU_BIT_BAND_PERIPH_REG_LO) * 32) + (bit_nbr * 4);
         bit_word_addr = CPU_BIT_BAND_PERIPH_BASE + bit_word_off;
 
@@ -259,8 +253,7 @@ void  CPU_IntSrcDis(CPU_INT08U  pos)
     CPU_SR_ALLOC();
 
 
-    switch(pos)
-    {
+    switch(pos) {
         case CPU_INT_STK_PTR:                                   /* ---------------- INVALID OR RESERVED --------------- */
         case CPU_INT_RSVD_07:
         case CPU_INT_RSVD_08:
@@ -308,8 +301,7 @@ void  CPU_IntSrcDis(CPU_INT08U  pos)
         default:
             pos_max = CPU_INT_SRC_POS_MAX;
 
-            if(pos < pos_max)                                   /* See Note #3.                                         */
-            {
+            if(pos < pos_max) {                                 /* See Note #3.                                         */
                 group = (pos - 16) / 32;
                 nbr   = (pos - 16) % 32;
 
@@ -352,8 +344,7 @@ void  CPU_IntSrcEn(CPU_INT08U  pos)
     CPU_SR_ALLOC();
 
 
-    switch(pos)
-    {
+    switch(pos) {
         case CPU_INT_STK_PTR:                                   /* ---------------- INVALID OR RESERVED --------------- */
         case CPU_INT_RSVD_07:
         case CPU_INT_RSVD_08:
@@ -401,8 +392,7 @@ void  CPU_IntSrcEn(CPU_INT08U  pos)
         default:
             pos_max = CPU_INT_SRC_POS_MAX;
 
-            if(pos < pos_max)                                   /* See Note #3.                                         */
-            {
+            if(pos < pos_max) {                                 /* See Note #3.                                         */
                 group = (pos - 16) / 32;
                 nbr   = (pos - 16) % 32;
 
@@ -456,8 +446,7 @@ void  CPU_IntSrcPendClr(CPU_INT08U  pos)
     CPU_SR_ALLOC();
 
 
-    switch(pos)
-    {
+    switch(pos) {
         case CPU_INT_STK_PTR:                                   /* ---------------- INVALID OR RESERVED --------------- */
         case CPU_INT_RSVD_07:
         case CPU_INT_RSVD_08:
@@ -483,8 +472,7 @@ void  CPU_IntSrcPendClr(CPU_INT08U  pos)
         default:
             pos_max = CPU_INT_SRC_POS_MAX;
 
-            if(pos < pos_max)                                   /* See Note #3.                                         */
-            {
+            if(pos < pos_max) {                                 /* See Note #3.                                         */
                 group = (pos - 16) / 32;
                 nbr   = (pos - 16) % 32;
 
@@ -539,8 +527,7 @@ void  CPU_IntSrcPrioSet(CPU_INT08U  pos,
     prio_32 = CPU_RevBits((CPU_INT08U)prio);
     prio    = (CPU_INT08U)(prio_32 >> (3 * DEF_OCTET_NBR_BITS));
 
-    switch(pos)
-    {
+    switch(pos) {
         case CPU_INT_STK_PTR:                                   /* ---------------- INVALID OR RESERVED --------------- */
         case CPU_INT_RSVD_07:
         case CPU_INT_RSVD_08:
@@ -624,8 +611,7 @@ void  CPU_IntSrcPrioSet(CPU_INT08U  pos,
         default:
             pos_max = CPU_INT_SRC_POS_MAX;
 
-            if(pos < pos_max)                                   /* See Note #3.                                         */
-            {
+            if(pos < pos_max) {                                 /* See Note #3.                                         */
                 group                    = (pos - 16) / 4;
                 nbr                      = (pos - 16) % 4;
 
@@ -675,8 +661,7 @@ CPU_INT16S  CPU_IntSrcPrioGet(CPU_INT08U  pos)
     CPU_SR_ALLOC();
 
 
-    switch(pos)
-    {
+    switch(pos) {
         case CPU_INT_STK_PTR:                                   /* ---------------- INVALID OR RESERVED --------------- */
         case CPU_INT_RSVD_07:
         case CPU_INT_RSVD_08:
@@ -756,8 +741,7 @@ CPU_INT16S  CPU_IntSrcPrioGet(CPU_INT08U  pos)
         default:
             pos_max = CPU_INT_SRC_POS_MAX;
 
-            if(pos < pos_max)                                   /* See Note #3.                                         */
-            {
+            if(pos < pos_max) {                                 /* See Note #3.                                         */
                 group = (pos - 16) / 4;
                 nbr   = (pos - 16) % 4;
 
@@ -766,17 +750,14 @@ CPU_INT16S  CPU_IntSrcPrioGet(CPU_INT08U  pos)
                 CPU_CRITICAL_EXIT();
 
                 prio  = (temp >> (nbr * DEF_OCTET_NBR_BITS)) & DEF_OCTET_MASK;
-            }
-            else
-            {
+            } else {
                 prio  = DEF_INT_16S_MIN_VAL;
             }
 
             break;
     }
 
-    if(prio >= 0)
-    {
+    if(prio >= 0) {
         prio_32 = CPU_RevBits((CPU_INT32U)prio);
         prio    = (CPU_INT16S)(prio_32 >> (3 * DEF_OCTET_NBR_BITS));
     }

@@ -172,8 +172,7 @@
 ***************************************************************************************************
 */
 
-typedef enum cpu_err
-{
+typedef enum cpu_err {
 
     CPU_ERR_NONE                            =         0u,
     CPU_ERR_NULL_PTR                        =        10u,

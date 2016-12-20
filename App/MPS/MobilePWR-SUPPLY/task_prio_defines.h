@@ -39,18 +39,18 @@
 #define  ANA_SIGNAL_MONITOR_TASK_PRIO                                   10
 
 #define  STACK_MANAGER_TASK_PRIO                                         11
-#define  STACK_PROGRAM_CONTROL_AIR_PRESSURE_RELEASE_TASK_PRIO            11 
+#define  STACK_PROGRAM_CONTROL_AIR_PRESSURE_RELEASE_TASK_PRIO            11
 #define  STACK_HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_MONITOR_TASK_PRIO    11
 #define  DC_MODULE_ADJUST_TASK_PRIO                             12
 
 #define  DIG_SIGNAL_MONITOR_TASK_PRIO                       14
-#define  Make_Vaccuum_Task_PRIO                             15 
+#define  Make_Vaccuum_Task_PRIO                             15
 #define  APP_TASK_START_PRIO                                16
 #define  HYDROGEN_PRODUCER_MANAGER_TASK_PRIO                17
 #define  HYDRG_PRODUCER_IGNITE_SECOND_TIME_MANAGE_TASK_PRIO 18
 
 #define  IGNITER_WORK_TASK_PRIO                             20
-  
+
 
 
 #endif

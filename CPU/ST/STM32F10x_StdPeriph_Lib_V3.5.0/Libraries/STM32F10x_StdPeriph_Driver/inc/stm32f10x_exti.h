@@ -47,8 +47,7 @@ extern "C" {
   * @brief  EXTI mode enumeration
   */
 
-typedef enum
-{
+typedef enum {
     EXTI_Mode_Interrupt = 0x00,
     EXTI_Mode_Event = 0x04
 } EXTIMode_TypeDef;
@@ -59,8 +58,7 @@ typedef enum
   * @brief  EXTI Trigger enumeration
   */
 
-typedef enum
-{
+typedef enum {
     EXTI_Trigger_Rising = 0x08,
     EXTI_Trigger_Falling = 0x0C,
     EXTI_Trigger_Rising_Falling = 0x10
@@ -73,8 +71,7 @@ typedef enum
   * @brief  EXTI Init Structure definition
   */
 
-typedef struct
-{
+typedef struct {
     uint32_t EXTI_Line;               /*!< Specifies the EXTI lines to be enabled or disabled.
                                          This parameter can be any combination of @ref EXTI_Lines */
 

@@ -176,13 +176,10 @@ void DAC_Cmd(uint32_t DAC_Channel, FunctionalState NewState)
     assert_param(IS_DAC_CHANNEL(DAC_Channel));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected DAC channel */
         DAC->CR |= (DAC_CR_EN1 << DAC_Channel);
-    }
-    else
-    {
+    } else {
         /* Disable the selected DAC channel */
         DAC->CR &= ~(DAC_CR_EN1 << DAC_Channel);
     }
@@ -208,13 +205,10 @@ void DAC_ITConfig(uint32_t DAC_Channel, uint32_t DAC_IT, FunctionalState NewStat
     assert_param(IS_FUNCTIONAL_STATE(NewState));
     assert_param(IS_DAC_IT(DAC_IT));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected DAC interrupts */
         DAC->CR |= (DAC_IT << DAC_Channel);
-    }
-    else
-    {
+    } else {
         /* Disable the selected DAC interrupts */
         DAC->CR &= (~(uint32_t)(DAC_IT << DAC_Channel));
     }
@@ -237,13 +231,10 @@ void DAC_DMACmd(uint32_t DAC_Channel, FunctionalState NewState)
     assert_param(IS_DAC_CHANNEL(DAC_Channel));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected DAC channel DMA request */
         DAC->CR |= (DAC_CR_DMAEN1 << DAC_Channel);
-    }
-    else
-    {
+    } else {
         /* Disable the selected DAC channel DMA request */
         DAC->CR &= ~(DAC_CR_DMAEN1 << DAC_Channel);
     }
@@ -265,13 +256,10 @@ void DAC_SoftwareTriggerCmd(uint32_t DAC_Channel, FunctionalState NewState)
     assert_param(IS_DAC_CHANNEL(DAC_Channel));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable software trigger for the selected DAC channel */
         DAC->SWTRIGR |= (uint32_t)DAC_SWTRIGR_SWTRIG1 << (DAC_Channel >> 4);
-    }
-    else
-    {
+    } else {
         /* Disable software trigger for the selected DAC channel */
         DAC->SWTRIGR &= ~((uint32_t)DAC_SWTRIGR_SWTRIG1 << (DAC_Channel >> 4));
     }
@@ -289,13 +277,10 @@ void DAC_DualSoftwareTriggerCmd(FunctionalState NewState)
     /* Check the parameters */
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable software trigger for both DAC channels */
         DAC->SWTRIGR |= DUAL_SWTRIG_SET ;
-    }
-    else
-    {
+    } else {
         /* Disable software trigger for both DAC channels */
         DAC->SWTRIGR &= DUAL_SWTRIG_RESET;
     }
@@ -322,13 +307,10 @@ void DAC_WaveGenerationCmd(uint32_t DAC_Channel, uint32_t DAC_Wave, FunctionalSt
     assert_param(IS_DAC_WAVE(DAC_Wave));
     assert_param(IS_FUNCTIONAL_STATE(NewState));
 
-    if(NewState != DISABLE)
-    {
+    if(NewState != DISABLE) {
         /* Enable the selected wave generation for the selected DAC channel */
         DAC->CR |= DAC_Wave << DAC_Channel;
-    }
-    else
-    {
+    } else {
         /* Disable the selected wave generation for the selected DAC channel */
         DAC->CR &= ~(DAC_Wave << DAC_Channel);
     }
@@ -408,12 +390,9 @@ void DAC_SetDualChannelData(uint32_t DAC_Align, uint16_t Data2, uint16_t Data1)
     assert_param(IS_DAC_DATA(Data2));
 
     /* Calculate and set dual DAC data holding register value */
-    if(DAC_Align == DAC_Align_8b_R)
-    {
+    if(DAC_Align == DAC_Align_8b_R) {
         data = ((uint32_t)Data2 << 8) | Data1;
-    }
-    else
-    {
+    } else {
         data = ((uint32_t)Data2 << 16) | Data1;
     }
 
@@ -466,13 +445,10 @@ FlagStatus DAC_GetFlagStatus(uint32_t DAC_Channel, uint32_t DAC_FLAG)
     assert_param(IS_DAC_FLAG(DAC_FLAG));
 
     /* Check the status of the specified DAC flag */
-    if((DAC->SR & (DAC_FLAG << DAC_Channel)) != (uint8_t)RESET)
-    {
+    if((DAC->SR & (DAC_FLAG << DAC_Channel)) != (uint8_t)RESET) {
         /* DAC_FLAG is set */
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* DAC_FLAG is reset */
         bitstatus = RESET;
     }
@@ -526,13 +502,10 @@ ITStatus DAC_GetITStatus(uint32_t DAC_Channel, uint32_t DAC_IT)
     enablestatus = (DAC->CR & (DAC_IT << DAC_Channel)) ;
 
     /* Check the status of the specified DAC interrupt */
-    if(((DAC->SR & (DAC_IT << DAC_Channel)) != (uint32_t)RESET) && enablestatus)
-    {
+    if(((DAC->SR & (DAC_IT << DAC_Channel)) != (uint32_t)RESET) && enablestatus) {
         /* DAC_IT is set */
         bitstatus = SET;
-    }
-    else
-    {
+    } else {
         /* DAC_IT is reset */
         bitstatus = RESET;
     }
