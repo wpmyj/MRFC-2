@@ -286,7 +286,7 @@ void SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(u8 i_NewStatu)
 *                     HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook()
 *
 * Description : wait for the ignite first time to behind switchover.
-*               制氢机第一次点火后重整室温度监测
+*               
 * Arguments   : none.
 *
 * Returns     : none.
@@ -363,7 +363,7 @@ void SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
 *                     HydrgProducerDigSigAlarmRunningMonitorHook()
 *
 * Description : manager the digital signal concerned alarms.
-*               制氢机运行重整室温度警报信号监测
+*               
 * Arguments   : none.
 *
 * Returns     : none.

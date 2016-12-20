@@ -72,7 +72,7 @@ STACK_VENTING_TIME_PARAMETER_Typedef    StackVentAirTimeParameter = {0, 0.0, 0.0
 */
 static  float                           g_fAmpIntegralSum = 0.0;//电流时间积分累加和
 static  float                           g_fHydrogenYieldMatchOffsetValue = 0.0;//电堆匹氢偏移值
-static  uint16_t                        g_u16StackExhaustTimesCount = 0;//电堆排气次数
+static  uint8_t                         g_u8DecompressCountPerMinute = 0; //每分钟电堆尾部泄压排气次数
 static SWITCH_TYPE_VARIABLE_Typedef     g_u8StackOutAirValveStatus = OFF;//电堆排气阀的打开状态
 
 static  uint8_t                         g_StackStartPurifySw = DEF_DISABLED;
@@ -156,6 +156,12 @@ void StackManagerTask(void)
     while(DEF_TRUE)
     {
         OSTaskSuspend(NULL, &err);
+        //运行提醒
+        BSP_BuzzerOn();
+        OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
+        BSP_BuzzerOff();
+        OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
+        
         StackWorkTimesInc();
 #ifdef STACK_FAN_PID_CONTROL
         IncrementType_PID_Init();   //增量式PID初始化
@@ -172,32 +178,25 @@ void StackManagerTask(void)
         BSP_HydrgOutValvePwrOn();
         OSTimeDlyHMSM(0, 0, 5, 0, OS_OPT_TIME_HMSM_STRICT, &err);
         BSP_HydrgOutValvePwrOff();
-        SetStackWorkStatu(EN_IN_WORK);
         SetStackStartPurifySwitch(DEF_DISABLED);
         APP_TRACE_INFO(("Finish the stack start purify...\n\r"));
 
-//        fVoltage = GetSrcAnaSig(STACK_VOLTAGE);
-//        if( fVoltage >= 48)         //设置为当气压达到45KPA的时候，电压48v打开直流接触器
-//        {
-//            BSP_DCConnectValvePwrOn();
-//            OSTaskResume(&DcModuleAdjustTaskTCB,  //华为限流调节任务开始
-//                          &err);
-//        } 
-        BSP_DCConnectValvePwrOn();
-        OSTaskResume(&DcModuleAdjustTaskTCB,  //华为限流调节任务开始
-              &err);
+        fVoltage = GetSrcAnaSig(STACK_VOLTAGE);
+        if( fVoltage >= 48)         //设置为当气压达到45KPA的时候，电压48v打开直流接触器
+        {
+            BSP_DCConnectValvePwrOn();
+            SetStackWorkStatu(EN_IN_WORK);
+            OSTaskResume(&DcModuleAdjustTaskTCB,  //华为限流调节任务开始
+                          &err);
+        } 
         
-        StackProgramControlPressureReleaseTaskCreate();        //电堆程控泄压任务创建
         StackHydrogenYieldMatchingOffsetValueMonitorTaskCreate();//电堆匹氢偏移量监测任务创建
         
-        SetStackProgramControlAirPressureReleaseTaskSwitch(DEF_ENABLED);
         SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(DEF_ENABLED);
         SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(DEF_ENABLED);//1分钟清零一次排气次数
         SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);
         SetStackFanSpdAutoAdjSwitch(DEF_ENABLED);
 
-        OSTaskResume(&StackProgramControlAirPressureReleaseTaskTCB,  //恢复电堆程控泄压排气任务
-                     &err);
         OSTaskResume(&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,  //恢复电堆氢气裕度监测任务
                      &err);
                      
@@ -215,11 +214,11 @@ void StackManagerTask(void)
             //安培积分值累加和
             fCurrent = GetSrcAnaSig(STACK_CURRENT);
             g_fAmpIntegralSum += fCurrent;
-            if(g_fAmpIntegralSum >= 650.0){
-                if(OFF == GetStackOutAirValveStatus()){
-                    SetStackNeedVentByAmpIntegralSumSwitch(DEF_ON);
-//                    g_fAmpIntegralSum = 0.0;//在中断中排气开关处归零
-                }
+            if(g_fAmpIntegralSum >= g_u16RunPurifyAmpIntegralValue){
+                BSP_HydrgOutValvePwrOn();
+                OSTimeDlyHMSM(0, 0, 5, 0, OS_OPT_TIME_HMSM_STRICT, &err);
+                BSP_HydrgOutValvePwrOff();
+                g_fAmpIntegralSum = 0.0;
             }
 #ifdef STACK_FAN_PID_CONTROL
             IPID.CalcCycleCount++;
@@ -245,12 +244,12 @@ void StackManagerTask(void)
                     } else {
                         SetStackFanCtlSpd(2000);
                     }
-
                     u8StackFansControlCycleCount = 0;
                 }
             } else {}
 #endif   
         }
+        SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(DEF_DISABLED);
         SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);
         SetStackFanSpdAutoAdjSwitch(DEF_ENABLED);//若正常运行，会由电堆延时关闭程序关闭，默认应打开，故在此处恢复
         APP_TRACE_INFO(("Stack manager stop...\n\r"));
@@ -441,9 +440,9 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
     
     while(DEF_TRUE) {
         OSTaskSuspend(NULL, &err);
-        APP_TRACE_INFO(("**Resume Stack Hydrogen Yield Matching Offset Value Monitor Task...\r\n"));
+        
         while(DEF_TRUE) {
-            OSTaskSemPend(0,   //接收电堆程控泄压任务中的时间记录完成任务信号量
+            OSTaskSemPend(0,   //接收泄压阀输入脉冲中断中的时间参数记录完成任务信号量
                           OS_OPT_PEND_BLOCKING,
                           NULL,
                           &err);
@@ -461,11 +460,11 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
                 APP_TRACE_INFO(("-->Current-VentingInterval-DecompressTime:-#%.3f   -$%.3f   -&%.3f   \r\n", \
                 fCurrent,StackVentAirTimeParameter.fVentAirTimeIntervalValue * 0.001,StackVentAirTimeParameter.fDecompressVentTimeValue * 0.001));
                 
-                if(g_fHydrogenYieldMatchOffsetValue > 1.20) {//匹氢值小于标准的0.3倍，产气充足，可提高输出功率
+                if(g_fHydrogenYieldMatchOffsetValue > 1.20) {//匹氢值小于标准的0.3倍(偏移值为正)，产气充足，可提高输出功率
                     //限流点上升和下降都采用逐次周期增加
                     u8HydrogenYieldEnoughCount ++;
                     u8HydrogenYieldLackCount = 0;
-                    if(u8HydrogenYieldEnoughCount >= 5){
+                    if(u8HydrogenYieldEnoughCount >= 10){
                         OSTaskSemPost(&DcModuleAdjustTaskTCB,
                                       OS_OPT_POST_1,
                                       &err);
@@ -475,7 +474,7 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
                 } else if(g_fHydrogenYieldMatchOffsetValue < -0.40) {//匹氢值大于标准的1.5倍，产气不足,限制输出功率(限流限压) 
                     u8HydrogenYieldLackCount ++;
                     u8HydrogenYieldEnoughCount = 0;
-                    if(u8HydrogenYieldLackCount >= 5){
+                    if(u8HydrogenYieldLackCount >= 10){
                         OSTaskSemPost(&DcModuleAdjustTaskTCB,
                                       OS_OPT_POST_1,
                                       &err);
@@ -497,7 +496,7 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
 }
 /*
 ***************************************************************************************************
-*                                 GetStackHydrogenYieldMatchOffsetValue()
+*                        GetStackHydrogenYieldMatchOffsetValue()
 *
 * Description:  Get the  hydrogen yield match offset value.
 *
@@ -517,123 +516,30 @@ float GetStackHydrogenYieldMatchOffsetValue(void)
 
 /*
 ***************************************************************************************************
-*                           StackProgramControlPressureReleaseTaskCreate()
-*
-* Description : Stack Program Control Pressure Release Task Create.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Note(s)     : none.
-***************************************************************************************************
-*/
-void  StackProgramControlPressureReleaseTaskCreate(void)
-{
-    OS_ERR      err;
-
-    OSTaskCreate((OS_TCB *) & StackProgramControlAirPressureReleaseTaskTCB,
-                 (CPU_CHAR *)"Stack program control air pressure release task",
-                 (OS_TASK_PTR) StackProgramControlAirPressureReleaseTask,
-                 (void *) 0,
-                 (OS_PRIO) STACK_PROGRAM_CONTROL_AIR_PRESSURE_RELEASE_TASK_PRIO,
-                 (CPU_STK *) &StackProgramControlAirPressureReleaseStk[0],
-                 (CPU_STK_SIZE) STACK_PROGRAM_CONTROL_AIR_PRESSURE_RELEASE_TASK_STK_SIZE / 10,
-                 (CPU_STK_SIZE) STACK_PROGRAM_CONTROL_AIR_PRESSURE_RELEASE_TASK_STK_SIZE,
-                 (OS_MSG_QTY) 5u,
-                 (OS_TICK) 0u,
-                 (void *) 0,
-                 (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
-                 (OS_ERR *)&err);
-    APP_TRACE_INFO(("Created the program control air pressure release task, and err code is %d...\r\n", err));
-}
-/*
-***************************************************************************************************
-*                               StackHydrogenYieldMatchingOffsetValueMonitorTask()
-*
-* Description : 程序控制排气阀泄压任务.
-*
-* Argument(s) : none.
-*
-* Note(s)     : none.
-***************************************************************************************************
-*/
-void StackProgramControlAirPressureReleaseTask(void)
-{
-    OS_ERR      err;
-    uint8_t u8VentAirTimeIntervalRecordFlag = NO;
-    uint8_t u8DecompressVentTimeRecordFlag = NO;
-    float   fVolatageBefore = 0.0,fVolatageAfter = 0.0;    
-    
-    while(DEF_TRUE) {
-        OSTaskSuspend(NULL, &err);
-        APP_TRACE_INFO(("**Stack Program Control Air Pressure Release Task...\r\n"));
-        while(DEF_TRUE) {
-            OSTaskSemPend(0,   //wait task sem from AD acquire interupt 
-                          OS_OPT_PEND_BLOCKING,
-                          NULL,
-                          &err);
-
-            if(err == OS_ERR_NONE) {
-                //The air pressure reach the upper limit,need to open the exhaust valve
-                if(OFF == GetStackOutAirValveStatus()) {
-                    BSP_HydrgOutValvePwrOn();  //program control release air press
-                    fVolatageBefore = GetSrcAnaSig(STACK_VOLTAGE);
-                    g_u16StackExhaustTimesCount ++; //update exhaust time 
-                    APP_TRACE_INFO(("-->g_u16StackExhaustTimesCount:%d\r\n", g_u16StackExhaustTimesCount));
-                    StackVentAirTimeParameter.fVentAirTimeIntervalValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录排气间隔
-                    StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num 
-                    u8VentAirTimeIntervalRecordFlag = YES;
-                    SetStackOutAirValveStatus(ON);
-                    APP_TRACE_INFO(("-->fVolatageBefore:%.3f\r\n", fVolatageBefore));
-                }
-                //The air pressure below the lower limit,need to close the exhaust valve
-                else if(ON == GetStackOutAirValveStatus()) {
-                    BSP_HydrgOutValvePwrOff();
-                    fVolatageAfter = GetSrcAnaSig(STACK_VOLTAGE); 
-                    BSP_StartRunningVentingTimeRecord(); //Start recording the exhaust time parameter 
-                    StackVentAirTimeParameter.fDecompressVentTimeValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录泄压时间
-                    StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num 
-                    u8DecompressVentTimeRecordFlag = YES;
-                    SetStackOutAirValveStatus(OFF);
-                    APP_TRACE_INFO(("-->fVolatageAfter:%.3f\r\n", fVolatageAfter));
-                    APP_TRACE_INFO(("-->fVpp:%.3f\r\n\r\n", fVolatageBefore - fVolatageAfter));
-                } else {}
-
-                //Send task sem to V-HYMO monitor task
-                if((u8VentAirTimeIntervalRecordFlag == YES) && (u8DecompressVentTimeRecordFlag == YES)) {
-                    OSTaskSemPost(&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,
-                                  OS_OPT_POST_NO_SCHED,
-                                  &err);
-                    u8VentAirTimeIntervalRecordFlag = NO;
-                    u8DecompressVentTimeRecordFlag = NO;
-                }
-
-                /* Disable the task */
-                if(g_u8StackProgramControlAirPressureReleaseTaskSw == DEF_DISABLED) {
-
-                    BSP_StopRunningVentingTimeRecord();
-                    break;
-                }
-            }
-        }
-    }
-}
-
-/*
-***************************************************************************************************
 *                            ResetStackExhaustTimesCountPerMinutes()
 *
-* Description:  Enable or Disable the stack fan auto adjust.
+* Description:  电堆尾部泄压排气次数监测.
 *
 * Arguments  :  none
 *
 * Returns    :  none
 ***************************************************************************************************
 */
-void ResetStackExhaustTimesCountPerMinutes()
+
+void DecompressCountPerMinuteInc(void)
 {
-    g_u16StackExhaustTimesCount = 0;
+    if(EN_IN_WORK == GetStackWorkStatu()) {
+        g_u8DecompressCountPerMinute ++;
+    }
+}
+void ResetStackExhaustTimesCountPerMinutes(void)
+{
+    g_u8DecompressCountPerMinute = 0;
+}
+
+uint8_t GetPassiveDecompressCountPerMinutes(void)
+{
+    return g_u8DecompressCountPerMinute;
 }
 /*
 ***************************************************************************************************

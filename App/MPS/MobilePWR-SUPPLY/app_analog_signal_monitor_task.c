@@ -129,15 +129,14 @@ void  AnaSigMonitorTask(void *p_arg)
     while(DEF_TRUE)
     {
         OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_HMSM_STRICT, &err);
-        /*****此部分的模拟量更新放到中断中进行*****/
-//        /* 开始模拟信号采样，得到数字信号 */
-//        AnaSigSampleStart();
-//        OSSemPend(&g_stAnaSigConvertFinishSem,
-//                  0,                              //一直等待模拟信号转换完成
-//                  OS_OPT_PEND_BLOCKING,
-//                  NULL,
-//                  &err);
-//        UpdateAnaSigDigValue();//更新采样值
+        
+        AnaSigSampleStart();
+        OSSemPend(&g_stAnaSigConvertFinishSem,
+                  0,                              //等待模拟信号采样完成
+                  OS_OPT_PEND_BLOCKING,
+                  NULL,
+                  &err);
+        UpdateAnaSigDigValue();//更新采样值
 
         /* 制氢机、电堆运行信号监测 */
         if(g_u8HydrgProducerAnaSigRunningMonitorAlarmHookSw == DEF_ENABLED)
@@ -152,12 +151,12 @@ void  AnaSigMonitorTask(void *p_arg)
 
         if(g_u8StackHydrgPressHighEnoughHookSw == DEF_ENABLED)
         {
-            StackHydrgPressHighEnoughWaitHook();    //电堆压力达到
+            StackHydrgPressHighEnoughWaitHook();    
         }
 
         if(g_u8HydrgProducerAnaSigalarmRunningStartAutoAdjHookSw == DEF_ENABLED)
         {
-            HydrgProducerAnaSigRunningStartAutoAdjHook();       //制氢机开始自动调节
+            HydrgProducerAnaSigRunningStartAutoAdjHook();      
         }
     }
 }
@@ -183,7 +182,6 @@ void HydrgProducerAnaSigAlarmRunningMonitorHook(void)
     if(fLqdPress > g_stLqdPressCmpTbl.AlarmUpperLimit)
     {
         AlarmCmd(LIQUID_PRESS_HIGH_ALARM, ON);
-
         if(fLqdPress > g_stLqdPressCmpTbl.ShutDownUpperLimit)
         {
             APP_TRACE_INFO(("Hydrogen producer liquid press is above the high press protect line...\n\r"));
@@ -199,19 +197,13 @@ void HydrgProducerAnaSigAlarmRunningMonitorHook(void)
     if(flqdHeight < g_stLqdHeightCmpTbl.AlarmlowerLiquidLevellimit)
     {
         AlarmCmd(FUEL_SHORTAGE_ALARM, ON);
-    }
-    else if( flqdHeight <= 100 )
-    {
-        BSP_OutsidePumpPwrOn();          // Control_Outside_Pump_Switch = 1 ;//关闭水泵开关
-    }
-    else if( flqdHeight >= 200 )
-    {
-        BSP_OutsidePumpPwrOff();         //  Control_Outside_Pump_Switch = 0 ;//关闭水泵开关
-
-    }
-    else
-    {
+    }else{
         AlarmCmd(FUEL_SHORTAGE_ALARM, OFF);
+        if(flqdHeight <= g_stLqdHeightCmpTbl.OpenAutomaticliquidValue){//自动加液水泵
+            BSP_OutsidePumpPwrOn();
+        }else if(flqdHeight >= g_stLqdHeightCmpTbl.CloseAutomaticliquidValue){
+            BSP_OutsidePumpPwrOff();
+        }else{}
     }
 
 //  UpdateBuzzerStatuInCruise();
@@ -239,10 +231,9 @@ void HydrgProducerAnaSigRunningStartAutoAdjHook(void)
     fLqdPress = GetSrcAnaSig( LIQUID_PRESS );
     i++;
 
-    if(i >= 10)//模拟信号检测周期是100ms一次，计10次也即1秒调节1次
+    if(i >= 10)//1秒调节1次泵速
     {
         i = 0;
-
         if(( fLqdPress >= 4) && (g_u8PumpAutoAdjFinishStatu == DEF_NO ))
         {
             PumpSpdDec();
@@ -305,21 +296,18 @@ void StackAnaSigAlarmRunningMonitorHook(void)
     if(fStackTemp > 60)
     {
         AlarmCmd(STACK_TEMP_HIGH_ALARM, ON);
-        StackFanSpdInc();
-
         if(fStackTemp > 70)
         {
-            APP_TRACE_INFO(("Stack temp is above the high temp protect line...\n\r"));
+//            APP_TRACE_INFO(("Stack temp is above the high temp protect line...\n\r"));
         }
     }
     else if(fStackTemp < 20)
     {
         AlarmCmd(STACK_TEMP_LOW_ALARM, ON);
-        StackFanSpdDec();
 
         if(fStackTemp < 10)
         {
-            APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
+//            APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
         }
     }
     else
@@ -328,7 +316,7 @@ void StackAnaSigAlarmRunningMonitorHook(void)
         AlarmCmd(STACK_TEMP_LOW_ALARM, OFF);
     }
 
-    /* 监测气压 */
+    /* 监测气压-可设置低气压关机 */
     fHydrgPress = GetSrcAnaSig(HYDROGEN_PRESS_1);
 
     if(fHydrgPress >= 10)
@@ -344,6 +332,7 @@ void StackAnaSigAlarmRunningMonitorHook(void)
         if(g_u16StackManagerHydrgPressBelow10KPaHoldSeconds >= 300)
         {
 //            CmdShutDown();      //关机命令
+            g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;
         }
     }
 

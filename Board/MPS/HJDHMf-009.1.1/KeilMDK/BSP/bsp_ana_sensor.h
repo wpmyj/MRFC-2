@@ -39,7 +39,7 @@
     #define  BSP_ANA_SENSOR  extern
 #endif
 
-#define BSP_ANA_SENSORS_NMB                      9u     //模拟信号采样通道数-14
+#define BSP_ANA_SENSORS_NMB                      9u     //模拟信号采样通道数-9
 /*
 ***************************************************************************************************
 *                                           EXPORTED DATA TYPE
@@ -101,8 +101,6 @@ typedef enum
 */
 
 void    AnaSensorSelfCheck(void);
-
-void    BSP_LoadCalibratedAnaSensorParameters(void);
 
 void    BSP_StoreAnaSigParameters(void);
 void    AnaSigSampleStart(void);

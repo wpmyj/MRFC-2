@@ -79,7 +79,7 @@
 *                                           GLOBAL VARIABLES
 ***************************************************************************************************
 */
-uint8_t  g_u8DecompressCountPerMinute = 0; //每分钟排气次数
+
 /*
 ***************************************************************************************************
 *                                           LOCAL VARIABLES
@@ -113,7 +113,8 @@ static  void  BSP_HydrgFanCtrInit(void);
 static  void  BSP_HydrgFanPwrOn(void);
 static  void  BSP_HydrgFanPwrOff(void);
 
-
+static void ButtonStatusCheck_IRQHandler(void);
+static void PDPulseStatusCheck_IRQHandler(void);
 
 static  void  BSP_SwTypePwrDeviceStatuInit(void);
 
@@ -389,31 +390,31 @@ static  void  BSP_AnaSensorPortsInit(void)
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
     GPIO_Init(GPIOC, &GPIO_InitStructure);
-//    
-//    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_BATTERY_CURRENT_ANA_SIGNAL_PORT_NMB;  
-//    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-//    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
-//    GPIO_Init(GPIOC, &GPIO_InitStructure);
-//    
-//    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_RAPID_HEATER_CURRETN_ANA_SIGNAL_PORT_NMB;  
-//    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-//    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
-//    GPIO_Init(GPIOC, &GPIO_InitStructure);
-//    
-//    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_NEGATIVE_PRESSURE_ANA_SIGNAL_PORT_NMB;  
-//    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-//    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
-//    GPIO_Init(GPIOC, &GPIO_InitStructure);
-//    
-//    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_RSVD1_ANA_SIGNAL_PORT_NMB;  
-//    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-//    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
-//    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_BATTERY_CURRENT_ANA_SIGNAL_PORT_NMB;  
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_RAPID_HEATER_CURRETN_ANA_SIGNAL_PORT_NMB;  
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_NEGATIVE_PRESSURE_ANA_SIGNAL_PORT_NMB;  
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_RSVD1_ANA_SIGNAL_PORT_NMB;  
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-//    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_RSVD2_ANA_SIGNAL_PORT_NMB;   
-//    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-//    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
-//    GPIO_Init(GPIOC, &GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_RSVD2_ANA_SIGNAL_PORT_NMB;   
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
 }
 
 void BSP_AnaSensorADCNVIC_Init(void)
@@ -509,8 +510,8 @@ static void BSP_AdcNormalConvertStart(vu16 *i_pBuffAddr, uint8_t i_u8ChUsedNmb)
     ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 5, ADC_SampleTime_239Cycles5);    // 气压1
     ADC_RegularChannelConfig(ADC1, ADC_Channel_7, 6, ADC_SampleTime_239Cycles5);    // 气压2
     ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 7, ADC_SampleTime_239Cycles5);    // 液位
-    ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 8, ADC_SampleTime_239Cycles5);    // 电池电压
-    ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 9, ADC_SampleTime_239Cycles5);    // 氢气浓度
+//    ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 8, ADC_SampleTime_239Cycles5);    // 电池电压
+//    ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 9, ADC_SampleTime_239Cycles5);    // 氢气浓度
 //    ADC_RegularChannelConfig(ADC1, ADC_Channel_11, 10, ADC_SampleTime_239Cycles5);    // 电池电流
 //    ADC_RegularChannelConfig(ADC1, ADC_Channel_12, 11, ADC_SampleTime_239Cycles5);    // 快速加热器电流
 //    ADC_RegularChannelConfig(ADC1, ADC_Channel_13, 12, ADC_SampleTime_239Cycles5);    // 负压传感器
@@ -555,56 +556,13 @@ static void BSP_AdcNormalConvertStart(vu16 *i_pBuffAddr, uint8_t i_u8ChUsedNmb)
 void BSP_AnaSigConvertFinishHandler(void)
 {
     OS_ERR      err;
-    static uint8_t u8OccupyFlag = NO;
-    float fStackHydrogenPress = 0.0;
 
     if(DMA_GetITStatus(DMA1_IT_TC1) != RESET) {
-
-        //更新模拟量采样值,暂对气压值不滤波
-        UpdateAnaSigDigValue();
         //发送信号量，告知ADC的DMA转换已经完成
         OSSemPost(&g_stAnaSigConvertFinishSem,
                   OS_OPT_POST_1,
                   &err);
-
-        if(DEF_DISABLED == GetStackStartPurifySwitchStatus()) { //不在净化阶段
-            if(DEF_ENABLED == GetStackProgramControlAirPressureReleaseTaskSwitch()) { //程控泄压开关打开
-                //气压监测在中断中监测,提高实时性
-                fStackHydrogenPress = GetSrcAnaSig(HYDROGEN_PRESS_1);
-
-                if(DEF_OFF == GetStackNeedVentByAmpIntegralSumSwitch()){//程控泄压排气
-                    if((fStackHydrogenPress > 50.0) && (OFF == GetStackOutAirValveStatus()) && (u8OccupyFlag == NO)) { //50.0
-                        OSTaskSemPost(&StackProgramControlAirPressureReleaseTaskTCB,
-                                      OS_OPT_POST_1,
-                                      &err);
-                        u8OccupyFlag = YES;
-                    } else if((fStackHydrogenPress < 36.0) && (ON == GetStackOutAirValveStatus()) && (u8OccupyFlag == YES)) { //36.0
-                        OSTaskSemPost(&StackProgramControlAirPressureReleaseTaskTCB,
-                                      OS_OPT_POST_1,
-                                      &err);
-                        u8OccupyFlag = NO;
-                    } else {}
-                } else {//安培秒排气,此处不记录排气时间
-                    if(((fStackHydrogenPress > 52.0) || (GetStackAmpIntegralSum() >= 900.0)) && (OFF == GetStackOutAirValveStatus()) && (u8OccupyFlag == NO)) { //52.0
-                        BSP_HydrgOutValvePwrOn();
-                        SetStackOutAirValveStatus(ON);
-                        StackVentAirTimeParameter.u32_TimeRecordNum = 0;//清零计数
-                        BSP_StartRunningVentingTimeRecord();//安培秒排气计时0.5s
-                        u8OccupyFlag = YES;
-                    } else if((StackVentAirTimeParameter.u32_TimeRecordNum >= 500) && (ON == GetStackOutAirValveStatus()) && (u8OccupyFlag == YES)) { //30.0
-                        BSP_HydrgOutValvePwrOff();
-                        StackVentAirTimeParameter.u32_TimeRecordNum = 0;//清零计数
-                        SetStackOutAirValveStatus(OFF);
-                        u8OccupyFlag = NO;
-                        //一个流程后才关闭,开+关表示一个流程
-                        SetStackAmpIntegralSum(0.0);//清零安培时间积分累加和
-                        SetStackNeedVentByAmpIntegralSumSwitch(DEF_OFF);
-                    } else {}  
-                }     
-            }
-        }
         DMA_ClearITPendingBit(DMA1_IT_TC1);
-        AnaSigSampleStart(); //AD采样完成后立即进行下一次采样
     }
 }
 /*
@@ -1215,7 +1173,7 @@ void  BSP_RSVD8PwrOff(void)
 ***************************************************************************************************
 *                                            BSP_GetPassiveGpioStatu()
 *
-* Description : 获取泄压阀输入脉冲状态.
+* Description : 获取电堆尾部泄压阀输入脉冲状态.
 *                               
 * Argument(s) : none.
 *
@@ -1226,19 +1184,7 @@ void  BSP_RSVD8PwrOff(void)
 */
 uint8_t BSP_GetPassiveGpioStatu(void)
 {
-    return GPIO_ReadInputDataBit(GPIOE, BSP_GPIOE_PD_PULSE1_PORT_NMB);
-}
-//每分钟泄压次数加1
-void DecompressNumPerMinuteInc(void)
-{
-    if(EN_IN_WORK == GetStackWorkStatu()) {
-        g_u8DecompressCountPerMinute ++;
-    }
-}
-//获取每分钟泄压次数
-uint8_t GetPassiveDecompressCountPearStackPurifyCycle()
-{
-    return g_u8DecompressCountPerMinute;
+    return GPIO_ReadInputDataBit(GPIOE, BSP_GPIOE_PD_PULSE2_PORT_NMB);
 }
 /*
 ***************************************************************************************************
@@ -1280,7 +1226,7 @@ void BSP_VentingIntervalRecordTimerInit(void)
 ***************************************************************************************************
 *                                            BSP_StartRunningVentingTimeRecord()
 *
-* Description : 开始电堆排气时间记录.
+* Description : 开始电堆尾部排气时间参数记录.
 *
 * Argument(s) : none.
 *
@@ -1846,15 +1792,23 @@ void BSP_CmdButtonInit(void)
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_Init(&EXTI_InitStructure);     //根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
 
-    BSP_IntVectSet(BSP_INT_ID_EXTI15_10, EXTI15_10_IRQHandler);
+    BSP_IntVectSet(BSP_INT_ID_EXTI15_10, ButtonStatusCheck_IRQHandler);
     BSP_IntEn(BSP_INT_ID_EXTI15_10);
 }
 
+static void ButtonStatusCheck_IRQHandler()
+{
+    if(EXTI_GetITStatus(EXTI_Line13) != RESET) {//开关按键
+        CmdButtonFuncDisable();
+        StartCmdButtonActionCheckDly(); //定时器定时0.5后的中断中判断按钮按下，然后执行相应流程
+        EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE10上的中断标志位
+    }
+}
 /*
 ***************************************************************************************************
 *                                            BSP_CmdButtonInit()
 *
-* Description : 脉冲输入引脚初始化.
+* Description : 泄压脉冲输入监测引脚初始化.
 *
 * Argument(s) : none.
 *
@@ -1895,31 +1849,70 @@ void BSP_ImpulseInputPortInit(void)
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_Init(&EXTI_InitStructure);
 
-    BSP_IntVectSet(BSP_INT_ID_EXTI15_10, EXTI15_10_IRQHandler);
+    BSP_IntVectSet(BSP_INT_ID_EXTI15_10, PDPulseStatusCheck_IRQHandler);
     BSP_IntEn(BSP_INT_ID_EXTI15_10);
 }
 
-
-void EXTI15_10_IRQHandler(void)
+/*
+***************************************************************************************************
+*                                  PDPulseStatusCheck_IRQHandler()
+*
+* Description : 脉冲输入引脚捕获中断函数.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+static void PDPulseStatusCheck_IRQHandler()
 {
-    if(EXTI_GetITStatus(EXTI_Line10) != RESET) {
+    OS_ERR      err;
+    static uint8_t u8VentAirTimeIntervalRecordFlag = NO;
+    static uint8_t u8DecompressVentTimeRecordFlag = NO;
+    
+    if(EXTI_GetITStatus(EXTI_Line10) != RESET) {//PDPulse1-电堆前端的泄压阀状态
+        
+        EXTI_ClearITPendingBit(EXTI_Line10);  
+    }
+    
+    if(EXTI_GetITStatus(EXTI_Line12) != RESET) {//PDPulse2-电堆后端的泄压阀状态
         if(0 == BSP_GetPassiveGpioStatu()) {
-            DecompressNumPerMinuteInc();
+            DecompressCountPerMinuteInc();
+            BSP_StartRunningVentingTimeRecord(); //Start recording the exhaust time parameter
+            StackVentAirTimeParameter.fVentAirTimeIntervalValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录排气间隔时间
+            StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num
+            u8VentAirTimeIntervalRecordFlag = YES;
+        }else{             
+            StackVentAirTimeParameter.fDecompressVentTimeValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录泄压时间
+            StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num 
+            u8DecompressVentTimeRecordFlag = YES;
         }
-        EXTI_ClearITPendingBit(EXTI_Line10);  //清除LINE10上的中断标志位
+        //排气参数记录完发送到匹氢偏移量监测任务
+        if((u8VentAirTimeIntervalRecordFlag == YES) && (u8DecompressVentTimeRecordFlag == YES)) {
+            OSTaskSemPost(&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,
+                          OS_OPT_POST_NO_SCHED,
+                          &err);
+            u8VentAirTimeIntervalRecordFlag = NO;
+            u8DecompressVentTimeRecordFlag = NO;
+        }
+        EXTI_ClearITPendingBit(EXTI_Line12);  
     }
-    
-    if(EXTI_GetITStatus(EXTI_Line12) != RESET) {
-        EXTI_ClearITPendingBit(EXTI_Line10);  //清除LINE12上的中断标志位
-    }
-    
-    if(EXTI_GetITStatus(EXTI_Line13) != RESET) {
-        CmdButtonFuncDisable();
-        StartCmdButtonActionCheckDly(); //定时器定时0.5后的中断中判断按钮按下，然后执行相应流程
-        EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE10上的中断标志位
-    }   
 }
-
+/*
+***************************************************************************************************
+*                                            BSP_CmdButtonInit()
+*
+* Description : 脉冲输入引脚初始化.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
 void CmdButtonFuncDisable(void)
 {
     EXTI_InitTypeDef EXTI_InitStructure;

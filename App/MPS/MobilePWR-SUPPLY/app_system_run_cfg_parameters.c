@@ -125,7 +125,19 @@ static          void        StoreRunPurifyAmpIntegralValue(u16 *);
 
 
 #if 1
-
+/*
+***************************************************************************************************
+*                               LoadDriverLayerParameters()
+*
+* Description:  load the driver Layer sensors and others devices prameters.
+*
+* Arguments  :  none.
+*
+* Returns    :  none.
+*
+* Note(s)    :  none.
+***************************************************************************************************
+*/
 void LoadDriverLayerParameters()
 {
     uint16_t u16ParametersSelectFlag;
@@ -383,7 +395,7 @@ static void GetReformerTempCmpTblFromFlash(REFORMER_TEMP_CMP_LINES_Typedef *i_Re
 static void GetDefaultReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *i_ReformerTemCmpTbl)
 {
     i_ReformerTemCmpTbl->IgFstTimeFrtToBhdTmpPnt    = NULL;
-    i_ReformerTemCmpTbl->IgFstTimeOverTmpPnt        = 50;
+    i_ReformerTemCmpTbl->IgFstTimeOverTmpPnt        = 230;
     i_ReformerTemCmpTbl->IgFstTimeWatiTimeMax1      = NULL;
     i_ReformerTemCmpTbl->IgFstTimeWatiTimeMax2      = NULL;
     i_ReformerTemCmpTbl->IgScdTimeFrtToBhdTmpPnt    = NULL;
@@ -522,7 +534,9 @@ static void GetLqdHeightCmpTblFromFlash(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHe
 static void GetDefaultLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmpTbl)
 {
     i_LqdHeightCmpTbl->AlarmlowerLiquidLevellimit = 70;
-    i_LqdHeightCmpTbl->AlarmUpperLiquidLevellimit = 150;//ÔÝ¶¨
+    i_LqdHeightCmpTbl->OpenAutomaticliquidValue = 100;
+    i_LqdHeightCmpTbl->CloseAutomaticliquidValue = 200;
+    i_LqdHeightCmpTbl->AlarmUpperLiquidLevellimit = 230;//ÔÝ¶¨
 }
 
 /*
@@ -568,8 +582,9 @@ void GetStartHydrgPumpSpdParaFromFlash(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_Start
 static void GetDefaultStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
 {
     i_StartPumpSpdPara->PumpSpdIgniterFirstTime   = 190;
-    i_StartPumpSpdPara->PumpSpdIgniterSecondTime  = 400;
+    i_StartPumpSpdPara->PumpSpdIgniterSecondTime  = 350;
 }
+
 void StoreStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
 {
     RW_ParametersBuffer[RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR]
@@ -577,7 +592,6 @@ void StoreStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpd
 
     RW_ParametersBuffer[RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR + 1]
         = i_StartPumpSpdPara->PumpSpdIgniterSecondTime;
-
 }
 
 /*

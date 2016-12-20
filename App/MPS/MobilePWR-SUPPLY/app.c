@@ -170,7 +170,7 @@ static  void  AppTaskStart(void *p_arg)
 
     CommunicateTaskCreate();           // 无线通信任务创建
     
-    DcModuleAdjustTaskCreate();  //DC动态限流调节任务
+    DcModuleAdjustTaskCreate();         //DC限流调节任务
 
 //    Make_Vacuum_FunctionTaskCreate(); //抽真空函数任务的搭建
 

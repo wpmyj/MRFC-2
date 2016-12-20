@@ -70,7 +70,7 @@ static      float       g_fDigValueSum[BSP_ANA_SENSORS_NMB] = {0};      //滤波器
 static      uint8_t     g_u8FilterOperationCursor = 0;                  //滤波器数据更新标记
 static      float       g_fDigFilteredValue[BSP_ANA_SENSORS_NMB] = {0}; //滤波后输出值
 
-static      uint8_t                             g_u8AnaSensorTypeNmb[BSP_ANA_SENSORS_NMB] = {0};
+static      uint8_t     g_u8AnaSensorTypeNmb[BSP_ANA_SENSORS_NMB] = {0};
 
 //线性输出的传感器相关参数
 static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorParameter[BSP_ANA_SENSORS_NMB];
@@ -134,10 +134,11 @@ ErrorStatus BSP_GetCalibratedAnaSensorPara(ANALOG_SIGNAL_SERSOR_PARAMETERS_Typed
     OSTimeDlyHMSM(0, 0, 0, 10,                      //等待传感器上电充分
                   OS_OPT_TIME_HMSM_STRICT,
                   &err);
-    AnaSigSampleStart();    //模拟信号采样开始，在中断中开始下一次采样
-
+    
+//    AnaSigSampleStart();    //模拟信号采样开始，在中断中开始下一次采样
     for(i = 0; i < NMB_OF_AVERAGE_WHEN_CALIBRATION; i++) {
-//        AnaSigSampleStart();    //模拟信号采样开始
+        
+        AnaSigSampleStart();    //模拟信号采样开始，在中断中开始下一次采样
         OSSemPend(&g_stAnaSigConvertFinishSem,
                   OS_CFG_TICK_RATE_HZ,
                   OS_OPT_PEND_BLOCKING,
@@ -238,7 +239,20 @@ void BSP_SaveAnaSensorParameters(float *i_NewParameters)
     }
 }
 
-//模拟信号传感器自检
+/*
+***************************************************************************************************
+*                                                AnaSensorSelfCheck()
+*
+* Description : The function load the parameters that along to the sensor model and circuit from the rom flash.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Caller(s)   : Application.
+*
+***************************************************************************************************
+*/
 void AnaSensorSelfCheck(void)
 {
     float Temp;

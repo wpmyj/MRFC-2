@@ -93,59 +93,60 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
     IGNITE_CHECK_STATU_Typedef m_eIgniteStatu;
 
     if(EN_START_PRGM_ONE_FRONT == GetSystemWorkStatu())
-    {
-
-        SetSystemWorkStatu(EN_START_PRGM_ONE_BEHIND);
-
+    {            
+        APP_TRACE_INFO(("Start program one front,fast heat 3 minutes...\n\r"));
+        BSP_FastHeaterPwrOn();  
+        OSTimeDlyHMSM(0, 3, 0, 0,   //快速加热三分钟
+                      OS_OPT_TIME_HMSM_STRICT,
+                      &err); 
+        APP_TRACE_INFO(("Fast heat control finish...\n\r"));        
+        SetSystemWorkStatu(EN_START_PRGM_ONE_FRONT);
+        
         if(EN_START_PRGM_ONE_BEHIND == GetSystemWorkStatu())
         {
             APP_TRACE_INFO(("Ignite first time behind...\n\r"));
             BSP_LqdValve1_PwrOn();
-            SetPumpCtlSpd(190);
-            SetHydrgFanCtlSpd(2000);
-            IgniterWorkForSeconds(240);
+            SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime);
+            SetHydrgFanCtlSpd(g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime);
+            IgniterWorkForSeconds(180);
 
-            SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(DEF_ENABLED);
-            OSSemPend(&IgniteFirstBehindWaitSem,                        //  因有多个之一的条件满足即可，且有多处等待点，故使用信号量传递信息，而非任务信号量。
-                      (OS_CFG_TICK_RATE_HZ * 60 * 30),                 //三十分钟点火检查时间
+            SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(DEF_ENABLED);//重整温度监测
+            //条件满足其一即可：1、收到提前启动命令 2、重整温度达到 3、收到关机命令
+            OSSemPend(&IgniteFirstBehindWaitSem, 
+                      0,  //一直等待信号量
                       OS_OPT_PEND_BLOCKING,
                       NULL,
                       &err);
             
-            
-            if(err == OS_ERR_NONE)//正常得到信号
+            if(err == OS_ERR_NONE)
             {
-                if((GetAheadRunningFlag() == YES))          //收到提前启动指令
+                if((GetAheadRunningFlag() == YES)) //收到提前启动指令
                 {
                     APP_TRACE_INFO(("Ignite first time behind ahead start command...\n\r"));
                     SetAheadRunningFlag(NO);
                     m_eIgniteStatu = EN_PASS;
                 }
-                else if(EN_START_PRGM_ONE_BEHIND == GetSystemWorkStatu())    //温度达到要求
+                else if(EN_START_PRGM_ONE_BEHIND == GetSystemWorkStatu())  //重整温度达到要求
                 {
                     APP_TRACE_INFO(("Ignite first time behind temperature meet requirement ...\n\r"));
                     m_eIgniteStatu = EN_PASS;
                 }
-                else       //手动控制指令
+                else //关机
                 {
                     APP_TRACE_INFO(("Ignite first time behind wait has been broken...\n\r"));
                     IgniterWorkForSeconds(0);
+                    SetPumpCtlSpd(0);
                     m_eIgniteStatu = EN_NOT_PASS;
                 }
             }
-            else if(err == OS_ERR_TIMEOUT)                   //达到延时时间
+            else                                        
             {
-                APP_TRACE_INFO(("Ignite first time behind wait timeout...\n\r"));
-                m_eIgniteStatu = EN_PASS;
-            }
-            else                                        //其他
-            {
-                APP_TRACE_INFO(("Ignite first time behind wait err...\n\r"));
+                APP_TRACE_INFO(("Ignite first time behind sem wait err...\n\r"));
                 IgniterWorkForSeconds(0);
+                SetPumpCtlSpd(0);
                 m_eIgniteStatu = EN_NOT_PASS;
             }
-
-            SetPumpCtlSpd(0);
+            
             BSP_LqdValve1_PwrOff();
         }
         else
@@ -184,8 +185,8 @@ IGNITE_CHECK_STATU_Typedef IgniteSecondTime(float m_IgniteCheckTable2, float m_G
     APP_TRACE_INFO(("Ignite second time...\n\r"));
     BSP_FastHeaterPwrOff();  
     BSP_LqdValve2_PwrOn();
-    SetPumpCtlSpd(400);
-    SetHydrgFanCtlSpd(2000);
+    SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime);
+    SetHydrgFanCtlSpd(g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime);
     IgniterWorkForSeconds(120);
 
     m_eIgniteStatu = EN_PASS;

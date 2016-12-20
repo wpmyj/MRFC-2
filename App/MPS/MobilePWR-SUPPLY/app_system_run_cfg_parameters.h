@@ -100,8 +100,10 @@ typedef struct {
 
 typedef struct
 {
-    float AlarmlowerLiquidLevellimit;//液位低下限
-    float AlarmUpperLiquidLevellimit;//液位高上限
+    uint8_t AlarmlowerLiquidLevellimit;//液位低下限
+    uint8_t OpenAutomaticliquidValue; //开自动加液液位值
+    uint8_t CloseAutomaticliquidValue; //关自动加液液位值
+    uint8_t AlarmUpperLiquidLevellimit;//液位高上限
     
 } LIQUID_HEIGHT_CMP_LINES_Typedef;
 
@@ -115,6 +117,8 @@ extern HYDROGEN_FAN_SPEED_PARA_Typedef             g_stStartHydrgFanSpdPara;
 extern REFORMER_TEMP_CMP_LINES_Typedef             g_stReformerTempCmpTbl;
 extern LIQUID_PRESSURE_CMP_LINES_Typedef           g_stLqdPressCmpTbl;
 extern LIQUID_HEIGHT_CMP_LINES_Typedef             g_stLqdHeightCmpTbl;
+
+extern uint16_t                                    g_u16RunPurifyAmpIntegralValue;
 /*
 ***************************************************************************************************
 *                                           EXPORTED MACRO

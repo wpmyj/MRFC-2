@@ -84,7 +84,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef CheckAuthorization(void)
 *                                          DeviceFaultAlarm()
 *
 * Description : The funciton is the device alarm process.
-*               设备故障警报
+*               
 * Arguments   : none.
 *
 * Returns     : none
@@ -331,10 +331,8 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
 */
 void Starting(void)
 {
+    OS_ERR      err;
     SYSTEM_WORK_MODE_Typedef eWorkMode;
-    SYSTEM_TIME_Typedef m_stCURRENT_SYSTEM_TIME;
-    SYSTEM_TIME_Typedef m_stSYSTEM_TIME_RECORD_FOR_START_RAMAIN;
-
     float IgniteCheckTable1, GoToNextStepTempTable1;
     float IgniteCheckTable2, GoToNextStepTempTable2;
 
@@ -347,64 +345,19 @@ void Starting(void)
     ResetStackProductTimeThisTime();
 
     SystemWorkTimesInc();
-    //系统启动剩余时间计算
-    m_stSYSTEM_TIME_RECORD_FOR_START_RAMAIN = GetSystemTime();
-    m_stCURRENT_SYSTEM_TIME = GetSystemTime();
-
-    if((((m_stCURRENT_SYSTEM_TIME.hour - m_stSYSTEM_TIME_RECORD_FOR_START_RAMAIN.hour) * 60
-            + m_stCURRENT_SYSTEM_TIME.minute - m_stSYSTEM_TIME_RECORD_FOR_START_RAMAIN.minute) * 60
-            + m_stCURRENT_SYSTEM_TIME.second - m_stSYSTEM_TIME_RECORD_FOR_START_RAMAIN.second)
-            >= 1)
-    {
-        g_u16StartRemainSecond--;
-        m_stSYSTEM_TIME_RECORD_FOR_START_RAMAIN = m_stCURRENT_SYSTEM_TIME;
-
-        if( g_u16StartRemainSecond == 0 || g_u16StartRemainSecond > 900 )
-        {
-            /*越界处理*/
-        }
-    }
-
     eWorkMode = GetWorkMode();
 
+    BSP_BuzzerOn();
+    OSTimeDlyHMSM(0, 0, 0, 200, OS_OPT_TIME_HMSM_STRICT, &err);
+    BSP_BuzzerOff();
+    OSTimeDlyHMSM(0, 0, 0, 200, OS_OPT_TIME_HMSM_STRICT, &err);
+    
     //一体机模式或者制氢模式
     if(( eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL ) || ( eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER ))
     {  
-        OS_ERR err;
-        HydrgProducerWorkTimesInc();               //开始制氢计算时间      
-        SetSystemWorkStatu(EN_START_PRGM_ONE_FRONT);  
-        
-        APP_TRACE_INFO(("Fast heat control...\n\r"));
-        SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(DEF_ENABLED);
-        BSP_FastHeaterPwrOn();  //打开快速加热器
-        OSSemPend(&IgniteFirstBehindWaitSem,   
-                  ( OS_CFG_TICK_RATE_HZ * 60 * 3 ), //三分钟时间
-                  OS_OPT_PEND_BLOCKING,
-                  NULL,
-                  &err);
-                           
-        if( err == OS_ERR_NONE )                             
+        if( EN_START_PRGM_ONE_FRONT == GetSystemWorkStatu() )
         {
-            APP_TRACE_INFO(("Fast heat control finish...\n\r"));
-            SetSystemWorkStatu(EN_START_PRGM_ONE_FRONT);//直接跳到准备运行前的第二次点火
-            return;
-        }
-        else if( err == OS_ERR_TIMEOUT )
-        {
-            APP_TRACE_INFO(("Fast heat control : OS_ERR_TIMEOUT...\n\r"));
-            SetSystemWorkStatu( EN_START_PRGM_ONE_FRONT );
-        }
-        
-        else
-        {
-            APP_TRACE_INFO(("Fast heat control, error code : %d...\n\r", err));
-        }
-    
-
-        if( GetSystemWorkStatu() == EN_START_PRGM_ONE_FRONT )
-        {
-  //        HydrgProducerWorkTimesInc();     
-
+            HydrgProducerWorkTimesInc();     
             //第一次点火
             if(( EN_PASS == IgniteFirstTime(IgniteCheckTable1, GoToNextStepTempTable1, 3, 1 )))
             {
@@ -440,9 +393,8 @@ void Starting(void)
                 }
 
                 SetShutDownActionFlag( EN_DELAY_STOP_PART_ONE );
-            }
-            //第一次点火不成功，直接停止
-            else
+            } 
+            else 
             {
                 APP_TRACE_INFO( ("Ignite for the second time has been leaped over ...\n\r") );
                 SetShutDownActionFlag(  EN_STOP_ALL_DIRECT );
@@ -512,36 +464,36 @@ void Running()
     if( GetSystemWorkStatu() == EN_RUNNING )
     {
          
-        APP_TRACE_INFO(("Run: System enter the cruise process...\n\r"));    //提示系统进入巡航运行阶段
+        APP_TRACE_INFO(("Run: System enter the cruise process...\n\r"));    
         eWorkMode = GetWorkMode();
 
         switch((u8)eWorkMode)
         {
             case(u8)EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL:
-                OSTaskResume(&HydrgProducerManagerTaskTCB,  //制氢机管理任务开始运行
+                OSTaskResume(&HydrgProducerManagerTaskTCB,  
                              &err);
-                OSTaskResume(&StackManagerTaskTCB,          //电堆管理任务开始运行
+                OSTaskResume(&StackManagerTaskTCB,          
                              &err);
                 SetShutDownActionFlag(EN_DELAY_STOP_BOTH_PARTS);//运行到此说明一体机模式正常启动，先前在启动阶段未严格区分一体和制氢模式，故在此再次设置
-                OSTaskSuspend(&AppTaskStartTCB,             //阻塞主任务，由制氢机管理任务和电堆管理任务管理机器
+                OSTaskSuspend(&AppTaskStartTCB, //阻塞主任务，由制氢机管理任务和电堆管理任务管理机器
                               &err);
                 SetSystemWorkStatu(EN_SHUTTING_DOWN);
                 break;
 
             case(u8)EN_WORK_MODE_HYDROGEN_PRODUCER:
-                OSTaskResume(&HydrgProducerManagerTaskTCB,  //制氢机管理任务开始运行
+                OSTaskResume(&HydrgProducerManagerTaskTCB,  
                              &err);
 //                  SetShutDownActionFlag(EN_DELAY_STOP_PART_ONE);//因制氢模式下的关机标志已经在启动阶段设置好，故在该模式下不需要另行设置
-                OSTaskSuspend(&AppTaskStartTCB,             //阻塞主任务，由制氢机管理任务和电堆管理任务管理机器
+                OSTaskSuspend(&AppTaskStartTCB,            
                               &err);
                 SetSystemWorkStatu(EN_SHUTTING_DOWN);
                 break;
 
             case(u8)EN_WORK_MODE_FUEL_CELL:
-                OSTaskResume(&StackManagerTaskTCB,          //电堆管理任务开始运行
+                OSTaskResume(&StackManagerTaskTCB,          
                              &err);
 //                  SetShutDownActionFlag(EN_DELAY_STOP_PART_TWO);//因发电模式下的关机标志已经在启动阶段设置好，故在该模式下不需要另行设置
-                OSTaskSuspend(&AppTaskStartTCB,             //阻塞主任务，由制氢机管理任务和电堆管理任务管理机器
+                OSTaskSuspend(&AppTaskStartTCB,            
                               &err);
                 SetSystemWorkStatu( EN_SHUTTING_DOWN );
                 break;
@@ -564,7 +516,7 @@ void Running()
 *                                          SetShutDownActionFlag()
 *
 * Description : The use of the funciton is to select the shut down action flag.
-*               设置停机模式标志
+*               
 * Arguments   : none.
 *
 * Returns     : none.
@@ -603,7 +555,7 @@ void ShutDown()
         switch((u8)g_eShutDownActionFlag) {
             case EN_STOP_ALL_DIRECT:
                 
-                APP_TRACE_DEBUG(("Shutdown all direcetly!!!\r\n"));//不需要延时，直接关机
+                APP_TRACE_DEBUG(("Shutdown all direcetly!!!\r\n"));
                 break;
 
             case EN_DELAY_STOP_PART_ONE:
@@ -612,16 +564,20 @@ void ShutDown()
                 break;
 
             case EN_DELAY_STOP_PART_TWO:
-                OSTaskResume(&StackManagerDlyStopTaskTCB,           //恢复电堆延时关闭任务。
+                if(EN_IN_WORK == GetStackWorkStatu()){//电堆有在工作才恢复延时关闭任务
+                    OSTaskResume(&StackManagerDlyStopTaskTCB,
                                  &err);
+                }
 
                 break;
 
             case(u8)EN_DELAY_STOP_BOTH_PARTS:
                 OSTaskResume(&HydrgProducerManagerDlyStopTaskTCB,   //恢复制氢机、电堆延时关闭任务
                              &err);
-                OSTaskResume(&StackManagerDlyStopTaskTCB,
-                             &err);
+                if(EN_IN_WORK == GetStackWorkStatu()){//电堆有在工作才恢复延时关闭任务
+                    OSTaskResume(&StackManagerDlyStopTaskTCB,
+                                 &err);
+                }
                 break;
             default:
                 break;
@@ -637,7 +593,6 @@ void ShutDown()
                           &err);
         }
 
-        //下面的任务信号量由制氢机和电堆延时关闭任务中发送
         switch((u8)g_eShutDownActionFlag) {
             case(u8)EN_STOP_ALL_DIRECT:
                 APP_TRACE_DEBUG(("--> The system has not start...\r\n"));  //直接关机，不需要关机延时
@@ -646,55 +601,44 @@ void ShutDown()
             case(u8)EN_DELAY_STOP_PART_ONE:
                 APP_TRACE_DEBUG(("-->Delay stop part one...\r\n"));
                 //此处阻塞等待制氢机延时关闭任务中的任务信号量
-                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 5,         //5分钟后关闭制氢机
+                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 3,         //3分钟后关闭制氢机
                               OS_OPT_PEND_BLOCKING,
                               NULL,
                               &err);
 
-                if(err == OS_ERR_NONE) { //收到任务任务信号量
+                if(err == OS_ERR_NONE) {
                     break;
                 }
 
             case(u8)EN_DELAY_STOP_PART_TWO:
                 APP_TRACE_DEBUG(("-->Delay stop part two...\r\n"));
                 //此处阻塞等待电堆延时关闭任务中的任务信号量
-                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 2 *60,         //2分钟后关闭电堆
+                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 30,         //30s后关闭电堆
                               OS_OPT_PEND_BLOCKING,
                               NULL,
                               &err);
 
-                if(err == OS_ERR_NONE) { //收到任务任务信号量
+                if(err == OS_ERR_NONE) { 
                     break;
                 }
 
             case(u8)EN_DELAY_STOP_BOTH_PARTS:
-                APP_TRACE_DEBUG(("--> Delay stop both part...\r\n"));
-                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 2, //2分钟后关闭电堆
+                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 30, //stop stack after 30 seconds
                               OS_OPT_PEND_BLOCKING,
                               NULL,
                               &err);
 
-                if(err == OS_ERR_NONE) { //收到电堆延时停止任务信号量，等待制氢机延时停止任务信号量
-                    APP_TRACE_DEBUG(("The stack delay stop task finished,wait hdygren delay stop task...\r\n"));
-                    OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 3 * 61, //制氢机2+3分钟后关闭(可比5分钟稍长，嵌套Pend可能导致时间变长)
-                                  OS_OPT_PEND_BLOCKING,
-                                  NULL,
-                                  &err);
+                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 150,//制氢机30+150秒->3分钟后关闭
+                              OS_OPT_PEND_BLOCKING,
+                              NULL,
+                              &err);
 
-                    if(err == OS_ERR_NONE) {
-                        APP_TRACE_DEBUG(("The hydrogen producer manager delay stop task finished...\r\n"));
-                        break;
-                    } else {
-                        //出现超时等其它错误，清零任务信号量计数，防止任务信号量累积
-                        OSTaskSemSet(&HydrgProducerManagerDlyStopTaskTCB,
-                                     0,
-                                     &err);
-                        break;
-                    }
+                if(err == OS_ERR_NONE) {
+                    APP_TRACE_DEBUG(("The hydrogen producer and stack delay stop finished...\r\n"));
+                    break;
                 } else {
-                    APP_TRACE_DEBUG(("Fault: wait for the sem of the stack delay stop failed...\r\n"));
+                    APP_TRACE_DEBUG(("The hydrogen producer and stack delay stop over time...\r\n"));
                 }
-
             default:
                 break;
         }
@@ -731,7 +675,6 @@ void UpdateBuzzerStatuInCruise(void)
     }
 }
 
-
 /*
 ***************************************************************************************************
 *                                         u16 GetStartRemainSencond(void)
@@ -750,11 +693,4 @@ u16 GetStartRemainSencond(void)
     return g_u16StartRemainSecond;
 }
 
-
-
-
-
-
-
 /******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/
-

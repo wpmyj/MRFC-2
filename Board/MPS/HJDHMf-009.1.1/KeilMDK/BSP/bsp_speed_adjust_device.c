@@ -354,6 +354,7 @@ void SetStackFanCtlSpd(uint16_t i_u16NewSpd)
     g_u16StackFanCtlSpd = i_u16NewSpd;
     BSP_SetStackFanSpd(i_u16NewSpd);
     CPU_CRITICAL_EXIT();
+    APP_TRACE_INFO(("stack fans speed :i_u16NewSpd %d...\r\n",i_u16NewSpd));
 
 }
 
