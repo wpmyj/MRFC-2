@@ -1,12 +1,73 @@
-
+/*
+***************************************************************************************************
+*                                         APPLICATION CODE
+*
+*                      (c) Copyright 2016; Guangdong ENECO Science And Technology Co.,Ltd
+*
+*               All rights reserved.  Protected by international copyright laws.
+*               Knowledge of the source code may NOT be used without authorization.
+***************************************************************************************************
+*/
+/*
+***************************************************************************************************
+* Filename      : app_hydrg_producer_manager.c
+* Version       : V1.00
+* Programmer(s) : Fanjun
+*
+***************************************************************************************************
+*/
+/*
+***************************************************************************************************
+*                                             INCLUDE FILES
+***************************************************************************************************
+*/
 #include "Make_Vacuum.h"
 #include <includes.h>
-
-#define MAKE_VACCUUM_TASK_STK_SIZE 200
-
-OS_TCB Make_Vaccuum_FunctionTaskTCB;
+/*
+***************************************************************************************************
+*                                           MACRO DEFINITIONS
+***************************************************************************************************
+*/
+#define MAKE_VACCUUM_TASK_STK_SIZE 100
+/*
+***************************************************************************************************
+*                                  OS-RELATED    VARIABLES
+***************************************************************************************************
+*/
+       OS_TCB     Make_Vaccuum_FunctionTaskTCB;
 static CPU_STK    MAKE_VACCUUM_TASK_STK[MAKE_VACCUUM_TASK_STK_SIZE];
+/*
+***************************************************************************************************
+*                                           GLOBAL VARIABLES
+***************************************************************************************************
+*/
 
+/*
+***************************************************************************************************
+*                                           LOCAL VARIABLES
+***************************************************************************************************
+*/
+
+/*
+***************************************************************************************************
+*                                         FUNCTION PROTOTYPES
+***************************************************************************************************
+*/
+static void  Make_Vacuum_FunctionTask(void *p_arg);    
+    
+/*
+***************************************************************************************************
+*                               Make_Vacuum_FunctionTaskCreate()
+*
+* Description : The use of the the funciton is to create the task that monitor the analog signal.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
 void Make_Vacuum_FunctionTaskCreate(void)
 {
     OS_ERR  err;
@@ -27,26 +88,63 @@ void Make_Vacuum_FunctionTaskCreate(void)
     APP_TRACE_INFO(("Created Make Vaccuum  Task, and err code is %d...\n\r", err));
 }
 
-u16 g_Make_Vaccum_Flag = 0;
-
-void  Make_Vacuum_FunctionTask(void *p_arg)                   //抽真空函数任务的搭建
-{
-
-//    OSTaskSuspend(NULL, &err);
-    APP_TRACE_INFO(("MAKE VACCUUM Task Start...\n\r"));
-
-    while(DEF_TRUE) {
-        if(g_Make_Vaccum_Flag) {
-            //预留口5/6/7/8全部关闭
-
-        } else {
-            //预留口5/6同时打开，开一分钟后面预留口5关闭
-            //预留口6/7/8同时打开
 
 
+/*
+***************************************************************************************************
+*                               Make_Vacuum_FunctionTask()
+*
+* Description : The use of the the funciton is to create the task that monitor the analog signal.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
+static void  Make_Vacuum_FunctionTask(void *p_arg)                   
+{ 
+    OS_ERR  err; 
+    static uint8_t u8timeCount = 0;
+    static uint8_t u8MakeVavuumValve4PwrOnFlag = 0;
+    while(DEF_TRUE)
+    {
+        OSTaskSuspend(NULL, &err);
+        APP_TRACE_INFO(("Start make vacuum task...\n\r"));   
 
-
-
+        BSP_PureHydrogenGasOutValvePwrOff();
+        BSP_MakeVavuumValve2PwrOn();
+        BSP_MakeVavuumValve4PwrOn();       
+        u8MakeVavuumValve4PwrOnFlag = 1;
+                
+        while(DEF_TRUE)
+        {
+            OSTaskSemPend(OS_CFG_TICK_RATE_HZ, 
+                          OS_OPT_PEND_BLOCKING, 
+                          NULL,
+                          &err);
+            if(err == OS_ERR_TIMEOUT){      
+                if(0 !=u8MakeVavuumValve4PwrOnFlag){
+                    u8timeCount++;
+                    if(u8timeCount >= 60){
+                        BSP_MakeVavuumValve4PwrOff();
+                        BSP_MakeVavuumValve3PwrOn();
+                        BSP_MakeVavuumPumpPwrOn();
+                        u8MakeVavuumValve4PwrOnFlag = 0;
+                        u8timeCount = 0;
+                    }
+                }
+            }
+            else if(err == OS_ERR_NONE){//切换后（重整温度达到后）全部关闭
+                APP_TRACE_INFO(("Stop make vacuum task...\n\r"));
+                BSP_PureHydrogenGasOutValvePwrOn();//纯氢出口
+                BSP_MakeVavuumValve2PwrOff();
+                BSP_MakeVavuumValve3PwrOff();            
+                BSP_MakeVavuumValve4PwrOff();
+                BSP_MakeVavuumPumpPwrOff();
+                break;
+            }
         }
     }
 }

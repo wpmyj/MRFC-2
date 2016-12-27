@@ -48,16 +48,8 @@ typedef struct {
 
     float Kp, Ki, Kd;//定义比例propotion、积分Integral、微分Differential系数
 
-
-//    float Ti;//积分时间常数
-//    float Td;//微分时间常数
     uint8_t Tsam; //采样周期---控制周期，每隔Tsam控制器输出一次PID运算结果
 
-    float Iout;//积分控制输出值
-    float Pout;//比例控制输出值
-    float Dout;//微分控制输出值
-
-    uint16_t OutValue;                      //控制量
     uint16_t OutValueMax;                   //控制量最大值
     uint16_t OutValueMin;                   //控制量最小值
 
@@ -88,10 +80,7 @@ extern INCREMENT_TYPE_PID_PARAMETER_Typedef IPID;
 */
 
 void IncrementType_PID_Init(void);
-//void IncrementType_PID_Process(void);
-void IncrementType_PID_Process(uint8_t i_OptimumTemperature);
+uint16_t IncrementType_PID_Process(uint8_t i_OptimumTemperature);
 
-void SetStackIncrementTypePidSvalue(uint8_t i_NewValue);
-void SetStackIncrementTypePidPValue(uint8_t i_NewValue);
 #endif
 

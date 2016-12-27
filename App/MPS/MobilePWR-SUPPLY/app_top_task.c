@@ -52,7 +52,7 @@ static  SYSTEM_SHUT_DOWN_ACTION_FLAG_Typedef        g_eShutDownActionFlag = EN_D
 *                                           GLOBAL VARIABLES
 ***************************************************************************************************
 */
-u16 g_u16StartRemainSecond = 15 * 60;
+
 
 /*
 ***************************************************************************************************
@@ -156,7 +156,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef DeviceSelfCheck(void)
     AnaSensorSelfCheck();   //模拟信号传感器自检
 
     stSelfCheckCode = GetSysSelfCheckCode();
-    SendRealTimeAssistInfo();   //向上位机发送自检信息,30S一次
+    SendRealTimeAssistInfo();  //发送实时辅助信息
 
     eWorkMode = GetWorkMode();
 
@@ -171,7 +171,6 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef DeviceSelfCheck(void)
                 } else {
                     if(stSelfCheckCode.MachinePartASelfCheckCode != 0) { //发电组设备正常
                         APP_TRACE_DEBUG(("Device of hydrogen producer group is not at right statu,can not work...\r\n"));
-
                     } else {
                         APP_TRACE_DEBUG(("Device of stack group is not at right statu,can not work...\r\n"));
                         MachineSelfCheckResult = EN_NOT_THROUGH;
@@ -180,7 +179,6 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef DeviceSelfCheck(void)
             } else {
                 APP_TRACE_DEBUG(("Device of device selfcheck sensor is not at right statu,can not work...\r\n"));
                 MachineSelfCheckResult = EN_NOT_THROUGH;
-
             }
 
             break;
@@ -342,6 +340,7 @@ void Starting(void)
     BSP_BuzzerOff();
     OSTimeDlyHMSM(0, 0, 0, 200, OS_OPT_TIME_HMSM_STRICT, &err);
 
+    
     //一体机模式或者制氢模式
     if((eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL) || (eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER)) {
         if(EN_START_PRGM_ONE_FRONT == GetSystemWorkStatu()) {
@@ -597,12 +596,12 @@ void ShutDown()
                 }
 
             case(u8)EN_DELAY_STOP_BOTH_PARTS:
-                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 30, //stop stack after 30 seconds
+                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 10, //stop stack after 30 seconds
                               OS_OPT_PEND_BLOCKING,
                               NULL,
                               &err);
 
-                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 150,//制氢机30+150秒->3分钟后关闭
+                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 20,//制氢机30+150秒->3分钟后关闭
                               OS_OPT_PEND_BLOCKING,
                               NULL,
                               &err);
@@ -647,22 +646,5 @@ void UpdateBuzzerStatuInCruise(void)
     }
 }
 
-/*
-***************************************************************************************************
-*                                         u16 GetStartRemainSencond(void)
-*
-* Description : The use of the funciton is to get the start remain sencond.
-*
-* Arguments   : none.
-*
-* Returns     : none.
-*
-* Notes       : none.
-***************************************************************************************************
-*/
-u16 GetStartRemainSencond(void)
-{
-    return g_u16StartRemainSecond;
-}
 
 /******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/

@@ -35,7 +35,7 @@
 *                                              SET ALL APPLICATION HOOKS
 *
 * Description: Set ALL application hooks.
-*              设置与应用相关的介入函数
+*              
 * Arguments  : none.
 *
 * Note(s)    : none
@@ -54,10 +54,10 @@ void  App_OS_SetAllHooks(void)
     OS_AppTaskDelHookPtr    = App_OS_TaskDelHook;
     OS_AppTaskReturnHookPtr = App_OS_TaskReturnHook;
 
-    OS_AppIdleTaskHookPtr   = App_OS_IdleTaskHook;      //空闲任务调用的介入函数
-    OS_AppStatTaskHookPtr   = App_OS_StatTaskHook;      //统计任务调用的介入函数
-    OS_AppTaskSwHookPtr     = App_OS_TaskSwHook;        //任务切换所调用的介入函数
-    OS_AppTimeTickHookPtr   = App_OS_TimeTickHook;      //时基任务调用的介入函数
+    OS_AppIdleTaskHookPtr   = App_OS_IdleTaskHook;      //空闲任务调用的钩子函数
+    OS_AppStatTaskHookPtr   = App_OS_StatTaskHook;      //统计任务调用的钩子函数
+    OS_AppTaskSwHookPtr     = App_OS_TaskSwHook;        //任务切换所调用的钩子函数
+    OS_AppTimeTickHookPtr   = App_OS_TimeTickHook;      //时基任务调用的钩子函数
 
     CPU_CRITICAL_EXIT();
 #endif

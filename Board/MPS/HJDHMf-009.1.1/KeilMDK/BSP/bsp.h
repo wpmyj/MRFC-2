@@ -509,7 +509,17 @@ void  BSP_DCConnectValvePwrOff(void);
 void  BSP_OutsidePumpPwrOn(void);
 void  BSP_OutsidePumpPwrOff(void);
 
+void  BSP_PureHydrogenGasOutValvePwrOn(void);
+void  BSP_PureHydrogenGasOutValvePwrOff(void);
+void  BSP_MakeVavuumValve2PwrOn(void);
+void  BSP_MakeVavuumValve3PwrOn(void);
+void  BSP_MakeVavuumValve4PwrOn(void);
+void  BSP_MakeVavuumPumpPwrOn(void);
 
+void  BSP_MakeVavuumValve2PwrOff(void);
+void  BSP_MakeVavuumValve3PwrOff(void);
+void  BSP_MakeVavuumValve4PwrOff(void);
+void  BSP_MakeVavuumPumpPwrOff(void);
 /*
 ***************************************************************************************************
 *                                              SPEED CONTROL DEVICE SERVICES

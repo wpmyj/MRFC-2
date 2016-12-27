@@ -76,7 +76,7 @@ static      uint8_t     g_u8AnaSensorTypeNmb[BSP_ANA_SENSORS_NMB] = {0};
 static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorParameter[BSP_ANA_SENSORS_NMB];
 static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorDefaultParameter[BSP_ANA_SENSORS_NMB] = {
     {0, 0xFFFF},       //电堆温度
-    {827, 32.0},     //电压，采用电压传感器，比率还会做适当调整
+    {827, 34.0},     //电压，采用电压传感器，比率还会做适当调整
     {2007.35, 16.059}, //电流
     {794.2, 127.06},   //液压
     {359.86, 33.504},  //气压1:0.58 / 2 * 3.3 * 4095 ~ 4.9/2 *3.3 * 4095   359.86 - 3040.23 LSB,对应0.58 - 4.9输入,经2个5.1K电阻降压至0.29-2.45V（满量程0.29V-3.3V对应0-135Kpa），对应0-80KPa，比例为33.504LSB/KPa
@@ -130,14 +130,13 @@ ErrorStatus BSP_GetCalibratedAnaSensorPara(ANALOG_SIGNAL_SERSOR_PARAMETERS_Typed
     float Temp;
     float fOriginalDigValueSum[BSP_ANA_SENSORS_NMB] = {0};
 
-    OSTimeDlyHMSM(0, 0, 0, 10,                      //等待传感器上电充分
+    OSTimeDlyHMSM(0, 0, 0, 10,        //等待传感器上电充分
                   OS_OPT_TIME_HMSM_STRICT,
                   &err);
 
-//    AnaSigSampleStart();    //模拟信号采样开始，在中断中开始下一次采样
     for(i = 0; i < NMB_OF_AVERAGE_WHEN_CALIBRATION; i++) {
 
-        AnaSigSampleStart();    //模拟信号采样开始，在中断中开始下一次采样
+        AnaSigSampleStart();    //模拟信号采样开始
         OSSemPend(&g_stAnaSigConvertFinishSem,
                   OS_CFG_TICK_RATE_HZ,
                   OS_OPT_PEND_BLOCKING,

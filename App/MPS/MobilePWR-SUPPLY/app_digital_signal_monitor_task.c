@@ -27,6 +27,7 @@
 #include "app_system_run_cfg_parameters.h"
 #include "app_top_task.h"
 #include "app_stack_manager.h"
+#include "Make_Vacuum.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -81,7 +82,7 @@ static   void   SetStackExhaustTimesCountPerMinutesMonitorHook(void);
 *               3.get the information if the thermocouple is broken.        热电偶损坏信息反馈
 *
 * Arguments   : the address to store the thermocouple broken error information.
-*               TempErr[0]-重整室温度错误标志，TempErr[1]-点火温度错误标志
+*               TempErr[0]-火焰温度错误标志，TempErr[1]-重整室温度错误标志
 * Returns     : none
 ***************************************************************************************************
 */
@@ -289,6 +290,7 @@ static void HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook(void)
 
     if(GetReformerTemp() >= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt) {
         OSSemPost(&IgniteFirstBehindWaitSem, OS_OPT_POST_1, &err);
+        OSTaskSemPost(&Make_Vaccuum_FunctionTaskTCB, OS_OPT_POST_NO_SCHED, &err);//发送给抽真空任务结束抽真空
         g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw = DEF_DISABLED;
     }
 

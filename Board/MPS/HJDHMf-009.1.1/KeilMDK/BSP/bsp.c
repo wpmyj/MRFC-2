@@ -896,6 +896,12 @@ static void BSP_SwTypePwrDeviceStatuInit(void)
     GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出5
     GPIO_Init(GPIOE, &GPIO_InitStructure);
     GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
+    
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出5
+    GPIO_Init(GPIOE, &GPIO_InitStructure);
+    GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
 
 }
 /*
@@ -1085,7 +1091,7 @@ void  BSP_DCConnectValvePwrOff(void)
 *                                            BSP_OutsidePumpPwrOn()
 *
 * Description : Open the power switch of the outside pump.
-*               自动加液水泵开关
+*               
 * Argument(s) : none.
 *
 * Return(s)   : none.
@@ -1120,60 +1126,63 @@ void  BSP_OutsidePumpPwrOff(void)
 * Note(s)     : none.
 ***************************************************************************************************
 */
-void  BSP_RSVD5PwrOn(void)
+void  BSP_PureHydrogenGasOutValvePwrOn(void)
+{
+    GPIO_SetBits(GPIOE, BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Pure Hydrogen Gas Out Valve power on...\n\r"));
+}
+void  BSP_PureHydrogenGasOutValvePwrOff(void)
+{
+    GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Pure Hydrogen Gas Out Valve power off...\n\r"));
+}
+
+void  BSP_MakeVavuumValve2PwrOn(void)
 {
     GPIO_SetBits(GPIOE, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Bsp Make Vavuum Valve2 power on...\n\r"));
 }
-void  BSP_RSVD5PwrOff(void)
+void  BSP_MakeVavuumValve2PwrOff(void)
 {
     GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Bsp Make Vavuum Valve2 power off...\n\r"));
 }
 
-void  BSP_RSVD6PwrOn(void)
+void  BSP_MakeVavuumValve3PwrOn(void)
 {
     GPIO_SetBits(GPIOD, BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Bsp Make Vavuum Valve3 power on...\n\r"));
 }
-void  BSP_RSVD6PwrOff(void)
+void  BSP_MakeVavuumValve3PwrOff(void)
 {
     GPIO_ResetBits(GPIOD, BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Bsp Make Vavuum Valve3 power off...\n\r"));
 }
 
-void  BSP_RSVD7PwrOn(void)
+void  BSP_MakeVavuumValve4PwrOn(void)
 {
     GPIO_SetBits(GPIOD, BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Bsp Make Vavuum Valve4 power on...\n\r"));
 }
 
-void  BSP_RSVD7PwrOff(void)
+void  BSP_MakeVavuumValve4PwrOff(void)
 {
     GPIO_ResetBits(GPIOD, BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Bsp Make Vavuum Valve4 power off...\n\r"));
 }
 
-void  BSP_RSVD8PwrOn(void)
+void  BSP_MakeVavuumPumpPwrOn(void)
 {
     GPIO_SetBits(GPIOD, BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Bsp Make Vavuum pump power on...\n\r"));
 }
 
-void  BSP_RSVD8PwrOff(void)
+void  BSP_MakeVavuumPumpPwrOff(void)
 {
     GPIO_ResetBits(GPIOD, BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Bsp Make Vavuum pump power off...\n\r"));
 }
-/*
-***************************************************************************************************
-*                                            BSP_GetPassiveGpioStatu()
-*
-* Description : 获取电堆尾部泄压阀输入脉冲状态.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Note(s)     : none.
-***************************************************************************************************
-*/
-uint8_t BSP_GetPassiveGpioStatu(void)
-{
-    return GPIO_ReadInputDataBit(GPIOE, BSP_GPIOE_PD_PULSE2_PORT_NMB);
-}
+
 /*
 ***************************************************************************************************
 *                                            BSP_VentingIntervalRecordTimerInit()
@@ -1291,24 +1300,24 @@ static  void  BSP_DeviceSpdCheckPortInit(u16 arr, u16 psc)
     /*初始化IO口*/
     //初始化水泵速度检测引脚
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_PUMP_SPEED_CHECK_PORT_NMB;
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IPU;    //输入上拉，根据电路图;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IPD;    //输入下拉，原来为GPIO_Mode_IPU
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
     //初始化制氢风机速度检测引脚
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_HYDRG_FAN_SPEED_CHECK_PORT_NMB;
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IPU;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IPD;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
     //初始化电堆风扇速度检测引脚
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_STACK_FAN_SPEED_CHECK_PORT_NMB;
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IPU;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IPD;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
     /*初始化定时器*/
     TIM_DeInit(TIM1);
-    TIM_TimeBaseStructure.TIM_Period = arr; //自动重载值 TIMX->ARR,当定时器从0计数到999，即为1000次为一个定时周期250ms
-    TIM_TimeBaseStructure.TIM_Prescaler = psc;//不预分频, 使TIMx_CLK= 72MHZ/17999 = 4KHz
+    TIM_TimeBaseStructure.TIM_Period = arr; //自动重载值,当定时器从0计数到4999，即为5000次为一个定时周期500ms
+    TIM_TimeBaseStructure.TIM_Prescaler = psc;//TIMx_CLK= 72MHZ/7200 = 1MHz
     TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;     //输入时钟不分频
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up; //向上计数
     TIM_TimeBaseInit(TIM1, &TIM_TimeBaseStructure);
@@ -1343,7 +1352,7 @@ static  void  BSP_DeviceSpdCheckPortInit(u16 arr, u16 psc)
                   | TIM_IT_CC3
                   | TIM_FLAG_Update); //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
 
-    TIM_ITConfig(TIM1, TIM_IT_CC1       //在更新中断中一个一个通道轮流使能，这里只使能一个通道
+    TIM_ITConfig(TIM1, TIM_IT_CC1 //使能捕获通道
                  | TIM_IT_CC2
                  | TIM_IT_CC3
                  | TIM_IT_Update, ENABLE);
@@ -1764,7 +1773,7 @@ void BSP_CmdButtonInit(void)
     EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
     EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-    EXTI_Init(&EXTI_InitStructure);     //根据EXTI_InitStruct中指定的参数初始化外设EXTI寄存器
+    EXTI_Init(&EXTI_InitStructure);     
 
     BSP_IntVectSet(BSP_INT_ID_EXTI15_10, ButtonStatusCheck_IRQHandler);
     BSP_IntEn(BSP_INT_ID_EXTI15_10);
@@ -1773,14 +1782,15 @@ void BSP_CmdButtonInit(void)
 static void ButtonStatusCheck_IRQHandler()
 {
     if(EXTI_GetITStatus(EXTI_Line13) != RESET) {//开关按键
-        CmdButtonFuncDisable();
+        
+        CmdButtonFuncDisable();      
         StartCmdButtonActionCheckDly(); //定时器定时0.5后的中断中判断按钮按下，然后执行相应流程
         EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE10上的中断标志位
     }
 }
 /*
 ***************************************************************************************************
-*                                            BSP_CmdButtonInit()
+*                                            BSP_ImpulseInputPortInit()
 *
 * Description : 泄压脉冲输入监测引脚初始化.
 *
@@ -1795,11 +1805,11 @@ void BSP_ImpulseInputPortInit(void)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
     EXTI_InitTypeDef EXTI_InitStructure;
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOE, ENABLE); //使能复用功能时钟
-
+//    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOE, ENABLE); //使能复用功能时钟
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOE, ENABLE);
     //松下泄压阀脉冲输入引脚1
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;   //下拉输入
     GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PD_PULSE1_PORT_NMB;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
@@ -1812,7 +1822,7 @@ void BSP_ImpulseInputPortInit(void)
 
     //脉冲输入引脚2
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;   //下拉输入
     GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PD_PULSE2_PORT_NMB;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
@@ -1852,7 +1862,8 @@ static void PDPulseStatusCheck_IRQHandler()
     }
 
     if(EXTI_GetITStatus(EXTI_Line12) != RESET) {//PDPulse2-电堆后端的泄压阀状态
-        if(0 == BSP_GetPassiveGpioStatu()) {
+        if(0 == GPIO_ReadInputDataBit(GPIOE, BSP_GPIOE_PD_PULSE2_PORT_NMB)) {
+            APP_TRACE_INFO(("PD pluse 2...\n\r"));
             DecompressCountPerMinuteInc();
             BSP_StartRunningVentingTimeRecord(); //Start recording the exhaust time parameter
             StackVentAirTimeParameter.fVentAirTimeIntervalValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录排气间隔时间
@@ -1878,7 +1889,7 @@ static void PDPulseStatusCheck_IRQHandler()
 }
 /*
 ***************************************************************************************************
-*                                            BSP_CmdButtonInit()
+*                                            CmdButtonFuncDisable()
 *
 * Description : 脉冲输入引脚初始化.
 *
@@ -1915,7 +1926,11 @@ void CmdButtonFuncEnable(void)
 
 void StartCmdButtonActionCheckDly(void)
 {
-    TIM7_DlyMilSecondsInit(500);
+    if(EN_WAITTING_COMMAND == GetSystemWorkStatu()) {
+        TIM7_DlyMilSecondsInit(500);
+    } else {
+        TIM7_DlyMilSecondsInit(3000);//关机动作检测
+    }
 }
 void TIM7_DlyMilSecondsInit(u16 i_u16DlyMilSeconds)
 {
@@ -1955,6 +1970,7 @@ void CmdButtonStatuCheck(void)
     SYSTEM_WORK_STATU_Typedef eSysRunningStatu;
 
     if(GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13) == 0) {
+        APP_TRACE_INFO(("Button status check...\n\r"));
         eSysRunningStatu = GetSystemWorkStatu();
 
         if((EN_WAITTING_COMMAND == eSysRunningStatu) || (eSysRunningStatu == EN_ALARMING)) {
@@ -1972,7 +1988,7 @@ void CmdButtonStatuCheck(void)
 
 /*
 ***************************************************************************************************
-*                                            BSP_CmdButtonInit()
+*                                            SwitchTypeDevicesSelfCheck()
 *
 * Description : 开关型设备自检流程，进行过程不能被打断.
 *

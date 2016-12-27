@@ -92,7 +92,7 @@ void                                    ResetDeviceAlarmStatu(void);
 
 void     SetShutDownActionFlag(SYSTEM_SHUT_DOWN_ACTION_FLAG_Typedef);
 void     UpdateBuzzerStatuInCruise(void);
-uint16_t GetStartRemainSencond(void);
+
 
 
 #endif

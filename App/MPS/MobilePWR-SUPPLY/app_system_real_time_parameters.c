@@ -1219,12 +1219,9 @@ uint8_t CalcStackOptimumTemperatureByCurrent(void)
 {
     float m_StackCurrent;
     float m_StackOptimumTemperature;
+    
     m_StackCurrent = GetSrcAnaSig(STACK_CURRENT);
-#ifdef LOWER_ENVIRONMENT_TEMPERATURE
-    m_StackOptimumTemperature = (0.53 * m_StackCurrent) + 26.01;//冬天
-#else
-    m_StackOptimumTemperature = (0.455 * m_StackCurrent) + 32;//夏天
-#endif
+    m_StackOptimumTemperature = (0.53 * m_StackCurrent) + 26.01;
 
     return (uint8_t)m_StackOptimumTemperature;
 }
@@ -1396,7 +1393,7 @@ void SystemTimeStatTaskCreate(void)
 *                             SysTimeStatTask()
 *
 * Description:  the system time statistics task.
-*               刷新系统时间、本次制氢及累计制氢时间，及各类报警持续时间
+*               
 * Arguments  :  none.
 *
 * Returns    :  none.

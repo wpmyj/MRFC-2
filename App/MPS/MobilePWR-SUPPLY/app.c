@@ -156,40 +156,40 @@ static  void  AppTaskStart(void *p_arg)
     OSSemCreate(&IgniteFirstBehindWaitSem, "Fast heater finish sem", 0, &err);
     OSSemCreate(&IgniteSecondBehindWaitSem, "IgniteSecondBehindWaitSem...", 0, &err);
 
-    LoadDriverLayerParameters(); //载入驱动层参数，需要放在前面
+    LoadDriverLayerParameters();     //载入驱动层参数
 
     LoadApplicationLayerParameters();//载入应用层参数
 
-    App_OS_SetAllHooks();               // 用户应用相关介入函数设置
+    App_OS_SetAllHooks();             //钩子函数设置
 
-    SystemTimeStatTaskCreate();         // 系统时钟统计任务创建
+    SystemTimeStatTaskCreate();       // 系统时钟统计任务创建
 
-    AnaSigMonitorTaskCreate();          // 模拟信号监测任务创建
+    AnaSigMonitorTaskCreate();         
 
-    DigSigMonitorTaskCreate();          // 数字信号监测任务创建
+    DigSigMonitorTaskCreate();          
 
-    CommunicateTaskCreate();           // 无线通信任务创建
+    CommunicateTaskCreate();           
 
     DcModuleAdjustTaskCreate();         //DC限流调节任务
 
-//    Make_Vacuum_FunctionTaskCreate(); //抽真空函数任务的搭建
+    Make_Vacuum_FunctionTaskCreate(); //自动抽真空任务
 
-    IgniterWorkTaskCreate();            // 点火工作任务创建
+    IgniterWorkTaskCreate();           
 
-    HydrgProducerManagerTaskCreate();   // 制氢机管理任务
+    HydrgProducerManagerTaskCreate();   
 
-    StackManagerTaskCreate();           // 电堆管理任务
+    StackManagerTaskCreate();          
 
-    HydrgProducerDlyStopTaskCreate();   // 制氢机延时关闭任务
+    HydrgProducerDlyStopTaskCreate();  
 
-    StackManagerDlyStopTaskCreate();    // 电堆延时关闭任务
+    StackManagerDlyStopTaskCreate();   
 
     BSP_BuzzerOn();
     OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
     BSP_BuzzerOff();
     OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
 
-    APP_TRACE_INFO(("Running top Task...\r\n"));
+    APP_TRACE_INFO(("Running top Task...\n\r"));
 
     while(DEF_TRUE) {
         if(EN_THROUGH == CheckAuthorization()) {
@@ -208,13 +208,12 @@ static  void  AppTaskStart(void *p_arg)
             DeviceFaultAlarm();
         }
     }
-
 }
 
 
 /*
 ***************************************************************************************************
-*                                          USER NVICConfiguration
+*                                   USER_NVIC_Cfg()
 *
 * Description : The use of this funciton is to set the interrupt group.
 *

@@ -28,6 +28,7 @@
 #include "bsp_speed_adjust_device.h"
 #include "app_hydrg_producer_manager.h"
 #include "app_analog_signal_monitor_task.h"
+#include "Make_Vacuum.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -68,7 +69,11 @@ static  SWITCH_TYPE_VARIABLE_Typedef    g_eHydrgProducerManagerStopDlyStatu = OF
 static  SWITCH_TYPE_VARIABLE_Typedef    g_eIgniterWorkStatu = OFF;
 static  WHETHER_TYPE_VARIABLE_Typedef   g_eIgniterDirectWork = NO;
 static  WHETHER_TYPE_VARIABLE_Typedef   enAheadRunningFlag = NO;    //响应安卓指令，在第一次点火后，提前启动发电
-
+/*
+***************************************************************************************************
+*                                         FUNCTION PROTOTYPES
+***************************************************************************************************
+*/
 static              void                IgniterWorkTask(uint16_t *);
 static              void                HydrgProducerManagerTask(void);
 static              void                HydrgProducerManagerDlyStopTask(void);
@@ -93,31 +98,37 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
     IGNITE_CHECK_STATU_Typedef m_eIgniteStatu;
 
     if(EN_START_PRGM_ONE_FRONT == GetSystemWorkStatu()) {
+        
+        OSTaskResume(&Make_Vaccuum_FunctionTaskTCB,&err);//开始抽真空
         APP_TRACE_INFO(("Start program one front,fast heat 3 minutes...\n\r"));
         BSP_FastHeaterPwrOn();
-        OSTimeDlyHMSM(0, 3, 0, 0,   //快速加热三分钟
-                      OS_OPT_TIME_HMSM_STRICT,
-                      &err);
-        APP_TRACE_INFO(("Fast heat control finish...\n\r"));
-        SetSystemWorkStatu(EN_START_PRGM_ONE_FRONT);
+        
+//        if(GetReformerTemp() <= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt){
+        if(GetReformerTemp() <= 230){
+            
+//            OSTimeDlyHMSM(0, 3, 0, 0,   OS_OPT_TIME_HMSM_STRICT,&err);//快速加热三分钟
+            OSTimeDlyHMSM(0, 0, 30, 0,   OS_OPT_TIME_HMSM_STRICT,&err);
+            APP_TRACE_INFO(("Fast heat control finish...\n\r"));
+        }
+        SetSystemWorkStatu(EN_START_PRGM_ONE_BEHIND);
 
         if(EN_START_PRGM_ONE_BEHIND == GetSystemWorkStatu()) {
             APP_TRACE_INFO(("Ignite first time behind...\n\r"));
             BSP_LqdValve1_PwrOn();
             SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime);
-            SetHydrgFanCtlSpd(g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime);
-            IgniterWorkForSeconds(180);
+            SetHydrgFanCtlSpdSmoothly(g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime,90,5,g_stStartHydrgFanSpdPara.FanSpdAfterIgniterFirstSuccessd);
+            IgniterWorkForSeconds(120);
 
             SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(DEF_ENABLED);//重整温度监测
             //条件满足其一即可：1、收到提前启动命令 2、重整温度达到 3、收到关机命令
             OSSemPend(&IgniteFirstBehindWaitSem,
-                      0,  //一直等待信号量
+                      0,        //一直等待信号量
                       OS_OPT_PEND_BLOCKING,
                       NULL,
                       &err);
 
-            if(err == OS_ERR_NONE) {
-                if((GetAheadRunningFlag() == YES)) { //收到提前启动指令
+            if(err == OS_ERR_NONE) {    
+                if((YES == GetAheadRunningFlag())) { //收到提前启动指令
                     APP_TRACE_INFO(("Ignite first time behind ahead start command...\n\r"));
                     SetAheadRunningFlag(NO);
                     m_eIgniteStatu = EN_PASS;
@@ -126,14 +137,19 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
                     m_eIgniteStatu = EN_PASS;
                 } else { //关机
                     APP_TRACE_INFO(("Ignite first time behind wait has been broken...\n\r"));
-                    IgniterWorkForSeconds(0);
+                    IgniterWorkForSeconds(0); 
+                    BSP_FastHeaterPwrOff();
+                    SetHydrgFanCtlSpdSmoothly(0,0,0,0);
                     SetPumpCtlSpd(0);
+                    SetSystemWorkStatu(EN_SHUTTING_DOWN);
+                    SetShutDownActionFlag(EN_STOP_ALL_DIRECT);
                     m_eIgniteStatu = EN_NOT_PASS;
                 }
             } else {
                 APP_TRACE_INFO(("Ignite first time behind sem wait err...\n\r"));
                 IgniterWorkForSeconds(0);
                 SetPumpCtlSpd(0);
+                SetHydrgFanCtlSpdSmoothly(0,0,0,0);
                 m_eIgniteStatu = EN_NOT_PASS;
             }
 
@@ -172,7 +188,8 @@ IGNITE_CHECK_STATU_Typedef IgniteSecondTime(float m_IgniteCheckTable2, float m_G
     BSP_FastHeaterPwrOff();
     BSP_LqdValve2_PwrOn();
     SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime);
-    SetHydrgFanCtlSpd(g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime);
+//    SetHydrgFanCtlSpd(g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime);
+    SetHydrgFanCtlSpdSmoothly(g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime,90,5,g_stStartHydrgFanSpdPara.FanSpdAfterIgniterSecondSuccessd);
     IgniterWorkForSeconds(120);
 
     m_eIgniteStatu = EN_PASS;
@@ -260,21 +277,25 @@ void HydrgProducerManagerTask()
 
     while(DEF_TRUE) {
         OSTaskSuspend(NULL, &err);
-        APP_TRACE_INFO(("Hydrogen producer managing...\n\r"));
-        SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);//开启运行数字信号警报监测开关
-        SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);//开启运行模拟信号警报监测开关
-        SetHydrgProducerAnaSigRunningStartAutoAdjHookSwitch(DEF_ENABLED);//允許自動減泵速,在泵速降到30以后会自动失能
+
+        SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);//开运行数字信号警报监测开关
+        SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);//开运行模拟信号警报监测开关
+        SetHydrgProducerPumpRunningAdjHookSwitch(DEF_ENABLED);//允許自動減泵速,在泵速降到30以后会自动失能
 
         while(DEF_TRUE) {
-            OSSemPend(&HydrgProducerManagerStopSem, OS_CFG_TICK_RATE_HZ, OS_OPT_PEND_BLOCKING, NULL, &err);
+            OSSemPend(&HydrgProducerManagerStopSem, 
+                       OS_CFG_TICK_RATE_HZ, 
+                       OS_OPT_PEND_BLOCKING,
+                       NULL, 
+                       &err);
 
-            if(err == OS_ERR_NONE) {        //一旦正确接收到信号量，说明机器进入关机阶段
+            if(err == OS_ERR_NONE) {        
                 break;
             }
         }
 
-        SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);//停止数字信号监控任务中运行阶段信号监测
-        SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);//停止模拟信号监控任务中运行阶段信号监测
+        SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);
+        SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);
         APP_TRACE_INFO(("Hydrogen producer manager stop...\n\r"));
     }
 }
@@ -323,25 +344,40 @@ void HydrgProducerDlyStopTaskCreate()
 void HydrgProducerManagerDlyStopTask(void)
 {
     OS_ERR      err;
-
+    static      uint16_t    u16ShutDownHydrgFanDlySeconds = 0;
     while(DEF_TRUE) {
+        
         OSTaskSuspend(NULL, &err);
-
+        
         OSSemPost(&HydrgProducerManagerStopSem,     //结束制氢机管理任务的本次运行，进入阻塞，等待下一次启动
                   OS_OPT_POST_1,
                   &err);
 
         g_eHydrgProducerManagerStopDlyStatu = ON;
         APP_TRACE_INFO(("The Hydrogen producer manager start to delay stop...\n\r"));
-        IgniterWorkForSeconds(0);                   //防止关机时，点火器因未到定时时间而继续运行，故将其关闭
+        IgniterWorkForSeconds(0);//防止关机时，点火器因未到定时时间而继续运行，故将其关闭
         SetPumpCtlSpd(0);
         BSP_LqdValve2_PwrOff();
         SetHydrgFanCtlSpd(2000);
-        OSTimeDlyHMSM(0, 5, 0, 0, OS_OPT_TIME_HMSM_STRICT, &err);
-        OSTaskSemPost(&AppTaskStartTCB, OS_OPT_POST_NO_SCHED, &err);
-        SetHydrgFanCtlSpd(0);
+        
+        while(DEF_TRUE) {
+            OSTimeDlyHMSM(0, 0, 1, 0,
+                          OS_OPT_TIME_HMSM_STRICT,
+                          &err);
+            u16ShutDownHydrgFanDlySeconds ++;
 
-        APP_TRACE_INFO(("aaaa...\n\r"));
+            if(u16ShutDownHydrgFanDlySeconds >= 20) {//
+                //发送给主任务内的shutdown函数任务信号量响应半机1制氢机延时关闭任务
+                OSTaskSemPost(&AppTaskStartTCB, 
+                              OS_OPT_POST_NO_SCHED,
+                              &err);
+                break;
+            }
+        }
+        OSTaskResume(&Make_Vaccuum_FunctionTaskTCB,&err);//关机结束后等制氢机没有压力了才开始抽真空
+//        SetHydrgFanCtlSpd(0);
+        SetHydrgFanCtlSpdSmoothly(0,0,0,0);
+        
         g_eHydrgProducerManagerStopDlyStatu = OFF;
     }
 }
@@ -409,13 +445,13 @@ void  IgniterWorkForSeconds(uint16_t i_WorkSeconds)
     OS_ERR      err;
     CPU_SR_ALLOC();
 
-    APP_TRACE_INFO(("Igniter (re)start to work for %d seconds...\n\r", i_WorkSeconds));
+    APP_TRACE_INFO(("Igniter work for %d seconds...\n\r", i_WorkSeconds));
     CPU_CRITICAL_EXIT();
     g_u16IgniterDelayOffSeconds = i_WorkSeconds;
 
     if(i_WorkSeconds > 0) {
         if(g_eIgniterWorkStatu == ON) {
-            //延时恢复点火任务
+
             OSTimeDlyResume(&IgniterWorkTaskTCB, &err);
             g_eIgniterDirectWork = YES;
         } else {
@@ -424,7 +460,7 @@ void  IgniterWorkForSeconds(uint16_t i_WorkSeconds)
         }
     } else {
         if(g_eIgniterWorkStatu == ON) {
-            OSTimeDlyResume(&IgniterWorkTaskTCB,
+            OSTimeDlyResume(&IgniterWorkTaskTCB,//立即结束点火延时
                             &err);
         }
     }
@@ -451,22 +487,19 @@ void IgniterWorkTask(uint16_t *p_arg)
         g_eIgniterWorkStatu = OFF;
 
         if(g_eIgniterDirectWork == NO) {
-            OSTaskSuspend(NULL, &err);          //暂停当前任务
+            OSTaskSuspend(NULL, &err);         
         } else {
             g_eIgniterDirectWork = NO;
         }
 
         if(g_u16IgniterDelayOffSeconds > 0) {
-            APP_TRACE_INFO(("Igniter on...\n\r"));
-            BSP_IgniterPwrOn();                 //点火
+            BSP_IgniterPwrOn();                 
             g_eIgniterWorkStatu = ON;
 
             OSTimeDlyHMSM(0, 0, g_u16IgniterDelayOffSeconds, 0, OS_OPT_TIME_HMSM_NON_STRICT, &err);
             BSP_IgniterPwrOff();
-            APP_TRACE_INFO(("Igniter off...\n\r"));
         } else {
             BSP_IgniterPwrOff();
-            APP_TRACE_INFO(("Igniter off...\n\r"));
         }
     }
 }

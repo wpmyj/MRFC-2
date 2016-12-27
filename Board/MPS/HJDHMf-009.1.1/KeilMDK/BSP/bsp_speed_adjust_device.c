@@ -41,18 +41,35 @@
 #define LAST_EDGE       1 //捕获脉冲后沿
 /*
 ***************************************************************************************************
+*                                         OS-RELATED    VARIABLES
+***************************************************************************************************
+*/
+static      OS_TMR      HydrgFanSpdDlyAdjTmr;//延时调节定时器
+static      OS_TMR      HydrgFanSpdCycleDlyTimeAdjustTmr;//周期延时调节定时器
+/*
+***************************************************************************************************
 *                                       LOCAL GLOBAL VARIABLES
 ***************************************************************************************************
 */
-uint16_t         g_u16HydrgPumpCtlSpd = 0;
-uint16_t         g_u16HydrgFanCtlSpd = 0;
-uint16_t         g_u16StackFanCtlSpd = 0;
+static  uint16_t    g_u16HydrgFanExpectCtlSpd = 0;
+static  uint16_t    g_u16HydrgFanCurrentCtlSpd = 0;
+static  uint16_t    g_u16HydrgPumpCtlSpd = 0;
+static  uint16_t    g_u16StackFanCtlSpd = 0;
 
-SWITCH_TYPE_VARIABLE_Typedef g_eSpdCaptureWorkSwitch[4] = {OFF, OFF, OFF, OFF}; //4路通道监测开关
-float g_fSpdCaptureFrequency[SPEED_SAMPLE_CHANNEL] = {0.0, 0.0, 0.0, 0.0}; //对应检测通道的脉冲频率数
+static  SWITCH_TYPE_VARIABLE_Typedef g_eSpdCaptureWorkSwitch[3] = {OFF, OFF, OFF}; //3路通道监测开关
+static  float g_fSpdCaptureFrequency[SPEED_SAMPLE_CHANNEL] = {0.0, 0.0, 0.0, 0.0}; //对应检测通道的脉冲频率数
 
-uint16_t g_u16SpdCaptureEdgeNum[4] = {0, 0, 0, 0}; //四个通道进入中断次数
-uint16_t g_u16SpeedCaptureValue[4][2] = {0}; //四个通道周期内第一次进入中断和最后一次进入中断的计数值
+static  uint16_t g_u16SpdCaptureEdgeNum[3] = {0, 0, 0}; //三个通道进入中断次数
+static  uint16_t g_u16SpeedCaptureValue[3][2] = {0}; //三个通道周期内第一次进入中断和最后一次进入中断的计数值
+
+/*
+***************************************************************************************************
+*                                         FUNCTION PROTOTYPES
+***************************************************************************************************
+*/
+static void HydrgFanSpdDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg);
+static void HydrgFanSpdCycleDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg);
+
 /*
 ***************************************************************************************************
 *                                         PumpSpdInc()
@@ -124,9 +141,6 @@ uint16_t GetPumpCtlSpd(void)
 {
     return g_u16HydrgPumpCtlSpd;
 }
-
-
-
 /*
 ***************************************************************************************************
 *                                         SetPumpCtlSpd()
@@ -165,7 +179,7 @@ void SetPumpCtlSpd(uint16_t i_u16NewSpd)
 void HydrgFanSpdInc()
 {
     uint16_t u16HydrgFanCtlSpd;
-    u16HydrgFanCtlSpd = GetHydrgFanCtlSpd();
+    u16HydrgFanCtlSpd = GetHydrgFanCurrentCtlSpd();
 
     if(u16HydrgFanCtlSpd >= 1900) {
         u16HydrgFanCtlSpd = 2000;
@@ -192,7 +206,7 @@ void HydrgFanSpdInc()
 void HydrgFanSpdDec()
 {
     uint16_t u16HydrgFanCtlSpd;
-    u16HydrgFanCtlSpd = GetHydrgFanCtlSpd();
+    u16HydrgFanCtlSpd = GetHydrgFanCurrentCtlSpd();
 
     if(u16HydrgFanCtlSpd < 100) {
         u16HydrgFanCtlSpd = 0;
@@ -205,7 +219,7 @@ void HydrgFanSpdDec()
 
 /*
 ***************************************************************************************************
-*                                         GetHydrgFanCtlSpd()
+*                               GetHydrgFanCurrentCtlSpd()
 *
 * Description : get the hydrogen fan speed grade number.
 *
@@ -216,12 +230,15 @@ void HydrgFanSpdDec()
 * Notes       : the speed grade whole number is 2000.
 ***************************************************************************************************
 */
-uint16_t GetHydrgFanCtlSpd(void)
+uint16_t GetHydrgFanCurrentCtlSpd(void)
 {
-    return g_u16HydrgFanCtlSpd;
+    return g_u16HydrgFanCurrentCtlSpd;
 }
 
-
+uint16_t GetHydrgFanExpectCtlSpd(void)
+{
+    return g_u16HydrgFanExpectCtlSpd;
+}
 
 /*
 ***************************************************************************************************
@@ -240,11 +257,100 @@ void SetHydrgFanCtlSpd(uint16_t i_u16NewSpd)
 {
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();
-    g_u16HydrgFanCtlSpd = i_u16NewSpd;
+    g_u16HydrgFanCurrentCtlSpd = i_u16NewSpd;
     BSP_SetHydrgFanSpd(i_u16NewSpd);
     CPU_CRITICAL_EXIT();
 }
 
+/*
+***************************************************************************************************
+*                                         SetHydrgFanCtlSpdSmoothly()
+*
+* Description : Delay for a period of time to set the hydrogen fan speed.
+*
+* Arguments   : i_u8StartDlyAdjTime:start adjust delay time.
+*               i_u8DelayTime:Adjust the cycle time delay(s),if i_u8DelayTime =0,set immediately.
+*               i_u16ExpectSpdValue:the expected hydrogen fan speed.
+*               
+* Returns     : none.
+*
+* Notes       : the actual speed grade whole number is 2000.
+***************************************************************************************************
+*/
+void SetHydrgFanCtlSpdSmoothly(uint16_t i_u16CurrentSpdValue,uint8_t i_u8StartDlyAdjTime, uint8_t i_u8CycleDlyAdjTime,uint16_t i_u16ExpSpdValue)
+{
+    OS_ERR err;
+    
+    g_u16HydrgFanExpectCtlSpd = i_u16ExpSpdValue ;
+
+    if(i_u8CycleDlyAdjTime > 0) {//周期延时调节定时器   
+         OSTmrCreate((OS_TMR *)&HydrgFanSpdCycleDlyTimeAdjustTmr,
+                     (CPU_CHAR *)"Hydrg fan Speed cycle Delay Adjust Timer",
+                     (OS_TICK)0,
+                     (OS_TICK)i_u8CycleDlyAdjTime * OS_CFG_TMR_TASK_RATE_HZ,
+                     (OS_OPT)OS_OPT_TMR_PERIODIC,
+                     (OS_TMR_CALLBACK_PTR)HydrgFanSpdCycleDlyAdjCallBack,
+                     (void *)0,
+                     (OS_ERR *)&err);
+    }
+                    
+    if(i_u8StartDlyAdjTime > 0) {//单次延时调节定时器   
+        OSTmrCreate((OS_TMR *)&HydrgFanSpdDlyAdjTmr,
+                    (CPU_CHAR *)"Hydrg fan Speed Delay Adjust Timer",
+                    (OS_TICK)i_u8StartDlyAdjTime * OS_CFG_TMR_TASK_RATE_HZ,//dly
+                    (OS_TICK)0,                                             //period
+                    (OS_OPT)OS_OPT_TMR_ONE_SHOT,    
+                    (OS_TMR_CALLBACK_PTR)HydrgFanSpdDlyAdjCallBack,
+                    (void *)0,
+                    (OS_ERR *)&err);
+
+        if(err == OS_ERR_NONE) {
+            OSTmrStart(&HydrgFanSpdDlyAdjTmr, &err);
+        }
+    } else {
+        if(i_u8CycleDlyAdjTime > 0){
+            OSTmrStart(&HydrgFanSpdCycleDlyTimeAdjustTmr, &err);
+        }
+    }
+    SetHydrgFanCtlSpd(i_u16CurrentSpdValue);    
+}
+/*
+***************************************************************************************************
+*                            HydrgFanSpdAdjustDlyCallBack()
+*
+* Description : when HydrgFanSpdCycleDlyTimeAdjustTmr time out that call back function.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+static void HydrgFanSpdDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg)
+{
+    OS_ERR err;
+    
+    OSTmrStart(&HydrgFanSpdCycleDlyTimeAdjustTmr, &err);
+    OSTmrDel(&HydrgFanSpdDlyAdjTmr, &err);//删除单次定时器
+}
+
+static void HydrgFanSpdCycleDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg)
+{
+    OS_ERR err;
+
+    if(g_u16HydrgFanCurrentCtlSpd != g_u16HydrgFanExpectCtlSpd) {
+        if(g_u16HydrgFanCurrentCtlSpd < g_u16HydrgFanExpectCtlSpd) {
+            HydrgFanSpdInc();
+        } else {
+            HydrgFanSpdDec();
+        }
+    } else {
+        OSTmrDel(&HydrgFanSpdCycleDlyTimeAdjustTmr, &err);
+    }
+}
 /*
 ***************************************************************************************************
 *                                         StackFanSpdInc()
@@ -337,7 +443,6 @@ void SetStackFanCtlSpd(uint16_t i_u16NewSpd)
     g_u16StackFanCtlSpd = i_u16NewSpd;
     BSP_SetStackFanSpd(i_u16NewSpd);
     CPU_CRITICAL_EXIT();
-    APP_TRACE_INFO(("stack fans speed :i_u16NewSpd %d...\r\n", i_u16NewSpd));
 
 }
 
@@ -360,9 +465,9 @@ void SetStackFanCtlSpd(uint16_t i_u16NewSpd)
 void BSP_DevSpdCaptureFinishedHandler(void)
 {
     /*输入捕获状态:bit15-捕获使能位，bit14-捕获中状态位,,其余位做捕获边沿计数位*/
-    static uint16_t TIM1CHX_CAPTURE_STA[4] = {0, 0, 0, 0}; //确保有一个通道被使能,才能轮流
+    static uint16_t TIM1CHX_CAPTURE_STA[3] = {0, 0,0}; //确保有一个通道被使能,才能轮流
     static uint8_t  stEnableChannelNum = 0;//通道切换计数,每0.5秒切换一次
-    static u16 u16SpeedCaptureValue[4][2];  //临时保存四个通道捕获周期内第一次和最后一次的计数值
+    static uint16_t u16SpeedCaptureValue[3][2];  //临时保存三个通道捕获周期内第一次和最后一次的计数值
 
     if(TIM_GetITStatus(TIM1, TIM_IT_CC1) != RESET) { //捕获到水泵转速脉冲
         if(g_eSpdCaptureWorkSwitch[PUMP_SPD_MONITOR] == ON) {
@@ -486,9 +591,6 @@ uint16_t    GetPumpFeedBackSpd(void)
     /*2脉冲每转、一分钟的脉冲计数次数->0.5 * 60 * 2 = 60 ,5000为定时器溢出计数值*/
     g_fSpdCaptureFrequency[PUMP_SPD_MONITOR] = 60 * (((5000.0 - g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] \
             + g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE]) / 5000.0) + (g_u16SpdCaptureEdgeNum[PUMP_SPD_MONITOR] - 1));
-
-//    APP_TRACE_DEBUG(("fPUMP_SPD_CaptureValue:%f:\r\n",((5000.0 - g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] \
-//    + g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE])/5000.0)));
 
     return (uint16_t)(g_fSpdCaptureFrequency[PUMP_SPD_MONITOR] * 0.33);//2000/6000（上位机数据显示比例）
 

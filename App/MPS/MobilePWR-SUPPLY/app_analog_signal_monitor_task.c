@@ -54,15 +54,16 @@ static      CPU_STK_8BYTE_ALIGNED     AnaSigMonitorTaskStk[ANA_SIGNAL_MONITOR_TA
 *                                       LOCAL VARIABLES
 ***************************************************************************************************
 */
-uint8_t      g_u8HydrgProducerAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;//制氢机运行模拟信号警报监测开关
+static      uint8_t      g_u8HydrgProducerAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;//制氢机运行模拟信号警报监测开关
+static      uint8_t      g_u8StackHydrgPressHighEnoughHookSw = DEF_DISABLED; //等待电堆压力满足开关
+static      uint8_t      g_u8StackAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;//电堆运行模拟信号警报监测开关
+static      uint8_t      g_u8HydrgProducerPumpRuningAdjustHookSw = DEF_DISABLED; //切换泵速调整开关
+static      uint8_t      g_u8HydrgProducerPumpAutoAdjByDecompressCountHookSw = DEF_DISABLED;//运行泵速根据排气次数调节开关
+static      uint8_t      g_u8PumpRunningAdjFinishStatu = DEF_YES;
+static      uint8_t      g_u8StackIsPulledStoppedMonitorHookSw = DEF_DISABLED;//电堆是否被拉停监测开关
+static      uint8_t      g_u8StackNeedRestartLimitCurrentFlag = DEF_CLR;//电堆被拉停后重新限流标志
 
-uint8_t      g_u8StackHydrgPressHighEnoughHookSw = DEF_DISABLED; //等待电堆压力满足开关
-uint8_t      g_u8StackAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;//电堆运行模拟信号警报监测开关
-uint8_t      g_u8HydrgProducerAnaSigalarmRunningStartAutoAdjHookSw = DEF_DISABLED; //制氢机泵速自动调节开关
-
-uint8_t      g_u8PumpAutoAdjFinishStatu = DEF_YES;
-
-uint16_t     g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;       //电堆气压小于10Kpa的秒数
+static      uint16_t     g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;       //电堆气压小于10Kpa的秒数
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
@@ -74,10 +75,11 @@ static      void        HydrgProducerAnaSigRunningStartAutoAdjHook(void);
 static      void        HydrgProducerAnaSigAlarmRunningMonitorHook(void);
 static      void        StackHydrgPressHighEnoughWaitHook(void);
 static      void        StackAnaSigAlarmRunningMonitorHook(void);
-
+static      void        JudgeWhetherTheStackIsPulledStoppedMonitorHook(void);
+//static      void        HydrgProducerPumpAutoAdjByDecompressCountHook(void);
 /*
 ***************************************************************************************************
-*                                          ANALOG SIGNAL MONITOR TASK CREATE
+*                                 AnaSigMonitorTaskCreate()
 *
 * Description : The use of the the funciton is to create the task that monitor the analog signal.
 *
@@ -150,9 +152,17 @@ void  AnaSigMonitorTask(void *p_arg)
             StackHydrgPressHighEnoughWaitHook();
         }
 
-        if(g_u8HydrgProducerAnaSigalarmRunningStartAutoAdjHookSw == DEF_ENABLED) {
+        if(g_u8HydrgProducerPumpRuningAdjustHookSw == DEF_ENABLED) {
             HydrgProducerAnaSigRunningStartAutoAdjHook();
         }
+        //监测电堆是否被拉停
+        if(g_u8StackIsPulledStoppedMonitorHookSw == DEF_ENABLED) {
+            JudgeWhetherTheStackIsPulledStoppedMonitorHook();
+        }
+        //制氢泵速根据排气次数动态调整
+//        if(g_u8HydrgProducerPumpAutoAdjByDecompressCountHookSw == DEF_ENABLED) {
+//            HydrgProducerPumpAutoAdjByDecompressCountHook();
+//        }
     }
 }
 
@@ -228,12 +238,12 @@ void HydrgProducerAnaSigRunningStartAutoAdjHook(void)
     if(i >= 10) { //1秒调节1次泵速
         i = 0;
 
-        if((fLqdPress >= 4) && (g_u8PumpAutoAdjFinishStatu == DEF_NO)) {
+        if((fLqdPress >= 4) && (g_u8PumpRunningAdjFinishStatu == DEF_NO)) {
             PumpSpdDec();
 
             if(GetPumpCtlSpd() <= 30) {
-                g_u8PumpAutoAdjFinishStatu = DEF_YES;
-                g_u8HydrgProducerAnaSigalarmRunningStartAutoAdjHookSw = DEF_DISABLED; //关自动调节开关
+                g_u8PumpRunningAdjFinishStatu = DEF_YES;
+                g_u8HydrgProducerPumpRuningAdjustHookSw = DEF_DISABLED; //关自动调节开关
             }
         }
     }
@@ -311,7 +321,7 @@ void StackAnaSigAlarmRunningMonitorHook(void)
         AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, ON);
         g_u16StackManagerHydrgPressBelow10KPaHoldSeconds++;
 
-        if(g_u16StackManagerHydrgPressBelow10KPaHoldSeconds >= 300) {
+        if(g_u16StackManagerHydrgPressBelow10KPaHoldSeconds >= 300) {//气压过低30s
 //            CmdShutDown();      //关机命令
             g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;
         }
@@ -338,7 +348,7 @@ void SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
 
 /*
 ***************************************************************************************************
-*                               SetHydrgProducerAnaSigRunningStartAutoAdjHookSwitch
+*                               SetHydrgProducerPumpRunningAdjHookSwitch
 *
 * Description : auto adjust the pump speed at the beginning of the running.
 *
@@ -349,10 +359,10 @@ void SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
 * Notes       : none.
 ***************************************************************************************************
 */
-void SetHydrgProducerAnaSigRunningStartAutoAdjHookSwitch(uint8_t i_NewStatu)
+void SetHydrgProducerPumpRunningAdjHookSwitch(uint8_t i_NewStatu)
 {
-    g_u8HydrgProducerAnaSigalarmRunningStartAutoAdjHookSw = i_NewStatu;
-    g_u8PumpAutoAdjFinishStatu = DEF_NO;
+    g_u8HydrgProducerPumpRuningAdjustHookSw = i_NewStatu;
+    g_u8PumpRunningAdjFinishStatu = DEF_NO;
 }
 
 /*
@@ -390,5 +400,82 @@ void SetStackAnaSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
 {
     g_u8StackAnaSigRunningMonitorAlarmHookSw = i_NewStatu;
 }
+
+/*
+***************************************************************************************************
+*                               SetStackIsPulledStoppedMonitorHookSwitch()
+*
+* Description : open the switch of the stack analog signal alarm manager switch.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
+void SetStackIsPulledStoppedMonitorHookSwitch(uint8_t i_NewStatu)
+{
+    g_u8StackIsPulledStoppedMonitorHookSw = i_NewStatu;
+}
+/*
+***************************************************************************************************
+*                      JudgeWhetherTheStackIsPulledStoppedMonitorHook()
+*
+* Description : Judge whether the stack was need restart limit current.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
+static void JudgeWhetherTheStackIsPulledStoppedMonitorHook(void)
+{
+    float fStackVoltage;
+    float fStackCurrent;
+    static uint16_t u16RestartLimitCurrentCount = 0;
+    
+    fStackVoltage = GetSrcAnaSig(STACK_VOLTAGE);
+    fStackCurrent = GetSrcAnaSig(STACK_CURRENT);
+    
+    u16RestartLimitCurrentCount ++;
+    if(u16RestartLimitCurrentCount >= 30)//每3秒监测一次是否需要开始重新限流
+    if(EN_IN_WORK == GetStackWorkStatu()){
+        if((fStackVoltage >= 51.0) && (fStackCurrent <= 3.0)){
+            g_u8StackNeedRestartLimitCurrentFlag = DEF_SET;
+        }else{
+            g_u8StackNeedRestartLimitCurrentFlag = DEF_CLR;
+        }
+    }
+    
+}
+
+uint8_t GetStackNeedRestartLimitCurrentFlag(void)
+{
+    return g_u8StackNeedRestartLimitCurrentFlag;
+}
+/*
+***************************************************************************************************
+*                          HydrgProducerPumpAutoAdjByDecompressCountHook()
+*
+* Description : open the switch of the stack analog signal alarm manager switch.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
+//static void HydrgProducerPumpAutoAdjByDecompressCountHook(void)
+//{
+//    if((GetSrcAnaSig(STACK_VOLTAGE) <= 51.0) && (GetSrcAnaSig(STACK_CURRENT) >= 3.0) && (GetSrcAnaSig(LIQUID_PRESS) <= 17.5 )){
+//        
+//    }else{
+//        
+//    }
+//}
 
 /******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/

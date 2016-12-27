@@ -40,8 +40,8 @@
 */
 #define VOLTAGE_LIMIT_MAX  (53.50)
 
-#define CURRENT_LIMIT_MAX  (33.00)
-#define CURRENT_LIMIT_MIN  (20.00)
+#define CURRENT_LIMIT_MAX  (30.00)//×î´ó33A
+#define CURRENT_LIMIT_MIN  (10.00)
 
 /*
 ***************************************************************************************************
@@ -69,6 +69,7 @@ uint8_t GetDcModuleCurrentLimitingPointImproveFlagStatus(void);
 void SetDcModuleCurrentLimitingPointReduceFlag(uint8_t i_NewStatu);
 uint8_t GetDcModuleCurrentLimitingPointReduceFlagStatus(void);
 
+void SetHuaWeiModuleAutoAdjustTaskSwitch(uint8_t i_NewStatu);
 /*
 ***************************************************************************************************
 *                                             MODULE END

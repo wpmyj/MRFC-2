@@ -362,7 +362,7 @@
             <useXO>0</useXO>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define>USE_STDPERIPH_DRIVER,STM32F10X_CL</Define>
+              <Define>USE_STDPERIPH_DRIVER,STM32F10X_CL,STACK_FAN_PID_CONTROL</Define>
               <Undefine></Undefine>
               <IncludePath>..\MobilePWR-SUPPLY;..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP;..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\OS\uCOS-III;..\..\..\CPU\ST\STM32F10x_StdPeriph_Lib_V3.5.0\Libraries\STM32F10x_StdPeriph_Driver\inc;..\..\..\CPU\ST\STM32F10x_StdPeriph_Lib_V3.5.0\Libraries\CMSIS\CM3\CoreSupport;..\..\..\uC-CPU;..\..\..\uC-CPU\ARM-Cortex-M3\RealView;..\..\..\uC-LIB;..\..\..\uCOS-III\Source;..\..\..\uCOS-III\Ports\ARM-Cortex-M3\Generic\RealView;..\..\..\uCOS-III\Cfg</IncludePath>
             </VariousControls>

@@ -53,14 +53,14 @@
 /*以下宏定义表示参数存储基地址*/
 #define PARAMETERS_SELECT_FLAG_OFFSET_ADDR                              0   //参数选择标志
 #define SYSTEM_RUN_TIME_STORE_OFFSET_ADDR                               2   //系统运行次数
-#define SYSTEM_RUN_WORK_TIME_STORE_OFFSET_ADDR                          4   //系统时间时间4个，各4个字节
+#define SYSTEM_TOTAL_WORK_TIME_STORE_OFFSET_ADDR                        4   //系统时间时间4个，各4个字节
 #define RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR                          20  //12个数
-#define RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR                       35  // 4个数
-#define RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR                     40  //液位参数
-#define RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR                  45  //泵参数
-#define RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR                   50  //制氢风机参数
-#define RUN_PURIFY_AMP_INTEGRAL_VALUE                                   55  //电堆提纯膜间电荷量
-#define DRIVER_LAYER_CALIBRATED_LINEAR_ANA_SENSOR_PARAMETERS_OFFSET_ADDR  57  //驱动层线性传感器校准参数,28个数
+#define RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR                       40  // 液压4个数
+#define RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR                     50  //液位参数4个
+#define RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR                  60  //泵参数2个
+#define RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR                   70  //制氢风机参数4个
+#define RUN_PURIFY_AMP_INTEGRAL_VALUE                                   80  //电堆提纯膜间电荷量1个
+#define DRIVER_LAYER_CALIBRATED_LINEAR_ANA_SENSOR_PARAMETERS_OFFSET_ADDR  82  //驱动层线性传感器校准参数,28个数
 
 
 /*
@@ -80,7 +80,7 @@ uint16_t                                    g_u16RunPurifyAmpIntegralValue;
 *                                     LOCAL VARIABLES
 ***************************************************************************************************
 */
-static                  uint16_t                        RW_ParametersBuffer[PARAMETERS_STORE_AREA_SIZE / 2];
+//static     uint16_t      RW_ParametersBuffer[PARAMETERS_STORE_AREA_SIZE / 2];
 
 /*
 ***************************************************************************************************
@@ -105,7 +105,7 @@ static          void        StoreTotalWorkTime(SYSTEM_TIME_Typedef *i_stTotalTim
 
 static          void        GetReformerTempCmpTblFromFlash(REFORMER_TEMP_CMP_LINES_Typedef *);
 static          void        GetDefaultReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *);
-static          void        SaveReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *);
+static          void        StoreReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *);
 
 static          void        GetLqdPressCmpTblFromFlash(LIQUID_PRESSURE_CMP_LINES_Typedef *);
 static          void        GetDefaultLqdPressCmpTbl(LIQUID_PRESSURE_CMP_LINES_Typedef *);
@@ -204,12 +204,21 @@ void LoadApplicationLayerParameters()
 
         GetTotalWorkTimeFromFlash(&stTotalWorkTime);
         LoadTotalWorkTimeToPrgm(stTotalWorkTime);   //传到实时运行参数所在文件对应的程序中去
+        
         GetReformerTempCmpTblFromFlash(&g_stReformerTempCmpTbl);
+        APP_TRACE_INFO(("IgFstTimeOverTmpPnt %d...\r\n",g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt));
+        APP_TRACE_INFO(("ShutDownUpperLimit %d...\r\n",g_stReformerTempCmpTbl.ShutDownUpperLimit));
         GetLqdPressCmpTblFromFlash(&g_stLqdPressCmpTbl);
+        APP_TRACE_INFO(("g_stLqdPressCmpTbl %d...\r\n",g_stLqdPressCmpTbl.ShutDownUpperLimit));
         GetLqdHeightCmpTblFromFlash(&g_stLqdHeightCmpTbl);
+        APP_TRACE_INFO(("g_stLqdHeightCmpTbl %d...\r\n",g_stLqdHeightCmpTbl.CloseAutomaticliquidValue));
         GetStartHydrgPumpSpdParaFromFlash(&g_stStartHydrgPumpSpdPara);
+        APP_TRACE_INFO(("g_stStartHydrgPumpSpdPara %d...\r\n",g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime));
         GetStartHydrgFanSpdParaFromFlash(&g_stStartHydrgFanSpdPara);
+         APP_TRACE_INFO(("g_stStartHydrgFanSpdPara %d...\r\n",g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime));
         GetRunPurifyAmpIntegralValueFromFlash(&g_u16RunPurifyAmpIntegralValue);
+        APP_TRACE_INFO(("g_u16RunPurifyAmpIntegralValue %d...\r\n",g_u16RunPurifyAmpIntegralValue));
+        
     } else { //载入默认参数
         APP_TRACE_INFO(("First time run,the machine will work with the default parameters!...\r\n"));
 
@@ -235,8 +244,8 @@ void LoadApplicationLayerParameters()
 
         /*获取默认参数并且存到Flash中*/
         GetDefaultReformerTempCmpTbl(&g_stReformerTempCmpTbl);
-        SaveReformerTempCmpTbl(&g_stReformerTempCmpTbl);
-
+        StoreReformerTempCmpTbl(&g_stReformerTempCmpTbl);
+        
         GetDefaultLqdPressCmpTbl(&g_stLqdPressCmpTbl);
         StoreLqdPressCmpTbl(&g_stLqdPressCmpTbl);
 
@@ -340,12 +349,12 @@ void BSP_StoreAnaSensorParaToFlash(ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef *i_st
 */
 static void GetTotalWorkTimeFromFlash(SYSTEM_TIME_Typedef *o_StoreAddr)
 {
-    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + SYSTEM_RUN_WORK_TIME_STORE_OFFSET_ADDR, (uint16_t *)o_StoreAddr, 4);
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + SYSTEM_TOTAL_WORK_TIME_STORE_OFFSET_ADDR, (uint16_t *)o_StoreAddr, 16);
 }
 
 void StoreTotalWorkTime(SYSTEM_TIME_Typedef *i_stTotalTime)
 {
-    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + SYSTEM_RUN_WORK_TIME_STORE_OFFSET_ADDR, (uint16_t *)i_stTotalTime, 4);
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + SYSTEM_TOTAL_WORK_TIME_STORE_OFFSET_ADDR, (uint16_t *)i_stTotalTime, 16);
 }
 
 /*
@@ -362,36 +371,10 @@ void StoreTotalWorkTime(SYSTEM_TIME_Typedef *i_stTotalTime)
 ***************************************************************************************************
 */
 static void GetReformerTempCmpTblFromFlash(REFORMER_TEMP_CMP_LINES_Typedef *i_ReformerTemCmpTbl)
-{
-    i_ReformerTemCmpTbl->IgFstTimeFrtToBhdTmpPnt    = RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR];
-    i_ReformerTemCmpTbl->IgFstTimeOverTmpPnt        = RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 1];
-    i_ReformerTemCmpTbl->IgFstTimeWatiTimeMax1      = RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 2];
-    i_ReformerTemCmpTbl->IgFstTimeWatiTimeMax2      = RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 3];
-    i_ReformerTemCmpTbl->IgScdTimeFrtToBhdTmpPnt    = RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 4];
-    i_ReformerTemCmpTbl->IgScdTimeOverTmpPnt        = RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 5];
-    i_ReformerTemCmpTbl->IgScdTimeWatiTimeMax1      = RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 6];
-    i_ReformerTemCmpTbl->IgScdTimeWatiTimeMax2      = RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 7];
-
-    i_ReformerTemCmpTbl->AlarmUpperLimit            = RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 8];
-    i_ReformerTemCmpTbl->AlarmLowerLimit            = RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 9];
-
-    i_ReformerTemCmpTbl->ShutDownLowerLimit         = RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 10];
-    i_ReformerTemCmpTbl->ShutDownUpperLimit         = RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 11];
+{    
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_ReformerTemCmpTbl, 12);
 }
 
-/*
-***************************************************************************************************
-*                                      GetDefaultReformerTempCmpTbl()
-*
-* Description:  load the default paramters that related to the reformer.
-*
-* Arguments  :  the avriable that store the parameters.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
 static void GetDefaultReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *i_ReformerTemCmpTbl)
 {
     i_ReformerTemCmpTbl->IgFstTimeFrtToBhdTmpPnt    = NULL;
@@ -406,38 +389,12 @@ static void GetDefaultReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *i_Refo
     i_ReformerTemCmpTbl->AlarmLowerLimit            = 0;
     i_ReformerTemCmpTbl->AlarmUpperLimit            = 550;
     i_ReformerTemCmpTbl->ShutDownLowerLimit         = 0;
-    i_ReformerTemCmpTbl->ShutDownUpperLimit         = 10;
+    i_ReformerTemCmpTbl->ShutDownUpperLimit         = 100;
 }
 
-/*
-***************************************************************************************************
-*                                      SaveReformerTempCmpTbl()
-*
-* Description:  save the paramters that related to the reformer.
-*
-* Arguments  :  the buff that store the parameters.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
-static void SaveReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *i_ReformerTemCmpTbl)
+static void StoreReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *i_ReformerTemCmpTbl)
 {
-    RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR]      = i_ReformerTemCmpTbl->IgFstTimeFrtToBhdTmpPnt;
-    RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 1]  = i_ReformerTemCmpTbl->IgFstTimeOverTmpPnt ;
-    RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 2]  = i_ReformerTemCmpTbl->IgFstTimeWatiTimeMax1;
-    RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 3]  = i_ReformerTemCmpTbl->IgFstTimeWatiTimeMax2;
-    RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 4]  = i_ReformerTemCmpTbl->IgScdTimeFrtToBhdTmpPnt;
-    RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 5]  = i_ReformerTemCmpTbl->IgScdTimeOverTmpPnt;
-    RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 6]  = i_ReformerTemCmpTbl->IgScdTimeWatiTimeMax1;
-    RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 7]  = i_ReformerTemCmpTbl->IgScdTimeWatiTimeMax2;
-
-    RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 8]  = i_ReformerTemCmpTbl->AlarmUpperLimit;
-    RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 9]  = i_ReformerTemCmpTbl->AlarmLowerLimit;
-
-    RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 10] = i_ReformerTemCmpTbl->ShutDownLowerLimit;
-    RW_ParametersBuffer[RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR + 11] = i_ReformerTemCmpTbl->ShutDownUpperLimit;
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_ReformerTemCmpTbl, 12);
 }
 
 /*
@@ -455,24 +412,9 @@ static void SaveReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *i_ReformerTe
 */
 static void GetLqdPressCmpTblFromFlash(LIQUID_PRESSURE_CMP_LINES_Typedef *i_LqdPressCmpTbl)
 {
-    i_LqdPressCmpTbl->AlarmLowerLimit               = RW_ParametersBuffer[RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR];
-    i_LqdPressCmpTbl->AlarmUpperLimit               = RW_ParametersBuffer[RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR + 1];
-    i_LqdPressCmpTbl->ShutDownLowerLimit            = RW_ParametersBuffer[RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR + 2];
-    i_LqdPressCmpTbl->ShutDownUpperLimit            = RW_ParametersBuffer[RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR + 3];
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_LqdPressCmpTbl, 4);
 }
-/*
-***************************************************************************************************
-*                                      LoadDefaultLqdPressCmpTbl()
-*
-* Description:  load the default paramters that related to the liquid press.
-*
-* Arguments  :  the avriable that store the parameters.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+
 static void GetDefaultLqdPressCmpTbl(LIQUID_PRESSURE_CMP_LINES_Typedef *i_LqdPressCmpTbl)
 {
     i_LqdPressCmpTbl->AlarmLowerLimit               = 1;
@@ -480,25 +422,10 @@ static void GetDefaultLqdPressCmpTbl(LIQUID_PRESSURE_CMP_LINES_Typedef *i_LqdPre
     i_LqdPressCmpTbl->ShutDownLowerLimit            = 0;
     i_LqdPressCmpTbl->ShutDownUpperLimit            = 20;
 }
-/*
-***************************************************************************************************
-*                                      StoreLqdPressCmpTbl()
-*
-* Description:  save the paramters that related to the liquid press.
-*
-* Arguments  :  the avriable that store the parameters.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+
 static void StoreLqdPressCmpTbl(LIQUID_PRESSURE_CMP_LINES_Typedef *i_LqdPressCmpTbl)
 {
-    RW_ParametersBuffer[RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR]      =   i_LqdPressCmpTbl->AlarmLowerLimit;
-    RW_ParametersBuffer[RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR + 1]  =   i_LqdPressCmpTbl->AlarmUpperLimit;
-    RW_ParametersBuffer[RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR + 2]  =   i_LqdPressCmpTbl->ShutDownLowerLimit;
-    RW_ParametersBuffer[RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR + 3]  =   i_LqdPressCmpTbl->ShutDownUpperLimit;
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_LqdPressCmpTbl, 4);
 }
 /*
 ***************************************************************************************************
@@ -515,22 +442,9 @@ static void StoreLqdPressCmpTbl(LIQUID_PRESSURE_CMP_LINES_Typedef *i_LqdPressCmp
 */
 static void GetLqdHeightCmpTblFromFlash(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmpTbl)
 {
-    i_LqdHeightCmpTbl->AlarmlowerLiquidLevellimit = RW_ParametersBuffer[RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR];
-    i_LqdHeightCmpTbl->AlarmUpperLiquidLevellimit = RW_ParametersBuffer[RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR + 1];
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_LqdHeightCmpTbl, 4);
 }
-/*
-***************************************************************************************************
-*                                      GetDefaultLqdHeightCmpTbl()
-*
-* Description:  load the default paramters that related to the liquid press.
-*
-* Arguments  :  the avriable that store the parameters.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+
 static void GetDefaultLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmpTbl)
 {
     i_LqdHeightCmpTbl->AlarmlowerLiquidLevellimit = 70;
@@ -539,28 +453,14 @@ static void GetDefaultLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeig
     i_LqdHeightCmpTbl->AlarmUpperLiquidLevellimit = 230;//暂定
 }
 
-/*
-***************************************************************************************************
-*                                      StoreLqdHeightCmpTbl()
-*
-* Description:  save the paramters that related to the liquid press.
-*
-* Arguments  :  the avriable that store the parameters.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
 static void StoreLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmpTbl)
 {
-    RW_ParametersBuffer[RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR] = i_LqdHeightCmpTbl->AlarmlowerLiquidLevellimit;
-    RW_ParametersBuffer[RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR + 1] = i_LqdHeightCmpTbl->AlarmUpperLiquidLevellimit;
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_LqdHeightCmpTbl, 4);
 }
 
 /*
 ***************************************************************************************************
-*                                      LoadStartHydrgFanAndPumpSpd()
+*                                      GetStartHydrgPumpSpdParaFromFlash()
 *
 * Description:  load the paramters, that related to the speed adjust device, that has stored in the flash.
 *
@@ -573,10 +473,7 @@ static void StoreLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmp
 */
 void GetStartHydrgPumpSpdParaFromFlash(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
 {
-    i_StartPumpSpdPara->PumpSpdIgniterFirstTime
-        = RW_ParametersBuffer[RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR];
-    i_StartPumpSpdPara->PumpSpdIgniterSecondTime
-        = RW_ParametersBuffer[RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR + 1];
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t*)i_StartPumpSpdPara, 2);
 }
 
 static void GetDefaultStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
@@ -587,16 +484,12 @@ static void GetDefaultStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_
 
 void StoreStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
 {
-    RW_ParametersBuffer[RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR]
-        = i_StartPumpSpdPara->PumpSpdIgniterFirstTime;
-
-    RW_ParametersBuffer[RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR + 1]
-        = i_StartPumpSpdPara->PumpSpdIgniterSecondTime;
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t*)i_StartPumpSpdPara, 2);
 }
 
 /*
 ***************************************************************************************************
-*                                      LoadDefaultStartHydrgFanAndPumpSpd()
+*                                      GetStartHydrgFanSpdParaFromFlash()
 *
 * Description:  load the default paramters that related to the speed adjust device.
 *
@@ -609,62 +502,20 @@ void StoreStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpd
 */
 void GetStartHydrgFanSpdParaFromFlash(HYDROGEN_FAN_SPEED_PARA_Typedef *i_StartHydrgFanSpdPara)
 {
-    i_StartHydrgFanSpdPara->FanSpdIgniterFirstTime
-        = RW_ParametersBuffer[RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR];
-    i_StartHydrgFanSpdPara->FanSpdAfterIgniterFirstSuccessd
-        = RW_ParametersBuffer[RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR + 1];
-    i_StartHydrgFanSpdPara->FanSpdIgniterSecondTime
-        = RW_ParametersBuffer[RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR + 2];
-    i_StartHydrgFanSpdPara->FanSpdAfterIgniterSecondSuccessd
-        = RW_ParametersBuffer[RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR + 3];
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t*)i_StartHydrgFanSpdPara, 4);
 }
-/*
-***************************************************************************************************
-*                                      GetDefaultStartHydrgFanSpd()
-*
-* Description:  load the default paramters that related to the speed adjust device.
-*
-* Arguments  :  the avriable that store the parameters.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+
 static void GetDefaultStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PARA_Typedef *i_StartHydrgFanSpdPara)
 {
-    i_StartHydrgFanSpdPara->FanSpdIgniterFirstTime   = 2000;
-    i_StartHydrgFanSpdPara->FanSpdAfterIgniterFirstSuccessd = 0;
-    i_StartHydrgFanSpdPara->FanSpdIgniterSecondTime   = 2000;
-    i_StartHydrgFanSpdPara->FanSpdAfterIgniterSecondSuccessd = 0;
+    i_StartHydrgFanSpdPara->FanSpdIgniterFirstTime   = 1500;
+    i_StartHydrgFanSpdPara->FanSpdAfterIgniterFirstSuccessd = 2000;
+    i_StartHydrgFanSpdPara->FanSpdIgniterSecondTime   = 1500;
+    i_StartHydrgFanSpdPara->FanSpdAfterIgniterSecondSuccessd = 2000;
 }
-/*
-***************************************************************************************************
-*                                      StoreStartHydrgFanSpdPara()
-*
-* Description:  save the paramters that related to the speed adjust device.
-*
-* Arguments  :  the buff that store the parameters.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
 
 void StoreStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PARA_Typedef *i_StartHydrgFanSpdPara)
 {
-    RW_ParametersBuffer[RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR]
-        = i_StartHydrgFanSpdPara->FanSpdIgniterFirstTime;
-
-    RW_ParametersBuffer[RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR + 1]
-        = i_StartHydrgFanSpdPara->FanSpdAfterIgniterFirstSuccessd;
-
-    RW_ParametersBuffer[RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR + 2]
-        = i_StartHydrgFanSpdPara->FanSpdIgniterSecondTime;
-
-    RW_ParametersBuffer[RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR + 3]
-        = i_StartHydrgFanSpdPara->FanSpdAfterIgniterSecondSuccessd;
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t*)i_StartHydrgFanSpdPara, 4);
 }
 /*
 ***************************************************************************************************
@@ -681,43 +532,17 @@ void StoreStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PARA_Typedef *i_StartHydrgFanS
 */
 static void GetRunPurifyAmpIntegralValueFromFlash(u16 *i_RunPurifyAmpIntegralValue)
 {
-    *i_RunPurifyAmpIntegralValue = RW_ParametersBuffer[RUN_PURIFY_AMP_INTEGRAL_VALUE];
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_PURIFY_AMP_INTEGRAL_VALUE, (uint16_t*)i_RunPurifyAmpIntegralValue, 1);
 }
 
-/*
-***************************************************************************************************
-*                                      GetDefaultRunPurifyAmpIntegralValue()
-*
-* Description:  load the default paramters that related to the hydrogen in and out cmp level.
-*
-* Arguments  :  the avriable that store the parameters.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
 static void GetDefaultRunPurifyAmpIntegralValue(u16 *i_RunPurifyAmpIntegralValue)
 {
-    *i_RunPurifyAmpIntegralValue = 2300;
+    *i_RunPurifyAmpIntegralValue = 800;
 }
 
-/*
-***************************************************************************************************
-*                                      StoreRunPurifyAmpIntegralValue()
-*
-* Description:  save the paramters that related to the hydrogen in and out cmp level.
-*
-* Arguments  :  the buff that store the parameters.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
 static void StoreRunPurifyAmpIntegralValue(u16 *i_RunPurifyAmpIntegralValue)
 {
-    RW_ParametersBuffer[RUN_PURIFY_AMP_INTEGRAL_VALUE] = *i_RunPurifyAmpIntegralValue;
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_PURIFY_AMP_INTEGRAL_VALUE, (uint16_t*)i_RunPurifyAmpIntegralValue, 1);
 }
 /*
 ***************************************************************************************************

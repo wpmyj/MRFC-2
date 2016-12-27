@@ -42,8 +42,8 @@
 #ifndef __INTERNAL_TEST_FLAG
     #define __INTERNAL_TEST_FLAG    0u      //Internal debug mode
     #define __HYDROGEN_GENERATOR_MODULE 0u
-    #define __FUEL_CELL_MODULE    1u
-    #define __ONE_MACHINE_MODULE    0u
+    #define __FUEL_CELL_MODULE    0u
+    #define __ONE_MACHINE_MODULE    1u
 #endif
 
 #define     SYSTEM_STACK_USAGE_CHECK     0  //系统任务堆栈监测使能开关   
@@ -88,21 +88,20 @@ typedef struct {
 
 } HYDROGEN_FAN_SPEED_PARA_Typedef;
 
-
 typedef struct {
-    float AlarmLowerLimit;      //警报下限1Kpa
-    float AlarmUpperLimit;      //警报上限18Kpa
-    float ShutDownLowerLimit;   //下限0KPa
-    float ShutDownUpperLimit;   //过高20KPa
+    uint16_t AlarmLowerLimit;      //警报下限1Kpa
+    uint16_t AlarmUpperLimit;      //警报上限18Kpa
+    uint16_t ShutDownLowerLimit;   //下限0KPa
+    uint16_t ShutDownUpperLimit;   //过高20KPa
 
 } LIQUID_PRESSURE_CMP_LINES_Typedef;
 
 
 typedef struct {
-    uint8_t AlarmlowerLiquidLevellimit;//液位低下限
-    uint8_t OpenAutomaticliquidValue; //开自动加液液位值
-    uint8_t CloseAutomaticliquidValue; //关自动加液液位值
-    uint8_t AlarmUpperLiquidLevellimit;//液位高上限
+    uint16_t AlarmlowerLiquidLevellimit;//液位低下限
+    uint16_t OpenAutomaticliquidValue; //开自动加液液位值
+    uint16_t CloseAutomaticliquidValue; //关自动加液液位值
+    uint16_t AlarmUpperLiquidLevellimit;//液位高上限
 
 } LIQUID_HEIGHT_CMP_LINES_Typedef;
 

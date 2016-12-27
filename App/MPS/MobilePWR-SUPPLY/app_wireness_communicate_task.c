@@ -86,7 +86,7 @@ static      void        ResponsePrgmCommand(uint8_t *);
 static      void        LoadNonRealTimeWorkInfo(uint8_t , uint8_t , uint8_t , uint8_t *p_uint8_tParas, uint8_t *);
 static      void        AddRealTimeWorkInfoDataToSendBuff(uint8_t , uint8_t);
 static      void        LoadHydrogenProducerRealTimeWorkInfo(uint8_t, uint8_t *);
-static      void        LoadFuelCellRealTimeWorkInfo(uint8_t, uint8_t *);
+static      void        LoadFuelCellRealTimeWorkInfoPartA(uint8_t, uint8_t *);
 //static      void        SendReferenceAndConfigrationInfo(void);
 static      void        InsertNonRealTimeWorkInfoDataToSendBuff(uint8_t, uint8_t , uint8_t , uint8_t *);
 static      void        SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg);
@@ -387,7 +387,7 @@ void AddRealTimeWorkInfoDataToSendBuff(uint8_t i_uint8_tIsLatestData, uint8_t i_
         if(REAL_TIME_RUNNING_INFORMATION_A == i_uint8_RealTimeWorkInfoType) {
             LoadHydrogenProducerRealTimeWorkInfo(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
         } else if(REAL_TIME_RUNNING_INFORMATION_B == i_uint8_RealTimeWorkInfoType) {
-            LoadFuelCellRealTimeWorkInfo(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
+            LoadFuelCellRealTimeWorkInfoPartA(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
         } else {}
 
     } else if(++g_stTxMsgDataSendBuff.Q_length <= TX_MSG_SEND_QUEUE_SIZE) {
@@ -402,7 +402,7 @@ void AddRealTimeWorkInfoDataToSendBuff(uint8_t i_uint8_tIsLatestData, uint8_t i_
                 if(REAL_TIME_RUNNING_INFORMATION_A == i_uint8_RealTimeWorkInfoType) {
                     LoadHydrogenProducerRealTimeWorkInfo(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
                 } else if(REAL_TIME_RUNNING_INFORMATION_B == i_uint8_RealTimeWorkInfoType) {
-                    LoadFuelCellRealTimeWorkInfo(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
+                    LoadFuelCellRealTimeWorkInfoPartA(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
                 } else {}
 
                 break;
@@ -433,6 +433,7 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
 {
     uint16_t    u16CurrentTemp = 0;
     uint16_t    u16HydrgWorkTimes = 0;
+//    uint16_t    u16HydrogenGasConcentration = 0;
     uint16_t    u16PumpFeedbackSpeed = 0, u16PumpCtlSpeed = 0;
     uint16_t    u16HydrgFanCtlSpd = 0, u16HydrgFeedbackFanSpd = 0;
     uint32_t    u16FluidWeightPerMinuteMul100 = 0;
@@ -484,7 +485,7 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
         *(i_pRealTimeWorkInfo + LIQUID_PRESS_INTEGER_PART) = (uint8_t)(m_u16LiquidPress / 100);
         *(i_pRealTimeWorkInfo + LIQUID_PRESS_DECIMAL_PART) = (uint8_t)(m_u16LiquidPress % 100);
         //风机控制速度
-        u16HydrgFanCtlSpd = GetHydrgFanCtlSpd();
+        u16HydrgFanCtlSpd = GetHydrgFanCurrentCtlSpd();
         *(i_pRealTimeWorkInfo + HYDROGEN_FAN_SPD_CONTROL_HIGH) = (uint8_t)((u16HydrgFanCtlSpd & 0xFF00) >> 8);
         *(i_pRealTimeWorkInfo + HYDROGEN_FAN_SPD_CONTROL_LOW) = (uint8_t)((u16HydrgFanCtlSpd & 0xFF));
         //风机反馈速度
@@ -527,6 +528,11 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
         *(i_pRealTimeWorkInfo + FUEL_WEIGHT_INTEGER_PART_MID) = (uint8_t)((u16FluidWeightPerMinuteMul100 / 100 & 0xFF00) >> 8);
         *(i_pRealTimeWorkInfo + FUEL_WEIGHT_INTEGER_PART_LOW) = (uint8_t)((u16FluidWeightPerMinuteMul100 / 100 & 0xFF));
         *(i_pRealTimeWorkInfo + FUEL_WEIGHT_DECIMAL_PART) = (uint8_t)(u16FluidWeightPerMinuteMul100 % 100);
+        
+//        //氢气浓度
+//        u16HydrogenGasConcentration = (uint16_t)(GetSrcAnaSig(HYDROGEN_CONCENTRATION) * 100);
+//        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_GAS_CONCENTRATION_INTEGER_PART) = (uint8_t)(u16HydrogenGasConcentration / 100);
+//        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_GAS_CONCENTRATION_DECIMAL_PART) = (uint8_t)(u16HydrogenGasConcentration % 100);
 
         //子模块ID号
 //        *(i_pRealTimeWorkInfo + SUB_MODULE_ID_OF_THE_MULTI_MODULE_TYPE) = SUB_MODULE_ID;
@@ -540,7 +546,7 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
 }
 /*
 ***************************************************************************************************
-*                                      LoadFuelCellRealTimeWorkInfo()
+*                                      LoadFuelCellRealTimeWorkInfoPartA()
 *
 * Description:  Load fuel cell real time work Info.
 *
@@ -549,7 +555,7 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
 * Returns    :  none
 ***************************************************************************************************
 */
-static void LoadFuelCellRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData, uint8_t *i_pRealTimeWorkInfo)
+static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, uint8_t *i_pRealTimeWorkInfo)
 {
     uint16_t  u16StackTemp = 0;
     uint16_t  u16StackFanSpdFeedBack = 0;
@@ -672,6 +678,75 @@ static void LoadFuelCellRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData, uint8_t
         //数据报尾段
 //        *(i_pRealTimeWorkInfo + END_BYTE_ONE) = 0x5F;
 //        *(i_pRealTimeWorkInfo + END_BYTE_TWO) = 0x6F;
+
+    } else { //载入历史数据
+
+    }
+}
+
+/*
+***************************************************************************************************
+*                                      LoadFuelCellRealTimeWorkInfoPartA()
+*
+* Description:  Load fuel cell real time work Info.
+*
+* Arguments  :  none
+*
+* Returns    :  none
+***************************************************************************************************
+*/
+static void LoadFuelCellRealTimeWorkInfoPartB(uint8_t i_uint8_tIsHistoryData, uint8_t *i_pRealTimeWorkInfo)
+{
+    uint16_t   u16DecompressCountPerMin = 0;
+    uint16_t   u16VacuumNetativePressure = 0.0;
+    uint16_t   u16BatteryVoltage = 0.0;
+    uint16_t   u16BatteryCurrent = 0.0;
+
+    if(i_uint8_tIsHistoryData == EN_LATEST) { //最新的数据
+        
+        //数据报头段
+        *(i_pRealTimeWorkInfo + HEAD_BYTE_ONE) = 0xF1;
+        *(i_pRealTimeWorkInfo + HEAD_BYTE_TWO) = 0xF2;
+        *(i_pRealTimeWorkInfo + HEAD_BYTE_THREE) = 0xF3;
+        *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)(PRODUCT_MODEL_CODE >> 8);
+        *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(PRODUCT_MODEL_CODE & 0xFF);
+        *(i_pRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = LOCAL_NETWORK_ID;
+        *(i_pRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)REAL_TIME_RUNNING_INFORMATION_B;
+
+//      //数据标签码码值增加
+//      g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION]++;
+//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] >> 24);
+//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF0000) >> 16);
+//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF00) >> 8);
+//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF);
+        *(i_pRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_RUNNING_INFO_B_LENGTH;
+
+        //电堆每分钟泄压排气次数
+        u16DecompressCountPerMin = GetPassiveDecompressCountPerMinutes();
+        *(i_pRealTimeWorkInfo + STACK_DECOMPRESS_COUNT_PER_MINUTES_HIGH) = (uint8_t)((u16DecompressCountPerMin & 0xFF00) >> 8);
+        *(i_pRealTimeWorkInfo + STACK_DECOMPRESS_COUNT_PER_MINUTES_LOW) = (uint8_t)(u16DecompressCountPerMin & 0xFF);
+
+        //电池电压
+        u16BatteryVoltage = (uint16_t)(GetSrcAnaSig(BATTERY_VOLTAGE) * 100);
+        *(i_pRealTimeWorkInfo + BATTERY_VOLTAGE_INTEGER_PART) = (uint8_t)(u16BatteryVoltage / 100);
+        *(i_pRealTimeWorkInfo + BATTERY_VOLTAGE_IDECIMAL_PART) = (uint8_t)(u16BatteryVoltage % 100);
+
+        //电池电流
+        u16BatteryCurrent = (uint16_t)(GetSrcAnaSig(BATTERY_CURRENT) * 100);
+        *(i_pRealTimeWorkInfo + BATTERY_CURRENT_INTEGER_PART) = (uint8_t)(u16BatteryCurrent / 100);
+        *(i_pRealTimeWorkInfo + BATTERY_CURRENT_IDECIMAL_PART) = (uint8_t)(u16BatteryCurrent % 100);
+        
+        //真空负压
+        u16VacuumNetativePressure = (uint16_t)(GetSrcAnaSig(NEGATIVE_PRESSURE) * 100);
+        *(i_pRealTimeWorkInfo + VACUUM_NEGATIVE_PRESSURE_HIGH) = (uint8_t)(u16VacuumNetativePressure / 100);
+        *(i_pRealTimeWorkInfo + VACUUM_NEGATIVE_PRESSURE_LOW) = (uint8_t)(u16VacuumNetativePressure % 100);
+        
+        //子模块ID号
+//        *(i_pRealTimeWorkInfo + SUB_MODULE_ID_OF_THE_MULTI_MODULE_TYPE) = SUB_MODULE_ID;
+
+        //数据报尾段
+        *(i_pRealTimeWorkInfo + END_BYTE_ONE) = 0x5F;
+        *(i_pRealTimeWorkInfo + END_BYTE_TWO) = 0x6F;
 
     } else { //载入历史数据
 
@@ -935,9 +1010,11 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                         break;
 
                     case DBG_SWITCH_OVER_CONTROL_MODE:
-                        APP_TRACE_INFO(("Cmd ->Control_mode turn over ...\r\n"));
-                        ControlModeTurnOver();
-                        SendRealTimeAssistInfo();
+//                        APP_TRACE_INFO(("Cmd ->Control_mode turn over ...\r\n"));
+//                        ControlModeTurnOver();
+//                        SendRealTimeAssistInfo();
+                        APP_TRACE_INFO(("Ignite for 60 seconds...\r\n"));
+                        IgniterWorkForSeconds(60);
                         break;
 
                     case DBG_START_THE_MACHINE:
@@ -990,7 +1067,7 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                         break;
 
                     case DBG_HYDRG_SPEED_SET_WHTI_PARAMETERS:
-                        SetHydrgFanCtlSpd((uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_2)));
+//                        SetHydrgFanCtlSpd((uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_2)));
                         break;
 
                     case DBG_STACK_FAN_SPEED_INC:
@@ -1002,9 +1079,11 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                         break;
 
                     case DBG_OPEN_IGNITER:
+                        IgniterWorkForSeconds(60);
                         break;
 
                     case DBG_CLOSE_IGNITER:
+                        IgniterWorkForSeconds(0);
                         break;
 
                     default:

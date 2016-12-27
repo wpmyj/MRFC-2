@@ -380,7 +380,7 @@ void Bsp_SetDcModuleOutPutVIvalue(float i_fVvalue, float i_fIvalue)
     uint16_t Value_temp = 0, Ivalue_temp = 0;
     uint16_t HuaWeiModuleTxBuf[11] = {0x00, 0x08, 0xC8, 0x42, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-    APP_TRACE_INFO(("Set DC module Out Put VI value...\n\r"));
+//    APP_TRACE_INFO(("Set DC module Out Put VI value...\n\r"));
     Value_temp = (uint16_t)(i_fVvalue * 100);
     Ivalue_temp = (uint16_t)(i_fIvalue * 100);
 

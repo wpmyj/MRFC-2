@@ -66,9 +66,12 @@ void    AnaSigMonitorTaskCreate(void);
 
 
 void    SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(unsigned char);
-void    SetHydrgProducerAnaSigRunningStartAutoAdjHookSwitch(unsigned char);
+void    SetHydrgProducerPumpRunningAdjHookSwitch(unsigned char);
 void    SetHydrgProducerFansSpeedAutoIncreaseHookSwitch(unsigned char);
 void    SetStackHydrgPressHighEnoughHookSwitch(uint8_t i_NewStatu);
+
+void    SetStackIsPulledStoppedMonitorHookSwitch(uint8_t i_NewStatu);
+uint8_t GetStackNeedRestartLimitCurrentFlag(void);
 /*
 ***************************************************************************************************
 *                                             MODULE END
