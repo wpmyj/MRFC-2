@@ -32,6 +32,7 @@
 #include "Make_Vacuum.h"
 #include "app_dc_module_communicate_task.h"
 #include "bsp_dc_module_adjust.h"
+#include "bsp_speed_adjust_device.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -174,6 +175,8 @@ static  void  AppTaskStart(void *p_arg)
 
     Make_Vacuum_FunctionTaskCreate(); //自动抽真空任务
 
+//    SpeedControlDevManageTaskCreate();
+    
     IgniterWorkTaskCreate();           
 
     HydrgProducerManagerTaskCreate();   

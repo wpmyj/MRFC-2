@@ -45,7 +45,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\OBJ\</OutputDirectory>
-          <OutputName>FLD-uCos 0095</OutputName>
+          <OutputName>MRFC-2--0010-V085-uCos</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>1</CreateHexFile>
@@ -526,6 +526,16 @@
               <FileName>bsp_pid.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_pid.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_atmel_25256b_sshl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_atmel_25256b_sshl.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_spi.c</FilePath>
             </File>
           </Files>
         </Group>

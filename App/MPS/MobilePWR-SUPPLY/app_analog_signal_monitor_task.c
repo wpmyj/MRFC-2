@@ -57,9 +57,6 @@ static      CPU_STK_8BYTE_ALIGNED     AnaSigMonitorTaskStk[ANA_SIGNAL_MONITOR_TA
 static      uint8_t      g_u8HydrgProducerAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;//制氢机运行模拟信号警报监测开关
 static      uint8_t      g_u8StackHydrgPressHighEnoughHookSw = DEF_DISABLED; //等待电堆压力满足开关
 static      uint8_t      g_u8StackAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;//电堆运行模拟信号警报监测开关
-static      uint8_t      g_u8HydrgProducerPumpRuningAdjustHookSw = DEF_DISABLED; //切换泵速调整开关
-static      uint8_t      g_u8HydrgProducerPumpAutoAdjByDecompressCountHookSw = DEF_DISABLED;//运行泵速根据排气次数调节开关
-static      uint8_t      g_u8PumpRunningAdjFinishStatu = DEF_YES;
 static      uint8_t      g_u8StackIsPulledStoppedMonitorHookSw = DEF_DISABLED;//电堆是否被拉停监测开关
 static      uint8_t      g_u8StackNeedRestartLimitCurrentFlag = DEF_CLR;//电堆被拉停后重新限流标志
 
@@ -71,7 +68,6 @@ static      uint16_t     g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;  
 */
 static      void        AnaSigMonitorTask(void *p_arg);
 
-static      void        HydrgProducerAnaSigRunningStartAutoAdjHook(void);
 static      void        HydrgProducerAnaSigAlarmRunningMonitorHook(void);
 static      void        StackHydrgPressHighEnoughWaitHook(void);
 static      void        StackAnaSigAlarmRunningMonitorHook(void);
@@ -152,9 +148,6 @@ void  AnaSigMonitorTask(void *p_arg)
             StackHydrgPressHighEnoughWaitHook();
         }
 
-        if(g_u8HydrgProducerPumpRuningAdjustHookSw == DEF_ENABLED) {
-            HydrgProducerAnaSigRunningStartAutoAdjHook();
-        }
         //监测电堆是否被拉停
         if(g_u8StackIsPulledStoppedMonitorHookSw == DEF_ENABLED) {
             JudgeWhetherTheStackIsPulledStoppedMonitorHook();
@@ -211,42 +204,6 @@ void HydrgProducerAnaSigAlarmRunningMonitorHook(void)
     }
 
 //  UpdateBuzzerStatuInCruise();
-}
-
-/*
-***************************************************************************************************
-*                               HydrgProducerAnaSigRunningStartAutoAdjHook
-*
-* Description : The funciton is to auto adjust the pump at beginning of the run process with the analog signal.
-*
-* Arguments   : none.
-*
-* Returns     : none.
-*
-* Notes       : none.
-***************************************************************************************************
-*/
-
-void HydrgProducerAnaSigRunningStartAutoAdjHook(void)
-{
-    float fLqdPress;
-    static u8 i = 0;
-
-    fLqdPress = GetSrcAnaSig(LIQUID_PRESS);
-    i++;
-
-    if(i >= 10) { //1秒调节1次泵速
-        i = 0;
-
-        if((fLqdPress >= 4) && (g_u8PumpRunningAdjFinishStatu == DEF_NO)) {
-            PumpSpdDec();
-
-            if(GetPumpCtlSpd() <= 30) {
-                g_u8PumpRunningAdjFinishStatu = DEF_YES;
-                g_u8HydrgProducerPumpRuningAdjustHookSw = DEF_DISABLED; //关自动调节开关
-            }
-        }
-    }
 }
 
 /*
@@ -344,25 +301,6 @@ void StackAnaSigAlarmRunningMonitorHook(void)
 void SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
 {
     g_u8HydrgProducerAnaSigRunningMonitorAlarmHookSw = i_NewStatu;
-}
-
-/*
-***************************************************************************************************
-*                               SetHydrgProducerPumpRunningAdjHookSwitch
-*
-* Description : auto adjust the pump speed at the beginning of the running.
-*
-* Arguments   : none.
-*
-* Returns     : none.
-*
-* Notes       : none.
-***************************************************************************************************
-*/
-void SetHydrgProducerPumpRunningAdjHookSwitch(uint8_t i_NewStatu)
-{
-    g_u8HydrgProducerPumpRuningAdjustHookSw = i_NewStatu;
-    g_u8PumpRunningAdjFinishStatu = DEF_NO;
 }
 
 /*

@@ -132,6 +132,14 @@ typedef enum {
     YES = !NO,
 } WHETHER_TYPE_VARIABLE_Typedef;
 
+typedef enum
+{
+	IS_FIRE_STATUS_WORK = 0,
+	IS_PUMP_AND_VALUE1_WORK = 1,
+	IS_VALUE2_AND_IGNITER_WORK = 2,
+	IS_FAN_WORK = 3,
+}SwType_WORK_STATUS_Typedef; //开关器件工作状态查询
+
 typedef enum {
     STACK_TEMP_LOW_ALARM = 0,           //电堆低温警报
     STACK_TEMP_HIGH_ALARM,              //电堆高温警报

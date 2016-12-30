@@ -832,11 +832,11 @@ static void BSP_SwTypePwrDeviceStatuInit(void)
     GPIO_Init(GPIOC, &GPIO_InitStructure);
     GPIO_ResetBits(GPIOC, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
 
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB;              // 保温加热器控制引脚
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB;              // 预留2控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
-    GPIO_ResetBits(GPIOB, BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOB, BSP_GPIOE_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
 
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB;              // 快速加热器控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
@@ -966,35 +966,14 @@ void  BSP_LqdValve2_PwrOff(void)
 void  BSP_IgniterPwrOn(void)
 {
     GPIO_SetBits(GPIOC, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
+    SetSystemRunningStatuCodeBit(RuningStatuCodeGrpHydrgOut2_Bit);
 }
 
 void  BSP_IgniterPwrOff(void)
 {
     GPIO_ResetBits(GPIOC, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
+    ResetSystemRunningStatuCodeBit(RuningStatuCodeGrpHydrgOut2_Bit);
 }
-/*
-***************************************************************************************************
-*                                            BSP_KeepWarmHeaterPwrOn()
-*
-* Description : 开电磁加热器.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Note(s)     : none.
-***************************************************************************************************
-*/
-void  BSP_KeepWarmHeaterPwrOn(void)
-{
-    GPIO_SetBits(GPIOB, BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB);
-}
-
-void  BSP_KeepWarmHeaterPwrOff(void)
-{
-    GPIO_ResetBits(GPIOB, BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB);
-}
-
 
 /*
 ***************************************************************************************************
@@ -1011,12 +990,15 @@ void  BSP_KeepWarmHeaterPwrOff(void)
 */
 void  BSP_FastHeaterPwrOn(void)
 {
+    
+    SetSystemRunningStatuCodeBit(RuningStatuCodeGrpHydrgOut1_Bit);
     GPIO_SetBits(GPIOC, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
 }
 
 void  BSP_FastHeaterPwrOff(void)
 {
     GPIO_ResetBits(GPIOC, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
+    ResetSystemRunningStatuCodeBit(RuningStatuCodeGrpHydrgOut1_Bit);
 }
 
 /*
@@ -1126,6 +1108,18 @@ void  BSP_OutsidePumpPwrOff(void)
 * Note(s)     : none.
 ***************************************************************************************************
 */
+void  BSP_TailGasOutValvePwrOn(void)
+{
+    GPIO_SetBits(GPIOE, BSP_GPIOE_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Tail Gas Out Valve power on...\n\r"));
+}
+
+void  BSP_TailGasOutValvePwrOff(void)
+{
+    GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Tail Gas Out Valve power off...\n\r"));
+}
+
 void  BSP_PureHydrogenGasOutValvePwrOn(void)
 {
     GPIO_SetBits(GPIOE, BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
@@ -1350,7 +1344,7 @@ static  void  BSP_DeviceSpdCheckPortInit(u16 arr, u16 psc)
     TIM_ClearFlag(TIM1, TIM_IT_CC1
                   | TIM_IT_CC2
                   | TIM_IT_CC3
-                  | TIM_FLAG_Update); //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
+                  | TIM_FLAG_Update); //清除标志位
 
     TIM_ITConfig(TIM1, TIM_IT_CC1 //使能捕获通道
                  | TIM_IT_CC2
@@ -1360,6 +1354,9 @@ static  void  BSP_DeviceSpdCheckPortInit(u16 arr, u16 psc)
     TIM_Cmd(TIM1, ENABLE);
     BSP_IntVectSet(BSP_INT_ID_TIM1_CC, BSP_DevSpdCaptureFinishedHandler);//捕获完成中断产生进入中断
     BSP_IntEn(BSP_INT_ID_TIM1_CC);
+    
+    BSP_IntVectSet(BSP_INT_ID_TIM1_UP, BSP_DevSpdCaptureFinishedHandler);//产生更新事件进入中断,都指向同一个中断服务函数
+    BSP_IntEn(BSP_INT_ID_TIM1_UP);
 
 }
 
@@ -2250,6 +2247,72 @@ void DiagnosticFeedBack_9_5_IRQHandler(void)
 
     EXTI_ClearITPendingBit(EXTI_Line5);
 
+}
+
+/*
+*********************************************************************************************************
+*                                             BSP_CheckSwTypeWorkStatuInit()
+*
+* Description : Initialize the signal Port(s) for the SwType device work status.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : BSP_Init().
+*
+* Note(s)     : none.
+*********************************************************************************************************
+*/
+static	void  BSP_CheckSwTypeWorkStatuInit(void)
+{
+	GPIO_InitTypeDef  GPIO_InitStructure;
+	RCC_APB2PeriphClockCmd( RCC_APB2Periph_GPIOC, ENABLE);//使能所有GPIO口时钟
+
+	PWR_BackupAccessCmd(ENABLE);//允许修改RTC 和后备寄存器 
+	RCC_LSEConfig(RCC_LSE_OFF);//关闭外部低速外部时钟信号功能 后，PC13 PC14 PC15 才可以当普通IO用。
+	BKP_TamperPinCmd(DISABLE);//关闭入侵检测功能，也就是 PC13，也可以当普通IO 使用
+	PWR_BackupAccessCmd(DISABLE);//禁止修改后备寄存器
+
+	GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_5;  //点火器火焰查询状态引脚 
+	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_13;  // 进液阀1查询状态引脚 
+	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_14;  // 进液阀2查询状态引脚 
+	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+	GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_15;  // 风机查询状态引脚 
+	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+}
+//开关设备工作状态查询函数
+WHETHER_TYPE_VARIABLE_Typedef 	Check_Swtype_Work_Status(SwType_WORK_STATUS_Typedef Is_Swtype_Work)
+{
+	WHETHER_TYPE_VARIABLE_Typedef WHETHER_TYPE;
+	switch(Is_Swtype_Work){
+		case IS_FIRE_STATUS_WORK:
+			WHETHER_TYPE = GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_5)?YES:NO;
+			break;
+		case IS_PUMP_AND_VALUE1_WORK:
+			WHETHER_TYPE = GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_13)?YES:NO;
+			break; 
+		case IS_VALUE2_AND_IGNITER_WORK:
+			WHETHER_TYPE = GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_14)?YES:NO;
+			break;
+		case IS_FAN_WORK:
+			WHETHER_TYPE = GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_15)?YES:NO;
+			break;
+		default:
+			WHETHER_TYPE = NO;
+			break;
+		
+	}
+	return WHETHER_TYPE;
 }
 
 /*

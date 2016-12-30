@@ -206,18 +206,11 @@ void LoadApplicationLayerParameters()
         LoadTotalWorkTimeToPrgm(stTotalWorkTime);   //传到实时运行参数所在文件对应的程序中去
         
         GetReformerTempCmpTblFromFlash(&g_stReformerTempCmpTbl);
-        APP_TRACE_INFO(("IgFstTimeOverTmpPnt %d...\r\n",g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt));
-        APP_TRACE_INFO(("ShutDownUpperLimit %d...\r\n",g_stReformerTempCmpTbl.ShutDownUpperLimit));
         GetLqdPressCmpTblFromFlash(&g_stLqdPressCmpTbl);
-        APP_TRACE_INFO(("g_stLqdPressCmpTbl %d...\r\n",g_stLqdPressCmpTbl.ShutDownUpperLimit));
         GetLqdHeightCmpTblFromFlash(&g_stLqdHeightCmpTbl);
-        APP_TRACE_INFO(("g_stLqdHeightCmpTbl %d...\r\n",g_stLqdHeightCmpTbl.CloseAutomaticliquidValue));
         GetStartHydrgPumpSpdParaFromFlash(&g_stStartHydrgPumpSpdPara);
-        APP_TRACE_INFO(("g_stStartHydrgPumpSpdPara %d...\r\n",g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime));
         GetStartHydrgFanSpdParaFromFlash(&g_stStartHydrgFanSpdPara);
-         APP_TRACE_INFO(("g_stStartHydrgFanSpdPara %d...\r\n",g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime));
         GetRunPurifyAmpIntegralValueFromFlash(&g_u16RunPurifyAmpIntegralValue);
-        APP_TRACE_INFO(("g_u16RunPurifyAmpIntegralValue %d...\r\n",g_u16RunPurifyAmpIntegralValue));
         
     } else { //载入默认参数
         APP_TRACE_INFO(("First time run,the machine will work with the default parameters!...\r\n"));
@@ -479,7 +472,7 @@ void GetStartHydrgPumpSpdParaFromFlash(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_Start
 static void GetDefaultStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
 {
     i_StartPumpSpdPara->PumpSpdIgniterFirstTime   = 190;
-    i_StartPumpSpdPara->PumpSpdIgniterSecondTime  = 350;
+    i_StartPumpSpdPara->PumpSpdIgniterSecondTime  = 250;
 }
 
 void StoreStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
@@ -507,7 +500,7 @@ void GetStartHydrgFanSpdParaFromFlash(HYDROGEN_FAN_SPEED_PARA_Typedef *i_StartHy
 
 static void GetDefaultStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PARA_Typedef *i_StartHydrgFanSpdPara)
 {
-    i_StartHydrgFanSpdPara->FanSpdIgniterFirstTime   = 1500;
+    i_StartHydrgFanSpdPara->FanSpdIgniterFirstTime   = 1000;
     i_StartHydrgFanSpdPara->FanSpdAfterIgniterFirstSuccessd = 2000;
     i_StartHydrgFanSpdPara->FanSpdIgniterSecondTime   = 1500;
     i_StartHydrgFanSpdPara->FanSpdAfterIgniterSecondSuccessd = 2000;
@@ -519,7 +512,7 @@ void StoreStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PARA_Typedef *i_StartHydrgFanS
 }
 /*
 ***************************************************************************************************
-*                                      GetRunPurifyAmpIntegralValueFromFlash()
+*                                GetRunPurifyAmpIntegralValueFromFlash()
 *
 * Description:  load the paramters that related to the hydrogen in and out cmp level.
 *

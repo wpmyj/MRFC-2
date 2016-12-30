@@ -596,12 +596,12 @@ void ShutDown()
                 }
 
             case(u8)EN_DELAY_STOP_BOTH_PARTS:
-                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 10, //stop stack after 30 seconds
+                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 30, //stop stack after 30 seconds
                               OS_OPT_PEND_BLOCKING,
                               NULL,
                               &err);
 
-                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 20,//制氢机30+150秒->3分钟后关闭
+                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 150,//制氢机30+150秒->3分钟后关闭
                               OS_OPT_PEND_BLOCKING,
                               NULL,
                               &err);

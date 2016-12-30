@@ -1,8 +1,8 @@
 /*
 ***************************************************************************************************
-*                                              APPLICATION CODE
+*                                         APPLICATION CODE
 *
-*                          (c) Copyright 2015; Guangdong Hydrogen Energy Science And Technology Co.,Ltd
+*                      (c) Copyright 2016; Guangdong ENECO Science And Technology Co.,Ltd
 *
 *               All rights reserved.  Protected by international copyright laws.
 *               Knowledge of the source code may NOT be used without authorization.
@@ -53,7 +53,7 @@ static      CPU_STK     SysTimeStatTaskStk[SYSTEM_TIME_STATISTIC_TASK_STK_SIZE];
 *                                           LOCAL VARIABLES
 ***************************************************************************************************
 */
-static  SYSTEM_CONTROL_MODE_Typedef     g_eSystemControlMode = EN_CONTROL_MODE_MANNUAL;
+static  SYSTEM_CONTROL_MODE_Typedef     g_eSystemControlMode = EN_CONTROL_MODE_AUTO;
 static  SYSTEM_WORK_MODE_Typedef        g_eSystemWorkMode = EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL;
 
 /* The system time variable */
@@ -73,8 +73,8 @@ static          uint16_t                g_u16StackWorkTimes = 0;
 static        SELF_CHECK_CODE_Typedef   g_stSelfCheckCode;
 static  RUNNING_ALARM_STATUS_Typedef    g_stSystemAlarmsInf;    //报警码及保持时间
 
-static          uint16_t                g_u16CtlAndCommunicateCode = 0x8000;
-static          uint32_t                g_SystemRunningStatuCode = 0x80000000;
+static          uint16_t                g_u16CtlAndCommunicateCode = 0x0000;
+static          uint32_t                g_SystemRunningStatuCode = 0x00000000;
 
 static  SYSTEM_WORK_STATU_Typedef       g_eSystemWorkStatu = EN_WAITTING_COMMAND;
 static  STACK_WORK_STATU_Typedef        g_eStackWorkStatu = EN_NOT_IN_WORK;
@@ -237,7 +237,7 @@ uint8_t GetWorkModeWaittingForSelectFlag(void)
 *                                      ControlModeTurnOver()
 *
 * Description:  Turn over the control mode.
-*               控制模式反转
+*               
 * Arguments  :  none.
 *
 * Returns    :  none.

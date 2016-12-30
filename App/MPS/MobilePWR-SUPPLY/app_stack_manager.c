@@ -204,22 +204,25 @@ void StackManagerTask(void)
             fCurrent = GetSrcAnaSig(STACK_CURRENT);
             u16AmpIntegralSum += (uint16_t)fCurrent;
 
-            if(u16AmpIntegralSum >= 800) {  
+            if(u16AmpIntegralSum >= g_u16RunPurifyAmpIntegralValue) {  
                 BSP_HydrgOutValvePwrOn();
                 OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
                 BSP_HydrgOutValvePwrOff();
                 u16AmpIntegralSum = 0;
             }
             //风机PID控制程序 
-            if(g_u8StackFanAutoAdjSw == DEF_ENABLED) {
-                IPID.CalcCycleCount++;
-                if(IPID.CalcCycleCount >= IPID.Tsam) {
-                    fOptimumStackTemp = CalcStackOptimumTemperatureByCurrent();//计算最佳温度
-                    u16StackFanSpeed = IncrementType_PID_Process(fOptimumStackTemp);
-                    SetStackFanCtlSpd(u16StackFanSpeed);
-                    IPID.CalcCycleCount = 0;
-                }
-            }else{}           
+            if(EN_CONTROL_MODE_AUTO == GetControlMode()){
+                
+                if(g_u8StackFanAutoAdjSw == DEF_ENABLED) {
+                    IPID.CalcCycleCount++;
+                    if(IPID.CalcCycleCount >= IPID.Tsam) {
+                        fOptimumStackTemp = CalcStackOptimumTemperatureByCurrent();//计算最佳温度
+                        u16StackFanSpeed = IncrementType_PID_Process(fOptimumStackTemp);
+                        SetStackFanCtlSpd(u16StackFanSpeed);
+                        IPID.CalcCycleCount = 0;
+                    }
+                }else{}
+            }                    
         }
 
         SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(DEF_DISABLED);
@@ -309,7 +312,7 @@ void StackManagerDlyStopTask(void)
             u16ShutDownStackFanDlySeconds ++;
 
             //电堆风扇延时30S后关闭，同时挂起电堆停止任务
-            if(u16ShutDownStackFanDlySeconds >= 10) {//30
+            if(u16ShutDownStackFanDlySeconds >= 30) {//30
 
                 OSSemPost(&StackManagerStopSem,
                           OS_OPT_POST_1,

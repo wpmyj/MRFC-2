@@ -35,6 +35,8 @@
 *                                       MICRO DEFINE
 ***************************************************************************************************
 */
+#define SPEED_CONTROL_DEVICE_MANAGE_TASK_STK_SIZE       100
+
 #define SPEED_SAMPLE_CHANNEL          4u//ËÙ¶È·´À¡ÐÅºÅ²ÉÑùÍ¨µÀÊý
 
 #define FRONT_EDGE      0 //²¶»ñÂö³åÇ°ÑØ
@@ -44,6 +46,10 @@
 *                                         OS-RELATED    VARIABLES
 ***************************************************************************************************
 */
+
+OS_TCB      SpeedControlDevManageTaskTCB;
+static      CPU_STK     SpdCtrlDevManageTaskStk[SPEED_CONTROL_DEVICE_MANAGE_TASK_STK_SIZE];
+
 static      OS_TMR      HydrgFanSpdDlyAdjTmr;//ÑÓÊ±µ÷½Ú¶¨Ê±Æ÷
 static      OS_TMR      HydrgFanSpdCycleDlyTimeAdjustTmr;//ÖÜÆÚÑÓÊ±µ÷½Ú¶¨Ê±Æ÷
 /*
@@ -62,6 +68,8 @@ static  float g_fSpdCaptureFrequency[SPEED_SAMPLE_CHANNEL] = {0.0, 0.0, 0.0, 0.0
 static  uint16_t g_u16SpdCaptureEdgeNum[3] = {0, 0, 0}; //Èý¸öÍ¨µÀ½øÈëÖÐ¶Ï´ÎÊý
 static  uint16_t g_u16SpeedCaptureValue[3][2] = {0}; //Èý¸öÍ¨µÀÖÜÆÚÄÚµÚÒ»´Î½øÈëÖÐ¶ÏºÍ×îºóÒ»´Î½øÈëÖÐ¶ÏµÄ¼ÆÊýÖµ
 
+//uint16_t TIM1CHX_CAPTURE_STA[3] = {0, 0,0};
+uint16_t g_EnableChannelNum = 0;
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
@@ -70,6 +78,68 @@ static  uint16_t g_u16SpeedCaptureValue[3][2] = {0}; //Èý¸öÍ¨µÀÖÜÆÚÄÚµÚÒ»´Î½øÈëÖ
 static void HydrgFanSpdDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg);
 static void HydrgFanSpdCycleDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg);
 
+static void SpeedControlDevManageTask(void);
+/*
+***************************************************************************************************
+*                              SpeedControlDevManageTaskCreate()
+*
+* Description : increase the pump speed a grade.
+*
+* Arguments   : none.
+*
+* Returns     : none
+*
+* Notes       : the actual speed grade whole number is 2000.
+***************************************************************************************************
+*/
+void SpeedControlDevManageTaskCreate(void)
+{
+    OS_ERR  err;
+
+    OSTaskCreate((OS_TCB *)&SpeedControlDevManageTaskTCB,                    
+                 (CPU_CHAR *)"Speed Monitor task",
+                 (OS_TASK_PTR) SpeedControlDevManageTask,
+                 (void *) 0,
+                 (OS_PRIO) SPEED_CONTROL_DEVICE_MANAGE_TASK_PRIO,
+                 (CPU_STK *)&SpdCtrlDevManageTaskStk[0],
+                 (CPU_STK_SIZE) SPEED_CONTROL_DEVICE_MANAGE_TASK_STK_SIZE / 10,
+                 (CPU_STK_SIZE) SPEED_CONTROL_DEVICE_MANAGE_TASK_STK_SIZE,
+                 (OS_MSG_QTY) 5u,
+                 (OS_TICK) 0u,
+                 (void *) 0,
+                 (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
+                 (OS_ERR *)&err);
+    APP_TRACE_DEBUG(("Created Speed Monitor task, and err code is %d...\r\n", err));
+}
+
+/*
+***************************************************************************************************
+*                                         SpeedControlDevManageTask()
+*
+* Description : increase the pump speed a grade.
+*
+* Arguments   : none.
+*
+* Returns     : none
+*
+* Notes       : the actual speed grade whole number is 2000.
+***************************************************************************************************
+*/
+static void SpeedControlDevManageTask(void)
+{
+    OS_ERR      err;
+
+    OSTaskSuspend(NULL, &err);
+    while(DEF_TRUE) {
+        OSTimeDlyHMSM(0, 0, 0, 500,
+                      OS_OPT_TIME_HMSM_STRICT,
+                      &err);
+//        APP_TRACE_INFO(("g_EnableChannelNum: %d...\n\r\n\r", g_EnableChannelNum));
+//        APP_TRACE_INFO(("TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR]: %X...\n\r", TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR]));
+//        APP_TRACE_INFO(("TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR]: %X...\n\r", TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR]));
+//        APP_TRACE_INFO(("TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR]: %X...\n\r\n\r", TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR]));
+    }
+}
 /*
 ***************************************************************************************************
 *                                         PumpSpdInc()
@@ -337,6 +407,21 @@ static void HydrgFanSpdDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg)
     OSTmrDel(&HydrgFanSpdDlyAdjTmr, &err);//É¾³ýµ¥´Î¶¨Ê±Æ÷
 }
 
+/*
+***************************************************************************************************
+*                            HydrgFanSpdCycleDlyAdjCallBack()
+*
+* Description : when HydrgFanSpdCycleDlyTimeAdjustTmr time out that call back function.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
 static void HydrgFanSpdCycleDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg)
 {
     OS_ERR err;
@@ -355,7 +440,7 @@ static void HydrgFanSpdCycleDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg)
 ***************************************************************************************************
 *                                         StackFanSpdInc()
 *
-* Description : increase the stack fan1 and fan2 speed a grade.
+* Description : increase the stack fan speed a grade.
 *
 * Arguments   : none.
 *
@@ -433,7 +518,7 @@ uint16_t GetStackFanCtlSpd(void)
 *
 * Returns     : none.
 *
-* Notes       : the speed grade whole number is 200.
+* Notes       : the speed grade whole number is 2000.
 ***************************************************************************************************
 */
 void SetStackFanCtlSpd(uint16_t i_u16NewSpd)
@@ -443,7 +528,6 @@ void SetStackFanCtlSpd(uint16_t i_u16NewSpd)
     g_u16StackFanCtlSpd = i_u16NewSpd;
     BSP_SetStackFanSpd(i_u16NewSpd);
     CPU_CRITICAL_EXIT();
-
 }
 
 
@@ -465,7 +549,7 @@ void SetStackFanCtlSpd(uint16_t i_u16NewSpd)
 void BSP_DevSpdCaptureFinishedHandler(void)
 {
     /*ÊäÈë²¶»ñ×´Ì¬:bit15-²¶»ñÊ¹ÄÜÎ»£¬bit14-²¶»ñÖÐ×´Ì¬Î»,,ÆäÓàÎ»×ö²¶»ñ±ßÑØ¼ÆÊýÎ»*/
-    static uint16_t TIM1CHX_CAPTURE_STA[3] = {0, 0,0}; //È·±£ÓÐÒ»¸öÍ¨µÀ±»Ê¹ÄÜ,²ÅÄÜÂÖÁ÷
+    static uint16_t TIM1CHX_CAPTURE_STA[3] = {0, 0,0};
     static uint8_t  stEnableChannelNum = 0;//Í¨µÀÇÐ»»¼ÆÊý,Ã¿0.5ÃëÇÐ»»Ò»´Î
     static uint16_t u16SpeedCaptureValue[3][2];  //ÁÙÊ±±£´æÈý¸öÍ¨µÀ²¶»ñÖÜÆÚÄÚµÚÒ»´ÎºÍ×îºóÒ»´ÎµÄ¼ÆÊýÖµ
 
@@ -482,6 +566,8 @@ void BSP_DevSpdCaptureFinishedHandler(void)
                     u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] = TIM_GetCapture1(TIM1);//¼ÇÂ¼µÚÒ»´ÎµÄ¼ÆÊýÖµ
                 }
             }
+        }else{
+            g_fSpdCaptureFrequency[PUMP_SPD_MONITOR] = 0;
         }
 
         TIM_ClearITPendingBit(TIM1, TIM_IT_CC1);
@@ -498,10 +584,12 @@ void BSP_DevSpdCaptureFinishedHandler(void)
                     u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][FRONT_EDGE] = TIM_GetCapture2(TIM1);
                 }
             }
+        }else{
+            g_fSpdCaptureFrequency[HYDROGEN_FAN_SPD_MONITOR] = 0;
         }
 
         TIM_ClearITPendingBit(TIM1, TIM_IT_CC2);
-    } else if(TIM_GetITStatus(TIM1, TIM_IT_CC3) != RESET) { //²¶»ñµ½µç¶Ñ·ç»ú1×ªËÙÂö³å
+    } else if(TIM_GetITStatus(TIM1, TIM_IT_CC3) != RESET) { //²¶»ñµ½µç¶Ñ·ç»ú×ªËÙÂö³å
         if(g_eSpdCaptureWorkSwitch[STACK_FAN_SPD_MONITOR] == ON) {
             if(TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR] & 0x8000) {
 
@@ -514,6 +602,8 @@ void BSP_DevSpdCaptureFinishedHandler(void)
                     u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE] = TIM_GetCapture3(TIM1);
                 }
             }
+        }else{
+            g_fSpdCaptureFrequency[STACK_FAN_SPD_MONITOR] = 0;
         }
 
         TIM_ClearITPendingBit(TIM1, TIM_IT_CC3);
@@ -523,12 +613,11 @@ void BSP_DevSpdCaptureFinishedHandler(void)
     /*¸üÐÂÖÐ¶ÏÖÐÃ¿0.5sÇÐ»»Ò»´Î²¶»ñÍ¨µÀ*/
     if(TIM_GetITStatus(TIM1, TIM_IT_Update) != RESET) {
         stEnableChannelNum++;
-
         if(stEnableChannelNum == 1) {
             if((TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] & 0x3FFF) != 0) {
                 g_u16SpdCaptureEdgeNum[PUMP_SPD_MONITOR] = (TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] & 0x3FFF);//±£´æ²¶»ñ±ßÑØ´ÎÊý
-                g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] = u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE];
-                g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE] = u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE];
+                g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] = u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE];//±£´æ²¶»ñÇ°ÑØ¼ÆÊýÖµ
+                g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE] = u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE];//±£´æ²¶»ñºóÑØ¼ÆÊýÖµ
             } else {
                 g_fSpdCaptureFrequency[PUMP_SPD_MONITOR] = 0;
             }
@@ -564,7 +653,6 @@ void BSP_DevSpdCaptureFinishedHandler(void)
             TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] = 0x8000;   //¿ªÆôÏÂÒ»Í¨µÀ²¶»ñ
             TIM_ITConfig(TIM1, TIM_IT_CC1, ENABLE);
             stEnableChannelNum = 0; //»Ö¸´³õÊ¼Í¨µÀ
-
         } else {}
 
         TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
@@ -588,7 +676,7 @@ void BSP_DevSpdCaptureFinishedHandler(void)
 */
 uint16_t    GetPumpFeedBackSpd(void)
 {
-    /*2Âö³åÃ¿×ª¡¢Ò»·ÖÖÓµÄÂö³å¼ÆÊý´ÎÊý->0.5 * 60 * 2 = 60 ,5000Îª¶¨Ê±Æ÷Òç³ö¼ÆÊýÖµ*/
+    /*2Âö³åÃ¿×ª¡¢Ò»·ÖÖÓµÄÂö³å¼ÆÊý´ÎÊý->0.5 * 60 * 2 = 60 ,5000¶¨Ê±Æ÷Òç³ö¼ÆÊýÖµ*/
     g_fSpdCaptureFrequency[PUMP_SPD_MONITOR] = 60 * (((5000.0 - g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] \
             + g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE]) / 5000.0) + (g_u16SpdCaptureEdgeNum[PUMP_SPD_MONITOR] - 1));
 
@@ -635,7 +723,7 @@ uint16_t GetStackFanSpdFeedBack(void)
     g_fSpdCaptureFrequency[STACK_FAN_SPD_MONITOR] = 60 * (((5000.0 - g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE] \
             + g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][LAST_EDGE]) / 5000.0) + (g_u16SpdCaptureEdgeNum[STACK_FAN_SPD_MONITOR] - 1));
 
-    return (uint16_t)(g_fSpdCaptureFrequency[STACK_FAN_SPD_MONITOR]);
+    return (uint16_t)(g_fSpdCaptureFrequency[STACK_FAN_SPD_MONITOR] );//2000/6000
 }
 
 /*

@@ -128,7 +128,7 @@
 #define  BSP_GPIOB_STM_SPI_MOSI_PORT_NMB                                        DEF_BIT_05
 #define  BSP_GPIOB_STACK_FAN_SPD_CTRL_PORT_NMB                                  DEF_BIT_06//电堆风机速度控制引脚
 #define  BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB                     DEF_BIT_07//进液电磁阀一电源控制引脚
-#define  BSP_GPIOB_KEEPWARM_HEATER_PWR_CTRL_PORT_NMB                            DEF_BIT_08//保温加热器控制引脚
+#define  BSP_GPIOE_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB                               DEF_BIT_08//预留2电源控制引脚
 #define  BSP_GPIOB_PUMP_AND_WATER_INPUT_VALVE_ONE_DIAGNOSTIC_FEEDBACK_PORT_NMB  DEF_BIT_09//泵和进液电磁阀1诊断监测引脚
 #define  BSP_GPIOB_PUMP_PWR_CTRL_PORT_NMB                                       DEF_BIT_10//泵电源开关引脚
 #define  BSP_GPIOB_HYDROGEN_FAN_PWR_CTRL_PORT_NMB                               DEF_BIT_11//制氢机风机电源开关引脚
@@ -179,6 +179,7 @@
 #define  BSP_GPIOE_RVD7_CTRL_AND_RVD8_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB             DEF_BIT_05
 #define  BSP_GPIOE_RVD5_CTRL_AND_RVD6_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB             DEF_BIT_06
 #define  BSP_GPIOE_FIRE_STATUS_FEEDBACK_PORT_NMB                                    DEF_BIT_07//点火状态监测引脚
+#define  BSP_GPIOE_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB                                   DEF_BIT_08//尾气电磁阀开关引脚
 #define  BSP_GPIOE_PUMP_SPEED_CHECK_PORT_NMB                                        DEF_BIT_09//泵速检测引脚
 #define  BSP_GPIOE_PD_PULSE1_PORT_NMB                                               DEF_BIT_10//外部电位脉冲1
 #define  BSP_GPIOE_HYDRG_FAN_SPEED_CHECK_PORT_NMB                                   DEF_BIT_11//制氢风机速度检测引脚

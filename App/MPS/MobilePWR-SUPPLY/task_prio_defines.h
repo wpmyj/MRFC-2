@@ -54,6 +54,6 @@
 
 #define  IGNITER_WORK_TASK_PRIO                             19
 
-
+#define  SPEED_CONTROL_DEVICE_MANAGE_TASK_PRIO              20
 
 #endif

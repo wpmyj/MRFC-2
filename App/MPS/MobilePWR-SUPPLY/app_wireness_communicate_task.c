@@ -410,7 +410,7 @@ void AddRealTimeWorkInfoDataToSendBuff(uint8_t i_uint8_tIsLatestData, uint8_t i_
         }
     } else {
         --g_stTxMsgDataSendBuff.Q_length;
-        APP_TRACE_INFO(("The Sends message buffer is overflow...\r\n"));
+        APP_TRACE_INFO(("The real time sends message buffer is overflow...\r\n"));
     }
 
     OSMutexPost(&TxMsgSendBuffWriteMutex,       //ÊÍ·ÅÐ´·¢ËÍ»º³åÇø»¥³âËø
@@ -1010,11 +1010,9 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                         break;
 
                     case DBG_SWITCH_OVER_CONTROL_MODE:
-//                        APP_TRACE_INFO(("Cmd ->Control_mode turn over ...\r\n"));
-//                        ControlModeTurnOver();
-//                        SendRealTimeAssistInfo();
-                        APP_TRACE_INFO(("Ignite for 60 seconds...\r\n"));
-                        IgniterWorkForSeconds(60);
+                        APP_TRACE_INFO(("Cmd ->Control_mode turn over ...\r\n"));
+                        ControlModeTurnOver();
+                        SendRealTimeAssistInfo();
                         break;
 
                     case DBG_START_THE_MACHINE:

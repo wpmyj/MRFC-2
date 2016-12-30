@@ -103,11 +103,9 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
         APP_TRACE_INFO(("Start program one front,fast heat 3 minutes...\n\r"));
         BSP_FastHeaterPwrOn();
         
-//        if(GetReformerTemp() <= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt){
-        if(GetReformerTemp() <= 230){
+        if(GetReformerTemp() <= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt){
             
-//            OSTimeDlyHMSM(0, 3, 0, 0,   OS_OPT_TIME_HMSM_STRICT,&err);//快速加热三分钟
-            OSTimeDlyHMSM(0, 0, 30, 0,   OS_OPT_TIME_HMSM_STRICT,&err);
+            OSTimeDlyHMSM(0, 3, 0, 0,   OS_OPT_TIME_HMSM_STRICT,&err);//快速加热三分钟
             APP_TRACE_INFO(("Fast heat control finish...\n\r"));
         }
         SetSystemWorkStatu(EN_START_PRGM_ONE_BEHIND);
@@ -116,8 +114,8 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
             APP_TRACE_INFO(("Ignite first time behind...\n\r"));
             BSP_LqdValve1_PwrOn();
             SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime);
-            SetHydrgFanCtlSpdSmoothly(g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime,90,5,g_stStartHydrgFanSpdPara.FanSpdAfterIgniterFirstSuccessd);
-            IgniterWorkForSeconds(120);
+            SetHydrgFanCtlSpdSmoothly(g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime,90,8,g_stStartHydrgFanSpdPara.FanSpdAfterIgniterFirstSuccessd);
+            IgniterWorkForSeconds(240);
 
             SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(DEF_ENABLED);//重整温度监测
             //条件满足其一即可：1、收到提前启动命令 2、重整温度达到 3、收到关机命令
@@ -142,7 +140,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
                     SetHydrgFanCtlSpdSmoothly(0,0,0,0);
                     SetPumpCtlSpd(0);
                     SetSystemWorkStatu(EN_SHUTTING_DOWN);
-                    SetShutDownActionFlag(EN_STOP_ALL_DIRECT);
+                    SetShutDownActionFlag(EN_DELAY_STOP_PART_ONE);
                     m_eIgniteStatu = EN_NOT_PASS;
                 }
             } else {
@@ -188,9 +186,8 @@ IGNITE_CHECK_STATU_Typedef IgniteSecondTime(float m_IgniteCheckTable2, float m_G
     BSP_FastHeaterPwrOff();
     BSP_LqdValve2_PwrOn();
     SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime);
-//    SetHydrgFanCtlSpd(g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime);
     SetHydrgFanCtlSpdSmoothly(g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime,90,5,g_stStartHydrgFanSpdPara.FanSpdAfterIgniterSecondSuccessd);
-    IgniterWorkForSeconds(120);
+    IgniterWorkForSeconds(180);
 
     m_eIgniteStatu = EN_PASS;
     return m_eIgniteStatu;
@@ -280,7 +277,6 @@ void HydrgProducerManagerTask()
 
         SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);//开运行数字信号警报监测开关
         SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);//开运行模拟信号警报监测开关
-        SetHydrgProducerPumpRunningAdjHookSwitch(DEF_ENABLED);//允許自動減泵速,在泵速降到30以后会自动失能
 
         while(DEF_TRUE) {
             OSSemPend(&HydrgProducerManagerStopSem, 
@@ -358,7 +354,8 @@ void HydrgProducerManagerDlyStopTask(void)
         IgniterWorkForSeconds(0);//防止关机时，点火器因未到定时时间而继续运行，故将其关闭
         SetPumpCtlSpd(0);
         BSP_LqdValve2_PwrOff();
-        SetHydrgFanCtlSpd(2000);
+//        SetHydrgFanCtlSpd(2000);
+        SetHydrgFanCtlSpdSmoothly(2000,0,0,2000);
         
         while(DEF_TRUE) {
             OSTimeDlyHMSM(0, 0, 1, 0,
@@ -366,7 +363,7 @@ void HydrgProducerManagerDlyStopTask(void)
                           &err);
             u16ShutDownHydrgFanDlySeconds ++;
 
-            if(u16ShutDownHydrgFanDlySeconds >= 20) {//
+            if(u16ShutDownHydrgFanDlySeconds >= 180) {//180
                 //发送给主任务内的shutdown函数任务信号量响应半机1制氢机延时关闭任务
                 OSTaskSemPost(&AppTaskStartTCB, 
                               OS_OPT_POST_NO_SCHED,
@@ -493,7 +490,8 @@ void IgniterWorkTask(uint16_t *p_arg)
         }
 
         if(g_u16IgniterDelayOffSeconds > 0) {
-            BSP_IgniterPwrOn();                 
+            BSP_IgniterPwrOn();
+            
             g_eIgniterWorkStatu = ON;
 
             OSTimeDlyHMSM(0, 0, g_u16IgniterDelayOffSeconds, 0, OS_OPT_TIME_HMSM_NON_STRICT, &err);
