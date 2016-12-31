@@ -10,7 +10,7 @@
 */
 /*
 ***************************************************************************************************
-* Filename      : app_hydrg_producer_manager.c
+* Filename      : app_auto_make_vacuum.c
 * Version       : V1.00
 * Programmer(s) : Fanjun
 *
@@ -21,7 +21,7 @@
 *                                             INCLUDE FILES
 ***************************************************************************************************
 */
-#include "Make_Vacuum.h"
+#include "app_auto_make_vacuum.h"
 #include <includes.h>
 /*
 ***************************************************************************************************
@@ -108,6 +108,7 @@ static void  Make_Vacuum_FunctionTask(void *p_arg)
     OS_ERR  err; 
     static uint8_t u8timeCount = 0;
     static uint8_t u8MakeVavuumValve4PwrOnFlag = 0;
+    
     while(DEF_TRUE)
     {
         OSTaskSuspend(NULL, &err);
@@ -116,7 +117,7 @@ static void  Make_Vacuum_FunctionTask(void *p_arg)
         BSP_PureHydrogenGasOutValvePwrOff();
         BSP_MakeVavuumValve2PwrOn();
         BSP_MakeVavuumValve4PwrOn();       
-        u8MakeVavuumValve4PwrOnFlag = 1;
+        u8MakeVavuumValve4PwrOnFlag = YES;
                 
         while(DEF_TRUE)
         {
@@ -125,7 +126,7 @@ static void  Make_Vacuum_FunctionTask(void *p_arg)
                           NULL,
                           &err);
             if(err == OS_ERR_TIMEOUT){      
-                if(0 !=u8MakeVavuumValve4PwrOnFlag){
+                if(NO !=u8MakeVavuumValve4PwrOnFlag){
                     u8timeCount++;
                     if(u8timeCount >= 60){
                         BSP_MakeVavuumValve4PwrOff();

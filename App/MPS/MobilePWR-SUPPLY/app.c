@@ -29,7 +29,7 @@
 #include "app_wireness_communicate_task.h"
 #include "app_analog_signal_monitor_task.h"
 #include "app_digital_signal_monitor_task.h"
-#include "Make_Vacuum.h"
+#include "app_auto_make_vacuum.h"
 #include "app_dc_module_communicate_task.h"
 #include "bsp_dc_module_adjust.h"
 #include "bsp_speed_adjust_device.h"

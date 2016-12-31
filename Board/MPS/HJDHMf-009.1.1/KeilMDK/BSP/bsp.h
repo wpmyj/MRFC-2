@@ -160,6 +160,8 @@
 /* ------------------------------------------ GPIOD PINS ---------------------------------------- */
 
 #define  BSP_GPIOD_UART5_RX_PORT_NMB                                            DEF_BIT_02
+#define  BSP_GPIOD_FLASH_HOLD_PORT_NMB                                          DEF_BIT_03
+#define  BSP_GPIOD_FLASH_WP_PORT_NMB                                            DEF_BIT_04
 #define  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB                               DEF_BIT_07
 #define  BSP_GPIOD_MAX6675_CHIPS_SELECT_PORT_NMB                                DEF_BIT_10
 #define  BSP_GPIOD_MAX6675_CHIPS_SCLK_PORT_NMB                                  DEF_BIT_11

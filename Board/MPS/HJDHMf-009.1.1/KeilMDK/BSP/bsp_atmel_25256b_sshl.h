@@ -14,8 +14,8 @@
 * Programmer(s) :  Fanjun
 * Version       :  V1.0
 * data          :  2016.12.27
-* brief         :This file contains all the functions prototypes for the system run
-*                config parameters firmware library.
+* brief         :  This file contains all the functions prototypes for the system run
+*                  config parameters firmware library.
 *********************************************************************************************************/
 #ifndef __BSP_ATMEL_25256B_SSHL_H__
 #define __BSP_ATMEL_25256B_SSHL_H__
@@ -39,16 +39,16 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define	AT25256B_CS 		    (GPIO_ResetBits(GPIOA, GPIO_Pin_15));//AT25256B的片选信号
-#define	AT25256B_NCS 		    (GPIO_SetBits(GPIOA, GPIO_Pin_15));  		
+#define	AT25256B_CS 		    (GPIO_ResetBits(GPIOA, BSP_GPIOA_STM_SPI_NSS_PORT_NMB));//AT25256B的片选信号
+#define	AT25256B_NCS 		    (GPIO_SetBits(GPIOA, BSP_GPIOA_STM_SPI_NSS_PORT_NMB));  		
 
 //AT25256B指令表
-#define AT_WRITE_ENABLE		                0x110 //WREN
-#define AT_RESET_WRITE_ENABLE_REGISTER		0x100 //WRDI
-#define AT_READ_STATUS_REGISTER		        0x101 //RDSR
-#define AT_WRITE_STATUS_REGISTER		    0x001 //WRSR
-#define AT_READ_DATA		                0x011 //READ
-#define AT_WRITE_DATA		                0x010 //WRITE
+#define WREN		        0x06 //WREN
+#define WRDI		        0x04 //WRDI
+#define RDSR		        0x05 //RDSR
+#define WRSR		        0x01 //WRSR
+#define READ		        0x03 //READ
+#define WRITE		        0x02 //WRITE
 /*
 ***************************************************************************************************
 *                                           EXPORTED DATA TYPE
@@ -72,8 +72,13 @@
 *                                           EXPORTED FUNCTION
 ***************************************************************************************************
 */
+void AT25256B_Init(void);
 
+uint8_t AT25256B_ReadSR(void);
+void AT25256B_Write_SR(uint8_t sr);
 
+void AT25256B_Read(u8* pBuffer,u16 ReadAddr,u16 NumByteToRead);
+void AT25256B_Write(u8* pBuffer,u16 WriteAddr,u16 NumByteToWrite);
 
 /*
 ***************************************************************************************************

@@ -27,14 +27,14 @@
 #include "app_system_run_cfg_parameters.h"
 #include "app_top_task.h"
 #include "app_stack_manager.h"
-#include "Make_Vacuum.h"
+#include "app_auto_make_vacuum.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
 #define     NMB_OF_AVERAGE_TEMPERATURE_SAMPLE           4   //平均温度采样样本数
-#define     DIG_SIGNAL_MONITOR_TASK_STK_SIZE            1024
+#define     DIG_SIGNAL_MONITOR_TASK_STK_SIZE            256
 
 /*
 ***************************************************************************************************

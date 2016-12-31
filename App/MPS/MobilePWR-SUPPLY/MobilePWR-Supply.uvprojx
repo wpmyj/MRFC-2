@@ -453,14 +453,14 @@
               <FilePath>.\app_hydrg_producer_manager.c</FilePath>
             </File>
             <File>
-              <FileName>Make_Vacuum.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Make_Vacuum.c</FilePath>
-            </File>
-            <File>
               <FileName>app_dc_module_communicate_task.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\app_dc_module_communicate_task.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_auto_make_vacuum.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\app_auto_make_vacuum.c</FilePath>
             </File>
           </Files>
         </Group>

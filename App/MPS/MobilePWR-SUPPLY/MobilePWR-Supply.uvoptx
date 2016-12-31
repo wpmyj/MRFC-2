@@ -327,8 +327,8 @@
       <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\Make_Vacuum.c</PathWithFileName>
-      <FilenameWithoutPath>Make_Vacuum.c</FilenameWithoutPath>
+      <PathWithFileName>.\app_dc_module_communicate_task.c</PathWithFileName>
+      <FilenameWithoutPath>app_dc_module_communicate_task.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -340,8 +340,8 @@
       <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\app_dc_module_communicate_task.c</PathWithFileName>
-      <FilenameWithoutPath>app_dc_module_communicate_task.c</FilenameWithoutPath>
+      <PathWithFileName>.\app_auto_make_vacuum.c</PathWithFileName>
+      <FilenameWithoutPath>app_auto_make_vacuum.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>

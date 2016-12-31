@@ -28,7 +28,7 @@
 #include "bsp_speed_adjust_device.h"
 #include "app_hydrg_producer_manager.h"
 #include "app_analog_signal_monitor_task.h"
-#include "Make_Vacuum.h"
+#include "app_auto_make_vacuum.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -345,7 +345,7 @@ void HydrgProducerManagerDlyStopTask(void)
         
         OSTaskSuspend(NULL, &err);
         
-        OSSemPost(&HydrgProducerManagerStopSem,     //结束制氢机管理任务的本次运行，进入阻塞，等待下一次启动
+        OSSemPost(&HydrgProducerManagerStopSem,     
                   OS_OPT_POST_1,
                   &err);
 
@@ -363,7 +363,7 @@ void HydrgProducerManagerDlyStopTask(void)
                           &err);
             u16ShutDownHydrgFanDlySeconds ++;
 
-            if(u16ShutDownHydrgFanDlySeconds >= 180) {//180
+            if(u16ShutDownHydrgFanDlySeconds >= 180) {
                 //发送给主任务内的shutdown函数任务信号量响应半机1制氢机延时关闭任务
                 OSTaskSemPost(&AppTaskStartTCB, 
                               OS_OPT_POST_NO_SCHED,

@@ -53,7 +53,7 @@
 ***************************************************************************************************
 *                               SPI3_Init()
 *
-* Description : The funciton is to init the spi 3.
+* Description : The funciton is to init the spi3.
 *
 * Arguments   : none.
 *
@@ -68,14 +68,21 @@ void SPI3_Init(void)
     SPI_InitTypeDef  SPI_InitStructure;
 
     /*时钟使能*/
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE); 
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE); 
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3,  ENABLE); 
 
-    GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3 | GPIO_Pin_4 | GPIO_Pin_5;
+    //PB3-JTDO,PB4-JNTRST,PA15-JTDI默认是JTAG复用功能，这里要禁止掉才能当普通IO使用
+//    GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
+    
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOB_STM_SPI_CLK_PORT_NMB | BSP_GPIOB_STM_SPI_MISO_PORT_NMB | BSP_GPIOB_STM_SPI_MOSI_PORT_NMB;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;  //复用推挽输出
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
+    
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOA_STM_SPI_NSS_PORT_NMB ;//NSS引脚初始化
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;  //复用推挽输出
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
 
     SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;  //SPI设置为双线双向全双工
     SPI_InitStructure.SPI_Mode = SPI_Mode_Master;       //设置SPI工作模式:设置为主SPI
@@ -106,7 +113,7 @@ void SPI3_Init(void)
 * Notes       : none.
 ***************************************************************************************************
 */
-uint16_t SPI3_ReadWriteByte(uint16_t TxData)
+uint8_t SPI3_ReadWriteByte(uint8_t TxData)
 {
     uint8_t retry = 0;
 

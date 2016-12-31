@@ -10,7 +10,7 @@
 */
 
 /********************************************************************************
-  * @file    bsp_speed_adjust_device.h
+  * @file    app_auto_make_vacuum.h
   * @author  Fanjun
   * @version V1.0
   * @date    6-December-2016
@@ -19,8 +19,8 @@
 *********************************************************************************/
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __MAKE_VACUUM_H_
-#define __MAKE_VACUUM_H_
+#ifndef __APP_AUTO_MAKE_VACUUM_H_
+#define __APP_AUTO_MAKE_VACUUM_H_
 /*
 ***************************************************************************************************
 *                                           INCLUDE FILES
