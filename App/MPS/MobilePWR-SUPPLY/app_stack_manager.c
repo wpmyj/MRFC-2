@@ -29,6 +29,7 @@
 #include "app_dc_module_communicate_task.h"
 #include "app_analog_signal_monitor_task.h"
 #include "bsp_pid.h"
+#include "app_stack_short_circuit_task.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -53,7 +54,6 @@ OS_TCB      StackProgramControlAirPressureReleaseTaskTCB;
 
 static      OS_SEM                    StackManagerStopSem;
 
-__attribute__((aligned(8)))
 static      CPU_STK_8BYTE_ALIGNED     StackManagerTaskStk[STACK_MANAGER_TASK_STK_SIZE];
 static      CPU_STK                   StackManagerDlyStopTaskStk[STACK_MANAGER_DELAY_STOP_TASK_STK_SIZE];
 static      CPU_STK_8BYTE_ALIGNED     StackHydrogenYieldMatchingOffsetValueMonitorStk[STACK_HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_MONITOR_TASK_STK_SIZE];
@@ -72,7 +72,8 @@ STACK_VENTING_TIME_PARAMETER_Typedef    StackVentAirTimeParameter = {0, 0.0, 0.0
 ***************************************************************************************************
 */
 static  float                           g_fHydrogenYieldMatchOffsetValue = 0.0;//电堆匹氢偏移值
-static  uint8_t                         g_u8DecompressCountPerMinute = 0; //每分钟电堆尾部泄压排气次数
+static  uint8_t                         g_u8RealTimeDecompressCountPerMinute = 0; //电堆尾部实时泄压排气次数
+static  uint8_t                         g_u8DecompressCountPerMinute = 0;//每分钟电堆尾部泄压排气次数
 static  uint8_t                         g_u8StackFanAutoAdjSw = DEF_ENABLED;//电堆风扇自动调速开关
 static  uint8_t                         g_u8StackHydrogenYieldMatchingOffsetValueMonitorTaskSw = DEF_DISABLED;
 
@@ -174,19 +175,24 @@ void StackManagerTask(void)
         if(fVoltage >= 48){//只有当气压达到45KPA的时候，电压大于48v电堆才进入工作状态  
             BSP_DCConnectValvePwrOn();
 //            SetStackWorkStatu(EN_IN_WORK);
-            OSTaskResume(&DcModuleAdjustTaskTCB,  //华为限流调节任务开始
+            OSTaskResume(&DCModuleAutoAdjustTaskTCB,  //华为限流调节任务开始
                      &err);
         }
+
         StackHydrogenYieldMatchingOffsetValueMonitorTaskCreate();//电堆匹氢偏移量监测任务创建
         
-        SetStackIsPulledStoppedMonitorHookSwitch(DEF_ENABLED);//监测电堆是否被拉停开关
+        SetStackIsPulledStoppedMonitorHookSwitch(DEF_ENABLED);//监测电堆是否被拉停
         SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(DEF_ENABLED);
-        SetHuaWeiModuleAutoAdjustTaskSwitch(DEF_ENABLED);//DC自动限流任务开关
-        SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(DEF_ENABLED);//1分钟清零一次排气次数
+        SetDCModuleAutoAdjustTaskSwitch(DEF_ENABLED);//DC自动限流任务开关
+        SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(DEF_ENABLED);//定时清零一次排气次数
         SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);
         SetStackFanSpdAutoAdjSwitch(DEF_ENABLED);
 
         OSTaskResume(&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,  //恢复匹氢偏移监测任务
+                     &err);
+        OSTaskResume(&StackShortCircuitTaskTCB,  //恢复电堆短路活化任务
+                     &err);
+        OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB,  //恢复平滑限流任务
                      &err);
 
         while(DEF_TRUE) {
@@ -227,7 +233,7 @@ void StackManagerTask(void)
 
         SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(DEF_DISABLED);
         SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);
-        SetHuaWeiModuleAutoAdjustTaskSwitch(DEF_DISABLED);
+        SetDCModuleAutoAdjustTaskSwitch(DEF_DISABLED);
         SetStackIsPulledStoppedMonitorHookSwitch(DEF_DISABLED);
         SetStackFanSpdAutoAdjSwitch(DEF_ENABLED);//若正常运行，会由电堆延时关闭程序关闭，默认应打开，故在此处恢复
         APP_TRACE_INFO(("Stack manager stop...\n\r"));
@@ -408,8 +414,9 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
     static  uint8_t u8HydrogenYieldLackCount = 0;
 
     while(DEF_TRUE) {
+        
         OSTaskSuspend(NULL, &err);
-
+        
         while(DEF_TRUE) {
             OSTaskSemPend(0,   //接收泄压阀输入脉冲中断中的时间参数记录完成任务信号量
                           OS_OPT_PEND_BLOCKING,
@@ -425,20 +432,20 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
 
                 //匹氢偏移值ln(600/ActualHydrogenMatchValue)
                 g_fHydrogenYieldMatchOffsetValue = log(600 / fActualHydrogenMatchValue); //600为测试值A0
-
+                APP_TRACE_INFO(("-->RTDCPM-DCPM:-#%3d   -$%3d   \n\r", g_u8RealTimeDecompressCountPerMinute,g_u8DecompressCountPerMinute));
                 APP_TRACE_INFO(("-->Current-VentingInterval-DecompressTime:-#%.3f   -$%.3f   -&%.3f   \n\r", \
                                 fCurrent, StackVentAirTimeParameter.fVentAirTimeIntervalValue * 0.001, StackVentAirTimeParameter.fDecompressVentTimeValue * 0.001));
                 //匹氢值小于标准的0.3倍(偏移值为正)，产气充足，并且电堆电压等参数正常,可提高输出功率
-                if((g_fHydrogenYieldMatchOffsetValue > 1.20) && (GetSrcAnaSig(STACK_VOLTAGE) > 41.0) ) {
+                if((g_fHydrogenYieldMatchOffsetValue > 1.50) && (GetSrcAnaSig(STACK_VOLTAGE) > 41.0) ) {
                     //限流点上升和下降都采用逐次周期增加
                     u8HydrogenYieldEnoughCount ++;
                     u8HydrogenYieldLackCount = 0;
 
                     if(u8HydrogenYieldEnoughCount >= 5) {
-                        OSTaskSemPost(&DcModuleAdjustTaskTCB,
+                        OSTaskSemPost(&DCModuleAutoAdjustTaskTCB,
                                       OS_OPT_POST_1,
                                       &err);
-                        SetDcModuleCurrentLimitingPointImproveFlag(DEF_SET);
+                        SetDCModuleCurrentLimitingPointImproveFlag(DEF_SET);
                         u8HydrogenYieldEnoughCount = 0;
                     }
                 //匹氢值大于标准的1.5倍，产气不足,限制输出功率(限流限压)
@@ -447,7 +454,7 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
                     u8HydrogenYieldEnoughCount = 0;
 
                     if(u8HydrogenYieldLackCount >= 5) {
-                        OSTaskSemPost(&DcModuleAdjustTaskTCB,
+                        OSTaskSemPost(&DCModuleAutoAdjustTaskTCB,
                                       OS_OPT_POST_1,
                                       &err);
                         SetDcModuleCurrentLimitingPointReduceFlag(DEF_SET);
@@ -489,7 +496,7 @@ float GetStackHydrogenYieldMatchOffsetValue(void)
 
 /*
 ***************************************************************************************************
-*                            ResetStackExhaustTimesCountPerMinutes()
+*                            ResetRealTimeStackExhaustTimesCountPerMinutes()
 *
 * Description:  电堆尾部泄压排气次数监测.
 *
@@ -502,19 +509,29 @@ float GetStackHydrogenYieldMatchOffsetValue(void)
 void DecompressCountPerMinuteInc(void)
 {
     if(EN_IN_WORK == GetStackWorkStatu()) {
-        g_u8DecompressCountPerMinute ++;
+        g_u8RealTimeDecompressCountPerMinute ++;
     }
 }
-void ResetStackExhaustTimesCountPerMinutes(void)
+
+void ResetRealTimeStackExhaustTimesCountPerMinutes(void)
 {
-    g_u8DecompressCountPerMinute = 0;
+    g_u8RealTimeDecompressCountPerMinute = 0;
+}
+
+void SaveRealTimeStackExhaustTimesCountPerMinutes(void)
+{
+    g_u8DecompressCountPerMinute = g_u8RealTimeDecompressCountPerMinute;
+}
+
+uint8_t GetRealTimePassiveDecompressCountPerMinutes(void)
+{
+    return g_u8RealTimeDecompressCountPerMinute;
 }
 
 uint8_t GetPassiveDecompressCountPerMinutes(void)
 {
     return g_u8DecompressCountPerMinute;
 }
-
 /*
 ***************************************************************************************************
 *                            SetStackProgramControlAirPressureReleaseTaskSwitch()

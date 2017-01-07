@@ -50,10 +50,10 @@
 
 #define  HYDROGEN_PRODUCER_MANAGER_TASK_PRIO                16
 #define  APP_TASK_START_PRIO                                17
-#define  Make_Vaccuum_Task_PRIO                             18
+#define  MAKE_VACCUUM_TASK_PRIO                             18
+#define  STACK_SHORT_CIRCUIT_TASK_PRIO                      19
+#define  IGNITER_WORK_TASK_PRIO                             20
 
-#define  IGNITER_WORK_TASK_PRIO                             19
-
-#define  SPEED_CONTROL_DEVICE_MANAGE_TASK_PRIO              20
+#define  SPEED_CONTROL_DEVICE_MANAGE_TASK_PRIO              21
 
 #endif

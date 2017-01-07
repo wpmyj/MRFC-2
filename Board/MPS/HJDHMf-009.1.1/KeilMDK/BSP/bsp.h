@@ -512,6 +512,9 @@ void  BSP_DCConnectValvePwrOff(void);
 void  BSP_OutsidePumpPwrOn(void);
 void  BSP_OutsidePumpPwrOff(void);
 
+void  BSP_StackShortCircuitActivationOn(void);
+void  BSP_StackShortCircuitActivationOff(void);
+
 void  BSP_PureHydrogenGasOutValvePwrOn(void);
 void  BSP_PureHydrogenGasOutValvePwrOff(void);
 void  BSP_MakeVavuumValve2PwrOn(void);

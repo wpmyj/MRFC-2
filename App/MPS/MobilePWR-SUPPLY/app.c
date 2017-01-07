@@ -33,6 +33,7 @@
 #include "app_dc_module_communicate_task.h"
 #include "bsp_dc_module_adjust.h"
 #include "bsp_speed_adjust_device.h"
+#include "app_stack_short_circuit_task.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -171,8 +172,6 @@ static  void  AppTaskStart(void *p_arg)
 
     CommunicateTaskCreate();           
 
-    DcModuleAdjustTaskCreate();         //DC限流调节任务
-
     Make_Vacuum_FunctionTaskCreate(); //自动抽真空任务
 
 //    SpeedControlDevManageTaskCreate();
@@ -181,7 +180,11 @@ static  void  AppTaskStart(void *p_arg)
 
     HydrgProducerManagerTaskCreate();   
 
-    StackManagerTaskCreate();          
+    StackManagerTaskCreate();
+    
+    StackShortCircuitTaskCreate();     //电堆短路活化任务
+    
+    DcModuleAutoAdjustTaskCreate();    //DC动态限流调节任务,平滑限流任务 
 
     HydrgProducerDlyStopTaskCreate();  
 

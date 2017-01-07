@@ -10,7 +10,7 @@
 */
 /*
 ***************************************************************************************************
-* Filename      : app_auto_make_vacuum.c
+* Filename      : app_stack_short_circuit_task.c
 * Version       : V1.00
 * Programmer(s) : Fanjun
 *
@@ -21,21 +21,22 @@
 *                                             INCLUDE FILES
 ***************************************************************************************************
 */
-#include "app_auto_make_vacuum.h"
-#include <includes.h>
+#include "app_stack_short_circuit_task.h"
+#include "bsp_dc_module_adjust.h"
+#include "app_dc_module_communicate_task.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define MAKE_VACCUUM_TASK_STK_SIZE 100
+#define STACK_SHORT_CIRCUIT_TASK_STK_SIZE 100
 /*
 ***************************************************************************************************
 *                                  OS-RELATED    VARIABLES
 ***************************************************************************************************
 */
-       OS_TCB     Make_Vaccuum_FunctionTaskTCB;
-static CPU_STK    MAKE_VACCUUM_TASK_STK[MAKE_VACCUUM_TASK_STK_SIZE];
+       OS_TCB     StackShortCircuitTaskTCB;
+static CPU_STK    STACK_SHORT_CIRCUIT_TASK_STK[STACK_SHORT_CIRCUIT_TASK_STK_SIZE];
 /*
 ***************************************************************************************************
 *                                           GLOBAL VARIABLES
@@ -53,11 +54,11 @@ static CPU_STK    MAKE_VACCUUM_TASK_STK[MAKE_VACCUUM_TASK_STK_SIZE];
 *                                         FUNCTION PROTOTYPES
 ***************************************************************************************************
 */
-static void  Make_Vacuum_FunctionTask(void *p_arg);    
+static void  StackShortCircuitTask(void *p_arg);    
     
 /*
 ***************************************************************************************************
-*                               Make_Vacuum_FunctionTaskCreate()
+*                               StackShortCircuitTaskCreate()
 *
 * Description : The use of the the funciton is to create the task that monitor the analog signal.
 *
@@ -68,31 +69,31 @@ static void  Make_Vacuum_FunctionTask(void *p_arg);
 * Notes       : none.
 ***************************************************************************************************
 */
-void Make_Vacuum_FunctionTaskCreate(void)
+void StackShortCircuitTaskCreate(void)
 {
     OS_ERR  err;
 
-    OSTaskCreate((OS_TCB *)&Make_Vaccuum_FunctionTaskTCB,
-                 (CPU_CHAR *)"Make Vaccuum Function Task Start",
-                 (OS_TASK_PTR)Make_Vacuum_FunctionTask,
+    OSTaskCreate((OS_TCB *)&StackShortCircuitTaskTCB,
+                 (CPU_CHAR *)"Stack Short Circuit Task Start",
+                 (OS_TASK_PTR)StackShortCircuitTask,
                  (void *) 0,
-                 (OS_PRIO) MAKE_VACCUUM_TASK_PRIO,
-                 (CPU_STK *)&MAKE_VACCUUM_TASK_STK[0],
-                 (CPU_STK_SIZE) MAKE_VACCUUM_TASK_STK_SIZE / 10,
-                 (CPU_STK_SIZE) MAKE_VACCUUM_TASK_STK_SIZE,
+                 (OS_PRIO) STACK_SHORT_CIRCUIT_TASK_PRIO,
+                 (CPU_STK *)&STACK_SHORT_CIRCUIT_TASK_STK[0],
+                 (CPU_STK_SIZE) STACK_SHORT_CIRCUIT_TASK_STK_SIZE / 10,
+                 (CPU_STK_SIZE) STACK_SHORT_CIRCUIT_TASK_STK_SIZE,
                  (OS_MSG_QTY) 5u,
                  (OS_TICK) 0u,
                  (void *) 0,
                  (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                  (OS_ERR *)&err);
-    APP_TRACE_INFO(("Created Make Vaccuum  Task, and err code is %d...\n\r", err));
+    APP_TRACE_INFO(("Created Stack Short Circuit Task, and err code is %d...\n\r", err));
 }
 
 
 
 /*
 ***************************************************************************************************
-*                               Make_Vacuum_FunctionTask()
+*                               StackShortCircuitTask()
 *
 * Description : The use of the the funciton is to create the task that monitor the analog signal.
 *
@@ -100,52 +101,37 @@ void Make_Vacuum_FunctionTaskCreate(void)
 *
 * Returns     : none.
 *
-* Notes       : none.
+* Notes       : 一小时一次.
 ***************************************************************************************************
 */
-static void  Make_Vacuum_FunctionTask(void *p_arg)                   
+static void  StackShortCircuitTask(void *p_arg)                   
 { 
     OS_ERR  err; 
-    static uint8_t u8timeCount = 0;
-    static uint8_t u8MakeVavuumValve4PwrOnFlag = 0;
     
     while(DEF_TRUE)
     {
         OSTaskSuspend(NULL, &err);
-        APP_TRACE_INFO(("Start make vacuum task...\n\r"));   
-
-        BSP_PureHydrogenGasOutValvePwrOff();
-        BSP_MakeVavuumValve2PwrOn();
-        BSP_MakeVavuumValve4PwrOn();       
-        u8MakeVavuumValve4PwrOnFlag = YES;
-                
+        APP_TRACE_INFO(("Stack short circuit task resume...\n\r"));   
+             
         while(DEF_TRUE)
         {
-            OSTaskSemPend(OS_CFG_TICK_RATE_HZ, 
+            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 60, 
                           OS_OPT_PEND_BLOCKING, 
                           NULL,
                           &err);
-            if(err == OS_ERR_TIMEOUT){      
-                if(NO !=u8MakeVavuumValve4PwrOnFlag){
-                    u8timeCount++;
-                    if(u8timeCount >= 60){
-                        BSP_MakeVavuumValve4PwrOff();
-                        BSP_MakeVavuumValve3PwrOn();
-                        BSP_MakeVavuumPumpPwrOn();
-                        u8MakeVavuumValve4PwrOnFlag = 0;
-                        u8timeCount = 0;
-                    }
-                }
-            }
-            else if(err == OS_ERR_NONE){//切换后（重整温度达到后）全部关闭
-                APP_TRACE_INFO(("Stop make vacuum task...\n\r"));
-                BSP_PureHydrogenGasOutValvePwrOn();//纯氢出口
-                BSP_MakeVavuumValve2PwrOff();
-                BSP_MakeVavuumValve3PwrOff();            
-                BSP_MakeVavuumValve4PwrOff();
-                BSP_MakeVavuumPumpPwrOff();
-                break;
-            }
+			if(err == OS_ERR_TIMEOUT){
+				Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
+                Bsp_SetDcModuleOutPutVIvalue((float)VOLTAGE_LIMIT_MAX, 0);//限流点降为0
+                BSP_StackShortCircuitActivationOn();
+				BSP_DCConnectValvePwrOff(); 
+				OSTimeDlyHMSM(0, 0, 0, 200,OS_OPT_TIME_HMSM_STRICT,&err);
+                BSP_StackShortCircuitActivationOff();
+				BSP_DCConnectValvePwrOn();
+
+                OSTaskResume(&DCModuleAutoAdjustTaskTCB,&err);//恢复平滑限流任务
+                
+			}else{}
+          
         }
     }
 }

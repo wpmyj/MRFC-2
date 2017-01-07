@@ -9,74 +9,61 @@
 ***************************************************************************************************
 */
 
-/********************************************************************************************************
-* Filename      :  app_dc_module_communicate_task.h
-* Programmer(s) :  Fanjun
-* Version       :  V1.0
-* data          :  2016.12.10
-* brief         :  This file contains all the functions prototypes for the system run
-*                  config parameters firmware library.
-*********************************************************************************************************/
-#ifndef __APP_DC_MODULE_COMMUNICATE_H__
-#define __APP_DC_MODULE_COMMUNICATE_H__
-/*
-***************************************************************************************************
-*                                                 MODULE
-*
-* Note(s) : (1) This header file is protected from multiple pre-processor inclusion through use of the
-*               BSP present pre-processor macro definition.
-***************************************************************************************************
-*/
+/********************************************************************************
+  * @file    app_stack_short_circuit_task.h
+  * @author  Fanjun
+  * @version V1.0
+  * @date    2017.1.1
+  * @brief   This file contains all the functions prototypes for the analog sensor
+  *          firmware library.
+*********************************************************************************/
+
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __APP_STACK_SHORT_CIRCUIT_TASK_H_
+#define __APP_STACK_SHORT_CIRCUIT_TASK_H_
 /*
 ***************************************************************************************************
 *                                           INCLUDE FILES
 ***************************************************************************************************
 */
-#include "includes.h"
+#include "stm32f10x.h"
+#include "os.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define VOLTAGE_LIMIT_MAX  (53.50)
-
-#define CURRENT_LIMIT_MAX  (30.00)//×î´ó33A
-#define CURRENT_LIMIT_MIN  (5.00)
 
 /*
 ***************************************************************************************************
-*                                    EXPORTED OS VARIABLE DECLARATIONS
+*                                           EXPORTED TYPE
 ***************************************************************************************************
 */
-extern      OS_TCB      DCLimitCurrentSmoothlyTaskTCB;
-extern      OS_TCB      DCModuleAutoAdjustTaskTCB;
+
 /*
 ***************************************************************************************************
-*                                   EXPORTED GLOABLE VARIABLE DECLARATIONS
+*                                           EXPORTED VARIABLE
 ***************************************************************************************************
 */
-extern      float   fIvalueNow;
-extern      float   fVvalueNow;
+extern OS_TCB  StackShortCircuitTaskTCB;
+/*
+***************************************************************************************************
+*                                           EXPORTED MACRO
+***************************************************************************************************
+*/
+
 /*
 ***************************************************************************************************
 *                                           EXPORTED FUNCTION
 ***************************************************************************************************
 */
 
-void DcModuleAutoAdjustTaskCreate(void);
-
-void SetDCModuleCurrentLimitingPointImproveFlag(uint8_t i_NewStatu);
-uint8_t GetDcModuleCurrentLimitingPointImproveFlagStatus(void);
-
-void SetDcModuleCurrentLimitingPointReduceFlag(uint8_t i_NewStatu);
-uint8_t GetDcModuleCurrentLimitingPointReduceFlagStatus(void);
-
-void SetDCModuleAutoAdjustTaskSwitch(uint8_t i_NewStatu);
 /*
 ***************************************************************************************************
-*                                             MODULE END
+*                                            FUNCTION PROTOTYPES
 ***************************************************************************************************
 */
+void StackShortCircuitTaskCreate(void);
 
 
-#endif                                                          /* End of module include */
+#endif

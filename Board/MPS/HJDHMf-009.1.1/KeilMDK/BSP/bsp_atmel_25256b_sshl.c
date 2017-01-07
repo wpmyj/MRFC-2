@@ -94,16 +94,16 @@ void AT25256B_Init(void)
 */  
 static void AT25256B_Write_Enable(void)   
 {
-	AT25256B_CS;                          	
-    SPI3_ReadWriteByte(WREN); 	
-	AT25256B_NCS;                            		      
+    GPIO_SetBits(GPIOD,BSP_GPIOD_FLASH_WP_PORT_NMB);//写使能时必须把WP拉高
+    SPI3_ReadWriteByte(WREN);
+    GPIO_ResetBits(GPIOD,BSP_GPIOD_FLASH_WP_PORT_NMB); 	                            		      
 } 
  
 static void AT25256B_Write_Disable(void)   
 {  
-	AT25256B_CS;                            
+//	AT25256B_CS;                            
     SPI3_ReadWriteByte(WRDI);   
-	AT25256B_NCS;                            
+//	AT25256B_NCS;                            
 } 
 
 /*
@@ -186,7 +186,7 @@ static void AT25256B_Wait_Ready(void)
 ***************************************************************************************************
 */   		    
 void AT25256B_Read(u8* pBuffer,u16 ReadAddr,u16 NumByteToRead)   
-{ 
+{   
  	u16 i;   										    
 	AT25256B_CS;                        //使能器件   
     SPI3_ReadWriteByte(READ);         	//发送读取命令    	

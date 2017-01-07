@@ -295,18 +295,18 @@ void Bsp_SendTransportCmdToHuaWeiDC(uint8_t i_u8CmdType)
 {
     uint8_t i = 0;
     uint8_t u8CheckSumValue = 0;
-    uint16_t HuaWeiModuleTxBuf[7] = {0x00, 0x04, 0xC8, 0x00, 0x66, 0x66, 0x00};
+    uint16_t DCModuleTxBuf[7] = {0x00, 0x04, 0xC8, 0x00, 0x66, 0x66, 0x00};
 
-    HuaWeiModuleTxBuf[3] = i_u8CmdType & 0xFF;
+    DCModuleTxBuf[3] = i_u8CmdType & 0xFF;
 
     for(i = 0; i < 7; i++) {
-        u8CheckSumValue = u8CheckSumValue + HuaWeiModuleTxBuf[i];
+        u8CheckSumValue = u8CheckSumValue + DCModuleTxBuf[i];
     }
 
-    HuaWeiModuleTxBuf[6] = u8CheckSumValue & 0xFF;//校验和
+    DCModuleTxBuf[6] = u8CheckSumValue & 0xFF;//校验和
 
     SetRS485TxDateType(TYPE_IS_TRANSPOND_CMD);
-    Bsp_RS485_Send_Data(HuaWeiModuleTxBuf, 7);
+    Bsp_RS485_Send_Data(DCModuleTxBuf, 7);
 }
 
 /*
@@ -346,18 +346,18 @@ void Bsp_SendCmdControlDcModulePowerOnOrDown(uint8_t i_u8PowerStatus, uint8_t i_
 {
     uint8_t i = 0;
     uint8_t u8CheckSumValue = 0;
-    uint16_t HuaWeiModuleTxBuf[9] = {0x00, 0x06, 0xC8, 0x29, 0x66, 0x66, 0x00, 0x00, 0x00};
+    uint16_t DCModuleTxBuf[9] = {0x00, 0x06, 0xC8, 0x29, 0x66, 0x66, 0x00, 0x00, 0x00};
 
-    HuaWeiModuleTxBuf[6] = i_u8PowerStatus & 0xFF;
-    HuaWeiModuleTxBuf[7] = i_u8StatusChangeDly & 0xFF;
+    DCModuleTxBuf[6] = i_u8PowerStatus & 0xFF;
+    DCModuleTxBuf[7] = i_u8StatusChangeDly & 0xFF;
 
     for(i = 0; i < 8; i++) {
-        u8CheckSumValue = u8CheckSumValue + HuaWeiModuleTxBuf[i];
+        u8CheckSumValue = u8CheckSumValue + DCModuleTxBuf[i];
     }
 
-    HuaWeiModuleTxBuf[8] = u8CheckSumValue & 0xFF;//校验和
+    DCModuleTxBuf[8] = u8CheckSumValue & 0xFF;//校验和
 
-    Bsp_RS485_Send_Data(HuaWeiModuleTxBuf, 9);
+    Bsp_RS485_Send_Data(DCModuleTxBuf, 9);
 }
 
 /*
@@ -378,25 +378,26 @@ void Bsp_SetDcModuleOutPutVIvalue(float i_fVvalue, float i_fIvalue)
     uint8_t i = 0;
     uint8_t u8CheckSumValue = 0;
     uint16_t Value_temp = 0, Ivalue_temp = 0;
-    uint16_t HuaWeiModuleTxBuf[11] = {0x00, 0x08, 0xC8, 0x42, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint16_t DCModuleTxBuf[11] = {0x00, 0x08, 0xC8, 0x42, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 //    APP_TRACE_INFO(("Set DC module Out Put VI value...\n\r"));
     Value_temp = (uint16_t)(i_fVvalue * 100);
     Ivalue_temp = (uint16_t)(i_fIvalue * 100);
 
-    HuaWeiModuleTxBuf[6] = (Value_temp & 0xFF00) >> 8;
-    HuaWeiModuleTxBuf[7] = (Value_temp & 0x00FF);
-    HuaWeiModuleTxBuf[8] = (Ivalue_temp & 0xFF00) >> 8;
-    HuaWeiModuleTxBuf[9] = (Ivalue_temp & 0x00FF);
+    DCModuleTxBuf[6] = (Value_temp & 0xFF00) >> 8;
+    DCModuleTxBuf[7] = (Value_temp & 0x00FF);
+    DCModuleTxBuf[8] = (Ivalue_temp & 0xFF00) >> 8;
+    DCModuleTxBuf[9] = (Ivalue_temp & 0x00FF);
 
     for(i = 0; i < 10; i++) {
-        u8CheckSumValue = u8CheckSumValue + HuaWeiModuleTxBuf[i];
+        u8CheckSumValue = u8CheckSumValue + DCModuleTxBuf[i];
     }
 
-    HuaWeiModuleTxBuf[10] = u8CheckSumValue & 0xFF;//校验和
+    DCModuleTxBuf[10] = u8CheckSumValue & 0xFF;//校验和
 
+    
     SetRS485TxDateType(TYPE_IS_TRANSPOND_CMD);
-    Bsp_RS485_Send_Data(&HuaWeiModuleTxBuf[0], 11);
+    Bsp_RS485_Send_Data(&DCModuleTxBuf[0], 11);
 }
 
 /*

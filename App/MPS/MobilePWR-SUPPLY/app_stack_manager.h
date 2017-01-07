@@ -77,7 +77,9 @@ void    SetStackAnaSigAlarmRunningMonitorHookSwitch(u8);
 void    SetStackOutAirValveStatus(SWITCH_TYPE_VARIABLE_Typedef i_NewStatu);
 
 void    DecompressCountPerMinuteInc(void);
-void    ResetStackExhaustTimesCountPerMinutes(void);
+void    ResetRealTimeStackExhaustTimesCountPerMinutes(void);
+void    SaveRealTimeStackExhaustTimesCountPerMinutes(void);
+uint8_t GetRealTimePassiveDecompressCountPerMinutes(void);
 uint8_t GetPassiveDecompressCountPerMinutes(void);
 
 float   GetStackHydrogenYieldMatchOffsetValue(void);

@@ -248,7 +248,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
 {
     OS_ERR      err;
     VERIFY_RESULT_TYPE_VARIABLE_Typedef WaitCmdStatu;
-//    SYSTEM_WORK_MODE_Typedef    eWorkMode;
+    SYSTEM_WORK_MODE_Typedef    eWorkMode;
 
 #if __INTERNAL_TEST_FLAG > 0u
 
@@ -263,8 +263,6 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
               &err);
     ResetWorkModeWaittingForSelectFlag();   //复位等待标志
 
-    eWorkMode = GetWorkMode();
-    APP_TRACE_INFO(("Receive the mannual work mode %d...\n\r", eWorkMode));
 #elif __HYDROGEN_GENERATOR_MODULE
     SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER);
 #elif __FUEL_CELL_MODULE
@@ -273,6 +271,9 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
     SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL);
 #endif
 
+    eWorkMode = GetWorkMode();
+    APP_TRACE_INFO(("The work mode is: %d...\r\n", eWorkMode));
+    
     while(DEF_TRUE) {
         if(EN_THROUGH == DeviceSelfCheck()) {
             APP_TRACE_INFO(("Self-check success...\n\r"));

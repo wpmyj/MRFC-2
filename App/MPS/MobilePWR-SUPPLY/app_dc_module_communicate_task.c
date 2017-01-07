@@ -29,33 +29,50 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define HUA_WEI_MODULE_ADJUST_TASK_SIZE 200
+#define REPORT_ADRESS       0x07  //上报地址信息
+
+#define CURRENT_LIMIT_DELAY      30 //平滑限流延时
+
+#define DC_lIMIT_CURRENT_SMOOTHLY_TASK_SIZE    100
+#define DC_MODULE_ADJUST_TASK_SIZE             100
 /*
 ***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
 ***************************************************************************************************
 */
-OS_TCB      DcModuleAdjustTaskTCB ;
-static      CPU_STK     HUA_WEI_MODULE_ADJUST_TASK_STK[HUA_WEI_MODULE_ADJUST_TASK_SIZE];
+
+OS_TCB      DCLimitCurrentSmoothlyTaskTCB ;
+OS_TCB      DCModuleAutoAdjustTaskTCB ;
+
+static      CPU_STK     DC_LIMIT_CURRENT_SMOOTHLY_TASK_STK[DC_lIMIT_CURRENT_SMOOTHLY_TASK_SIZE];
+static      CPU_STK     DC_MODULE_ADJUST_TASK_STK[DC_MODULE_ADJUST_TASK_SIZE];
 /*
 ***************************************************************************************************
 *                                           LOCAL VARIABLES
 ***************************************************************************************************
 */
-static  uint8_t             g_u8HuaWeiModuleCurrentLimitingPointImproveFlag = DEF_CLR;
-static  uint8_t             g_u8HuaWeiModuleCurrentLimitingPointReduceFlag = DEF_CLR;
-static  uint8_t             g_u8HuaWeiModuleAutoAdjustTaskSw = DEF_DISABLED;
+static  uint8_t             g_u8DCModuleCurrentLimitingPointImproveFlag = DEF_CLR;
+static  uint8_t             g_u8DCModuleCurrentLimitingPointReduceFlag = DEF_CLR;
+static  uint8_t             g_u8DCModuleDynamicAdjustTaskSw = DEF_DISABLED;
+
+/*
+***************************************************************************************************
+*                                           GLOBAL VARIABLES
+***************************************************************************************************
+*/
+float   fIvalueNow = (float)CURRENT_LIMIT_MIN;
+float   fVvalueNow = (float)VOLTAGE_LIMIT_MAX;
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
 ***************************************************************************************************
 */
 
-static void HuaWeiModuleAdjustTask(void *p_arg);
-
+static void DcModuleAutoAdjustTask(void *p_arg);
+static void DcModuleLimitCurrentSmoothlyTask(void *p_arg);
 /*
 ***************************************************************************************************
-*                                      DcModuleAdjustTaskCreate()
+*                                      DcModuleAutoAdjustTaskCreate()
 *
 * Description:  Create DC Module Adjust Task .
 *
@@ -66,45 +83,117 @@ static void HuaWeiModuleAdjustTask(void *p_arg);
 * Note(s)    :  none.
 ***************************************************************************************************
 */
-void DcModuleAdjustTaskCreate(void)
+void DcModuleAutoAdjustTaskCreate(void)
 {
     OS_ERR  err;
     uint8_t i = 0;
     uint8_t u8RxLength = 0;
     uint16_t u16Rs485RxBuf[2] = {0, 0};
+    
     Bsp_DcModuleConmunicateInit();//485初始化
-    OSTaskCreate((OS_TCB *)&DcModuleAdjustTaskTCB,                    // Create the start task
+    //DC动态限流任务
+    OSTaskCreate((OS_TCB *)&DCModuleAutoAdjustTaskTCB,                    // Create the start task
                  (CPU_CHAR *)"DC Module Adjust Task Create",
-                 (OS_TASK_PTR) HuaWeiModuleAdjustTask,
+                 (OS_TASK_PTR) DcModuleAutoAdjustTask,
                  (void *) 0,
                  (OS_PRIO) DC_MODULE_ADJUST_TASK_PRIO,
-                 (CPU_STK *)&HUA_WEI_MODULE_ADJUST_TASK_STK[0],
-                 (CPU_STK_SIZE) HUA_WEI_MODULE_ADJUST_TASK_SIZE / 10,
-                 (CPU_STK_SIZE) HUA_WEI_MODULE_ADJUST_TASK_SIZE,
+                 (CPU_STK *)&DC_MODULE_ADJUST_TASK_STK[0],
+                 (CPU_STK_SIZE) DC_MODULE_ADJUST_TASK_SIZE / 10,
+                 (CPU_STK_SIZE) DC_MODULE_ADJUST_TASK_SIZE,
                  (OS_MSG_QTY) 5u,
                  (OS_TICK) 0u,
                  (void *) 0,
                  (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                  (OS_ERR *)&err);
     APP_TRACE_INFO(("Created DC Module Adjust Task, and err code is %d...\n\r", err));
-
+                 
+    //DC平滑限流任务
+    OSTaskCreate((OS_TCB *)&DCLimitCurrentSmoothlyTaskTCB,                    
+                 (CPU_CHAR *)"DC Limit Current Smoothly Task Create",
+                 (OS_TASK_PTR) DcModuleLimitCurrentSmoothlyTask,
+                 (void *) 0,
+                 (OS_PRIO) DC_MODULE_ADJUST_TASK_PRIO,
+                 (CPU_STK *)&DC_LIMIT_CURRENT_SMOOTHLY_TASK_STK[0],
+                 (CPU_STK_SIZE) DC_lIMIT_CURRENT_SMOOTHLY_TASK_SIZE / 10,
+                 (CPU_STK_SIZE) DC_lIMIT_CURRENT_SMOOTHLY_TASK_SIZE,
+                 (OS_MSG_QTY) 5u,
+                 (OS_TICK) 0u,
+                 (void *) 0,
+                 (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
+                 (OS_ERR *)&err);
+    APP_TRACE_INFO(("Created DC Limit Current Smoothly Task, and err code is %d...\n\r", err));
+                 
     //485通信成功验证
     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
     Bsp_RS485_Receive_Data(u16Rs485RxBuf, &u8RxLength);
 
-    if(u16Rs485RxBuf[0] == 0x07) { //返回地址验证成功
+    if(u16Rs485RxBuf[0] == REPORT_ADRESS) { //上报地址验证成功
         APP_TRACE_INFO(("Rs485 communicate successed...\n\r"));
+        Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
         Bsp_SetDcModuleOutPutVIvalue(VOLTAGE_LIMIT_MAX, CURRENT_LIMIT_MIN); //上电预设值，电流设置为最小值
     } else {
         APP_TRACE_INFO(("Rs485 communicate failed...\n\r"));
     }
 
 }
-
-
 /*
 ***************************************************************************************************
-*                                   HuaWeiModuleAdjustTask()
+*                                   DcModuleLimitCurrentSmoothlyTask()
+*
+* Description:  DC Module limit current smoothly task.
+*
+* Arguments  :  none.
+*
+* Returns    :  none.
+*
+* Note(s)    :  重新开始限流的平滑限流任务.
+***************************************************************************************************
+*/
+static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
+{
+    OS_ERR  err;
+    float fStackVoltage = 0.0;
+    static uint8_t u8CurrentLimitDelayCount = 0;    
+
+    while(DEF_TRUE) { 
+        
+        OSTaskSuspend(NULL, &err);
+        OSTaskSuspend(&DCModuleAutoAdjustTaskTCB, &err);//挂起动态限流任务
+        
+        fIvalueNow = 0.0;//重新开始限流   
+        Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
+        Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
+        
+        while(DEF_TRUE) { 
+            
+            OSTimeDlyHMSM(0, 0, 1, 0,OS_OPT_TIME_HMSM_STRICT,&err);
+            
+            fStackVoltage = GetSrcAnaSig(STACK_VOLTAGE);
+            u8CurrentLimitDelayCount ++;
+            if(u8CurrentLimitDelayCount >= CURRENT_LIMIT_DELAY){
+                if(fIvalueNow < CURRENT_LIMIT_MAX && fStackVoltage >= 41.0){
+                    fIvalueNow += 5.0;
+                    Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
+                    Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
+                    APP_TRACE_INFO(("Smoothly current limit point increase,the IvalueNow is %.2f ...\n\r", fIvalueNow));
+                }else{
+                    APP_TRACE_INFO(("Smoothly current limit finished ...\n\r"));
+                    OSTaskResume(&DCModuleAutoAdjustTaskTCB,&err);//恢复动态限流任务
+                    break;//平滑限流完成  
+                }
+                u8CurrentLimitDelayCount = 0;
+            }else{
+                Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);//保证限流不中断
+                Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
+                APP_TRACE_INFO(("Smoothly current limit point stay the same ,the IvalueNow is %.2f ...\n\r", fIvalueNow));
+            }
+                
+        }
+    }
+}
+/*
+***************************************************************************************************
+*                                   DcModuleAutoAdjustTask()
 *
 * Description:  DC Module adjust Voltage and current task.
 *
@@ -116,30 +205,30 @@ void DcModuleAdjustTaskCreate(void)
 ***************************************************************************************************
 */
 
-static void HuaWeiModuleAdjustTask(void *p_arg)
+static void DcModuleAutoAdjustTask(void *p_arg)
 {
     OS_ERR  err;
-    static float   fIvalueNow = (float)CURRENT_LIMIT_MIN;
-    static float   fVvalueNow = (float)VOLTAGE_LIMIT_MAX;
 
     OSTaskSuspend(NULL, &err);
-
+    APP_TRACE_INFO(("Resume dynamic current limit task ...\n\r"));
+    
     while(DEF_TRUE) {
+                  
         OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 8,//隔8s请求匹氢偏移监测任务的限流调节任务信号量
                       OS_OPT_PEND_BLOCKING,
                       NULL,
                       &err);
 
         if(OS_ERR_NONE == err) {
-            if(DEF_SET == g_u8HuaWeiModuleCurrentLimitingPointImproveFlag) {
+            if(DEF_SET == g_u8DCModuleCurrentLimitingPointImproveFlag) {
                 if(fIvalueNow < CURRENT_LIMIT_MAX) { //提高限流点
                     fIvalueNow += 2.0;
                     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
                     Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
-                    SetDcModuleCurrentLimitingPointImproveFlag(DEF_CLR);
+                    SetDCModuleCurrentLimitingPointImproveFlag(DEF_CLR);
                     APP_TRACE_INFO(("DC outPut current limit point increase,the IvalueNow is %.2f ...\n\r", fIvalueNow));
                 }
-            } else if(DEF_SET == g_u8HuaWeiModuleCurrentLimitingPointReduceFlag) {
+            } else if(DEF_SET == g_u8DCModuleCurrentLimitingPointReduceFlag) {
                 if(fIvalueNow >= CURRENT_LIMIT_MIN) { //降低限流点
                     fIvalueNow -= 2.0;
                     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
@@ -148,21 +237,17 @@ static void HuaWeiModuleAdjustTask(void *p_arg)
                     APP_TRACE_INFO(("DC outPut current limit point decrease,the IvalueNow is %.2f ...\n\r", fIvalueNow));
                 }
             } else {}
-        } else if(OS_ERR_TIMEOUT) { //超时说明不需要调节，保持原来设置,
+                
+        } else if(OS_ERR_TIMEOUT== err) { //超时说明不需要调节，保持原来设置
             
-            if(DEF_SET == GetStackNeedRestartLimitCurrentFlag()){
-                fIvalueNow = (float)CURRENT_LIMIT_MIN;
-                APP_TRACE_INFO(("Restart current limit,the IvalueNow is %.2f ...\n\r", fIvalueNow));
-            }else{
-                APP_TRACE_INFO(("Current limit stay the same,the IvalueNow is %.2f ...\n\r", fIvalueNow));
-            }
             Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
-            Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);            
+            Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
+            APP_TRACE_INFO(("DC current limit point keep the same...\n\r"));            
         } else {
             APP_TRACE_INFO(("DC module Task Sem Pend err code is %d...\n\r", err));
         }
         
-        if(g_u8HuaWeiModuleAutoAdjustTaskSw == DEF_DISABLED){
+        if(g_u8DCModuleDynamicAdjustTaskSw == DEF_DISABLED){
             break;
         }
     }
@@ -170,9 +255,9 @@ static void HuaWeiModuleAdjustTask(void *p_arg)
 
 /*
 *********************************************************************************************************
-*                           SetHuaWeiModuleImproveCurrentLimitingPointFlag()
+*                           SetDCModuleCurrentLimitingPointImproveFlag()
 *
-* Description:  华为限流点提高、降低标志相关函数
+* Description:  DC限流点提高、降低标志相关函数
 *
 * Arguments  :  none.
 *
@@ -181,29 +266,29 @@ static void HuaWeiModuleAdjustTask(void *p_arg)
 * Note(s)    :  none.
 *********************************************************************************************************
 */
-void SetDcModuleCurrentLimitingPointImproveFlag(uint8_t i_NewStatu)
+void SetDCModuleCurrentLimitingPointImproveFlag(uint8_t i_NewStatu)
 {
-    g_u8HuaWeiModuleCurrentLimitingPointImproveFlag = i_NewStatu;
+    g_u8DCModuleCurrentLimitingPointImproveFlag = i_NewStatu;
 }
 
 uint8_t GetDcModuleCurrentLimitingPointImproveFlagStatus(void)
 {
-    return g_u8HuaWeiModuleCurrentLimitingPointImproveFlag;
+    return g_u8DCModuleCurrentLimitingPointImproveFlag;
 }
 
 void SetDcModuleCurrentLimitingPointReduceFlag(uint8_t i_NewStatu)
 {
-    g_u8HuaWeiModuleCurrentLimitingPointReduceFlag = i_NewStatu;
+    g_u8DCModuleCurrentLimitingPointReduceFlag = i_NewStatu;
 }
 
 uint8_t GetDcModuleCurrentLimitingPointReduceFlagStatus(void)
 {
-    return g_u8HuaWeiModuleCurrentLimitingPointReduceFlag;
+    return g_u8DCModuleCurrentLimitingPointReduceFlag;
 }
 
 /*
 ***************************************************************************************************
-*                            SetHuaWeiModuleAutoAdjustTaskSwitch()
+*                            SetDCModuleAutoAdjustTaskSwitch()
 *
 * Description:  Enable or Disable the hua wei auto adjust task switch.
 *
@@ -212,7 +297,7 @@ uint8_t GetDcModuleCurrentLimitingPointReduceFlagStatus(void)
 * Returns    :  none
 ***************************************************************************************************
 */
-void SetHuaWeiModuleAutoAdjustTaskSwitch(uint8_t i_NewStatu)
+void SetDCModuleAutoAdjustTaskSwitch(uint8_t i_NewStatu)
 {
-    g_u8HuaWeiModuleAutoAdjustTaskSw = i_NewStatu;
+    g_u8DCModuleDynamicAdjustTaskSw = i_NewStatu;
 }

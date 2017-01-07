@@ -30,6 +30,8 @@
 #include "app_wireness_communicate_task.h"
 #include "app_stack_manager.h"
 #include "app_hydrg_producer_manager.h"
+#include "app_dc_module_communicate_task.h"
+
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINES
@@ -226,7 +228,7 @@ void StackHydrgPressHighEnoughWaitHook(void)
 
     if(GetSrcAnaSig(HYDROGEN_PRESS_1) >= 45.0) {
         OSTaskSemPost(&StackManagerTaskTCB, OS_OPT_POST_NO_SCHED, &err);
-        g_u8StackHydrgPressHighEnoughHookSw = DEF_DISABLED;
+        SetStackHydrgPressHighEnoughHookSwitch(DEF_DISABLED);
     }
 }
 
@@ -278,7 +280,7 @@ void StackAnaSigAlarmRunningMonitorHook(void)
         AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, ON);
         g_u16StackManagerHydrgPressBelow10KPaHoldSeconds++;
 
-        if(g_u16StackManagerHydrgPressBelow10KPaHoldSeconds >= 300) {//气压过低30s
+        if(g_u16StackManagerHydrgPressBelow10KPaHoldSeconds >= 30) {//气压过低3s
 //            CmdShutDown();      //关机命令
             g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;
         }
@@ -371,6 +373,7 @@ void SetStackIsPulledStoppedMonitorHookSwitch(uint8_t i_NewStatu)
 */
 static void JudgeWhetherTheStackIsPulledStoppedMonitorHook(void)
 {
+    OS_ERR err;
     float fStackVoltage;
     float fStackCurrent;
     static uint16_t u16RestartLimitCurrentCount = 0;
@@ -382,12 +385,15 @@ static void JudgeWhetherTheStackIsPulledStoppedMonitorHook(void)
     if(u16RestartLimitCurrentCount >= 30)//每3秒监测一次是否需要开始重新限流
     if(EN_IN_WORK == GetStackWorkStatu()){
         if((fStackVoltage >= 51.0) && (fStackCurrent <= 3.0)){
+            
             g_u8StackNeedRestartLimitCurrentFlag = DEF_SET;
+            SetDCModuleAutoAdjustTaskSwitch(DEF_DISABLED);
+            OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB,&err);
+            
         }else{
             g_u8StackNeedRestartLimitCurrentFlag = DEF_CLR;
         }
-    }
-    
+    }   
 }
 
 uint8_t GetStackNeedRestartLimitCurrentFlag(void)

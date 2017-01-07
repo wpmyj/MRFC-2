@@ -113,10 +113,12 @@ static  void  BSP_HydrgFanCtrInit(void);
 static  void  BSP_HydrgFanPwrOn(void);
 static  void  BSP_HydrgFanPwrOff(void);
 
-static void ButtonStatusCheck_IRQHandler(void);
-static void PDPulseStatusCheck_IRQHandler(void);
+//static void ButtonStatusCheck_IRQHandler(void);
+//static void PDPulseStatusCheck_IRQHandler(void);
+static void EXTI15_10_StatusCheck_IRQHandler(void);
 
 static  void  BSP_SwTypePwrDeviceStatuInit(void);
+static void BSP_ImpulseInputPortInit(void);
 
 static  void  BSP_StackFanCtrInit(void);
 static  void  BSP_StackFanPwrOn(void);
@@ -256,6 +258,9 @@ void  BSP_Init(void)
     BSP_DeviceSpdCheckPortInit(5000 - 1, 7200 - 1); //测速引脚初始化
     BSP_SwTypePwrDeviceStatuInit(); // 开关型输出设备
     BSP_CmdButtonInit();            // 硬件按钮
+    BSP_ImpulseInputPortInit();     //外部脉冲输入引脚初始化
+    
+    BSP_VentingIntervalRecordTimerInit();//电堆排气时间参数定时器初始化
 
 #ifdef TRACE_EN                                                 /* See project / compiler preprocessor options.         */
     DBGMCU_CR |=  DBGMCU_CR_TRACE_IOEN_MASK;                    /* Enable tracing (see Note #2).                        */
@@ -1095,6 +1100,32 @@ void  BSP_OutsidePumpPwrOff(void)
 
 /*
 ***************************************************************************************************
+*                                          电堆短路活化控制引脚
+*
+* Description :
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : application.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+void  BSP_StackShortCircuitActivationOn(void)
+{
+    GPIO_SetBits(GPIOE, BSP_GPIOE_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Stack Short Circuit Activation On...\n\r"));
+}
+
+void  BSP_StackShortCircuitActivationOff(void)
+{
+    GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
+    APP_TRACE_INFO(("Stack Short Circuit Activation Off...\n\r"));
+}
+/*
+***************************************************************************************************
 *                                           预留5/6/7/8口开关
 *
 * Description :
@@ -1768,23 +1799,15 @@ void BSP_CmdButtonInit(void)
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource13);
     EXTI_InitStructure.EXTI_Line = EXTI_Line13;
     EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_Init(&EXTI_InitStructure);     
 
-    BSP_IntVectSet(BSP_INT_ID_EXTI15_10, ButtonStatusCheck_IRQHandler);
+    BSP_IntVectSet(BSP_INT_ID_EXTI15_10, EXTI15_10_StatusCheck_IRQHandler);
     BSP_IntEn(BSP_INT_ID_EXTI15_10);
 }
 
-static void ButtonStatusCheck_IRQHandler()
-{
-    if(EXTI_GetITStatus(EXTI_Line13) != RESET) {//开关按键
-        
-        CmdButtonFuncDisable();      
-        StartCmdButtonActionCheckDly(); //定时器定时0.5后的中断中判断按钮按下，然后执行相应流程
-        EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE10上的中断标志位
-    }
-}
+
 /*
 ***************************************************************************************************
 *                                            BSP_ImpulseInputPortInit()
@@ -1798,12 +1821,12 @@ static void ButtonStatusCheck_IRQHandler()
 * Note(s)     : none.
 ***************************************************************************************************
 */
-void BSP_ImpulseInputPortInit(void)
+static void BSP_ImpulseInputPortInit(void)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
     EXTI_InitTypeDef EXTI_InitStructure;
-//    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOE, ENABLE); //使能复用功能时钟
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOE, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOE , ENABLE);
+    
     //松下泄压阀脉冲输入引脚1
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;   //下拉输入
@@ -1830,15 +1853,15 @@ void BSP_ImpulseInputPortInit(void)
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_Init(&EXTI_InitStructure);
 
-    BSP_IntVectSet(BSP_INT_ID_EXTI15_10, PDPulseStatusCheck_IRQHandler);
+    BSP_IntVectSet(BSP_INT_ID_EXTI15_10, EXTI15_10_StatusCheck_IRQHandler);
     BSP_IntEn(BSP_INT_ID_EXTI15_10);
 }
 
 /*
 ***************************************************************************************************
-*                                  PDPulseStatusCheck_IRQHandler()
+*                            EXTI15_10_StatusCheck_IRQHandler()
 *
-* Description : 脉冲输入引脚捕获中断函数.
+* Description : 外部中断线10-15输入状态检测.
 *
 * Argument(s) : none.
 *
@@ -1847,7 +1870,7 @@ void BSP_ImpulseInputPortInit(void)
 * Note(s)     : none.
 ***************************************************************************************************
 */
-static void PDPulseStatusCheck_IRQHandler()
+static void EXTI15_10_StatusCheck_IRQHandler()
 {
     OS_ERR      err;
     static uint8_t u8VentAirTimeIntervalRecordFlag = NO;
@@ -1859,8 +1882,7 @@ static void PDPulseStatusCheck_IRQHandler()
     }
 
     if(EXTI_GetITStatus(EXTI_Line12) != RESET) {//PDPulse2-电堆后端的泄压阀状态
-        if(0 == GPIO_ReadInputDataBit(GPIOE, BSP_GPIOE_PD_PULSE2_PORT_NMB)) {
-            APP_TRACE_INFO(("PD pluse 2...\n\r"));
+        if(1 == GPIO_ReadInputDataBit(GPIOE, BSP_GPIOE_PD_PULSE2_PORT_NMB)) {
             DecompressCountPerMinuteInc();
             BSP_StartRunningVentingTimeRecord(); //Start recording the exhaust time parameter
             StackVentAirTimeParameter.fVentAirTimeIntervalValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录排气间隔时间
@@ -1882,6 +1904,13 @@ static void PDPulseStatusCheck_IRQHandler()
         }
 
         EXTI_ClearITPendingBit(EXTI_Line12);
+    }
+    
+    if(EXTI_GetITStatus(EXTI_Line13) != RESET) {//开关按键
+    
+        CmdButtonFuncDisable();      
+        StartCmdButtonActionCheckDly(); //定时器定时0.5后的中断中判断按钮按下，然后执行相应流程
+        EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE10上的中断标志位
     }
 }
 /*
@@ -1967,7 +1996,7 @@ void CmdButtonStatuCheck(void)
     SYSTEM_WORK_STATU_Typedef eSysRunningStatu;
 
     if(GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13) == 0) {
-        APP_TRACE_INFO(("Button status check...\n\r"));
+        
         eSysRunningStatu = GetSystemWorkStatu();
 
         if((EN_WAITTING_COMMAND == eSysRunningStatu) || (eSysRunningStatu == EN_ALARMING)) {

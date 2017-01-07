@@ -323,7 +323,8 @@ static void SetStackExhaustTimesCountPerMinutesMonitorHook()
     u16CountPerMinutes ++;
 
     if(u16CountPerMinutes >= 240) { //一分钟清零一次电堆排气次数
-        ResetStackExhaustTimesCountPerMinutes();
+        SaveRealTimeStackExhaustTimesCountPerMinutes();
+        ResetRealTimeStackExhaustTimesCountPerMinutes();    
         u16CountPerMinutes = 0;
     }
 }

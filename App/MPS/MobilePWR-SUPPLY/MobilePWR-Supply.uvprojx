@@ -462,6 +462,11 @@
               <FileType>1</FileType>
               <FilePath>.\app_auto_make_vacuum.c</FilePath>
             </File>
+            <File>
+              <FileName>app_stack_short_circuit_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\app_stack_short_circuit_task.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
