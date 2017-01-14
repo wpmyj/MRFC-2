@@ -190,12 +190,12 @@ void StackManagerTask(void)
 
         OSTaskResume(&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,  //恢复匹氢偏移监测任务
                      &err);
-        OSTaskResume(&StackShortCircuitTaskTCB,  //恢复电堆短路活化任务
-                     &err);
+        
         OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB,  //恢复平滑限流任务
                      &err);
 
         while(DEF_TRUE) {
+            
             OSSemPend(&StackManagerStopSem,
                       OS_CFG_TICK_RATE_HZ,
                       OS_OPT_PEND_BLOCKING,
@@ -206,7 +206,7 @@ void StackManagerTask(void)
                 break;
             }
             
-            //安培积分值累加和
+            //安培秒排气
             fCurrent = GetSrcAnaSig(STACK_CURRENT);
             u16AmpIntegralSum += (uint16_t)fCurrent;
 
@@ -230,7 +230,6 @@ void StackManagerTask(void)
                 }else{}
             }                    
         }
-
         SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(DEF_DISABLED);
         SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);
         SetDCModuleAutoAdjustTaskSwitch(DEF_DISABLED);
@@ -418,6 +417,7 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
         OSTaskSuspend(NULL, &err);
         
         while(DEF_TRUE) {
+            
             OSTaskSemPend(0,   //接收泄压阀输入脉冲中断中的时间参数记录完成任务信号量
                           OS_OPT_PEND_BLOCKING,
                           NULL,
@@ -505,7 +505,6 @@ float GetStackHydrogenYieldMatchOffsetValue(void)
 * Returns    :  none
 ***************************************************************************************************
 */
-
 void DecompressCountPerMinuteInc(void)
 {
     if(EN_IN_WORK == GetStackWorkStatu()) {
@@ -547,6 +546,7 @@ static void SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(uint8_t i_
 {
     g_u8StackHydrogenYieldMatchingOffsetValueMonitorTaskSw = i_NewStatu;
 }
+
 uint8_t GetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitchStatus()
 {
     return g_u8StackHydrogenYieldMatchingOffsetValueMonitorTaskSw ;

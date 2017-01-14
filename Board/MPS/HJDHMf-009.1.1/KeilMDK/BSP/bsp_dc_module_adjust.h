@@ -10,7 +10,7 @@
 */
 
 /********************************************************************************************************
-* Filename      :  bsp_huawei_485_adjush.h
+* Filename      :  bsp_dc_module_485_adjust.h
 * Programmer(s) :  Fanjun
 * Version       :  V1.0
 * data          :  2016.11.12

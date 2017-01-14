@@ -542,6 +542,16 @@
               <FileType>1</FileType>
               <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_spi.c</FilePath>
             </File>
+            <File>
+              <FileName>bsp_scale_data_read.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_scale_data_read.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_can.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_can.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

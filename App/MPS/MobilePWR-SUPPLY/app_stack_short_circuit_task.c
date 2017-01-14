@@ -111,6 +111,9 @@ static void  StackShortCircuitTask(void *p_arg)
     while(DEF_TRUE)
     {
         OSTaskSuspend(NULL, &err);
+        OSTaskSuspend(&DCLimitCurrentSmoothlyTaskTCB, &err);//挂起平滑限流任务
+        OSTaskSuspend(&DCModuleAutoAdjustTaskTCB, &err);//挂起动态限流任务
+        
         APP_TRACE_INFO(("Stack short circuit task resume...\n\r"));   
              
         while(DEF_TRUE)
@@ -120,15 +123,18 @@ static void  StackShortCircuitTask(void *p_arg)
                           NULL,
                           &err);
 			if(err == OS_ERR_TIMEOUT){
+                
+                APP_TRACE_INFO(("Start tack short circuit...\n\r"));   
 				Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
                 Bsp_SetDcModuleOutPutVIvalue((float)VOLTAGE_LIMIT_MAX, 0);//限流点降为0
+                
                 BSP_StackShortCircuitActivationOn();
 				BSP_DCConnectValvePwrOff(); 
-				OSTimeDlyHMSM(0, 0, 0, 200,OS_OPT_TIME_HMSM_STRICT,&err);
+				OSTimeDlyHMSM(0, 0, 0,200,OS_OPT_TIME_HMSM_STRICT,&err);
                 BSP_StackShortCircuitActivationOff();
+                APP_TRACE_INFO(("Stop tack short circuit...\n\r"));
 				BSP_DCConnectValvePwrOn();
-
-                OSTaskResume(&DCModuleAutoAdjustTaskTCB,&err);//恢复平滑限流任务
+                OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB,&err);//恢复平滑限流任务
                 
 			}else{}
           

@@ -52,6 +52,7 @@ typedef struct {
 
     uint16_t OutValueMax;                   //控制量最大值
     uint16_t OutValueMin;                   //控制量最小值
+    uint16_t OutValue;
 
     uint16_t CalcCycleCount; //PID计算周期
 

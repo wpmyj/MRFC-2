@@ -30,6 +30,7 @@
 #include "app_hydrg_producer_manager.h"
 #include "app_stack_manager.h"
 #include "app_system_run_cfg_parameters.h"
+#include "bsp_scale_data_read.h"
 
 /*
 ***************************************************************************************************
@@ -87,6 +88,7 @@ static      void        LoadNonRealTimeWorkInfo(uint8_t , uint8_t , uint8_t , ui
 static      void        AddRealTimeWorkInfoDataToSendBuff(uint8_t , uint8_t);
 static      void        LoadHydrogenProducerRealTimeWorkInfo(uint8_t, uint8_t *);
 static      void        LoadFuelCellRealTimeWorkInfoPartA(uint8_t, uint8_t *);
+static      void        LoadFuelCellRealTimeWorkInfoPartB(uint8_t ,uint8_t *);
 //static      void        SendReferenceAndConfigrationInfo(void);
 static      void        InsertNonRealTimeWorkInfoDataToSendBuff(uint8_t, uint8_t , uint8_t , uint8_t *);
 static      void        SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg);
@@ -205,12 +207,15 @@ void  CommunicateTask(void *p_arg)
                     break;
 
                 case EN_WORK_MODE_FUEL_CELL:
-                    AddRealTimeWorkInfoDataToSendBuff(EN_LATEST, REAL_TIME_RUNNING_INFORMATION_B);
+                    AddRealTimeWorkInfoDataToSendBuff(EN_LATEST, REAL_TIME_RUNNING_INFORMATION_B_1);
+                    AddRealTimeWorkInfoDataToSendBuff(EN_LATEST, REAL_TIME_RUNNING_INFORMATION_B_2);
                     break;
 
                 case EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL:
-                    AddRealTimeWorkInfoDataToSendBuff(EN_LATEST, REAL_TIME_RUNNING_INFORMATION_A);
-                    AddRealTimeWorkInfoDataToSendBuff(EN_LATEST, REAL_TIME_RUNNING_INFORMATION_B);
+                    AddRealTimeWorkInfoDataToSendBuff(EN_LATEST, REAL_TIME_RUNNING_INFORMATION_A);//制氢半机
+                
+                    AddRealTimeWorkInfoDataToSendBuff(EN_LATEST, REAL_TIME_RUNNING_INFORMATION_B_1);
+                    AddRealTimeWorkInfoDataToSendBuff(EN_LATEST, REAL_TIME_RUNNING_INFORMATION_B_2);
                     break;
 
                 default:
@@ -265,22 +270,22 @@ void  CommunicateRequsetInfSendTask(void *p_arg)
     OS_ERR      err;
 
     while(DEF_TRUE) {
-        OSTaskSuspend(NULL,
-                      &err);
+        
+        OSTaskSuspend(NULL,&err);
 
         while(DEF_TRUE) {
-            OSTimeDlyHMSM(0, 0, 0, 200,
+            OSTimeDlyHMSM(0, 0, 0, 300,
                           OS_OPT_TIME_HMSM_STRICT,
                           &err);
 
-            if(DEF_ENABLED == GetWorkModeWaittingForSelectFlag()) { //发送选择工作模式请求，直到上位机选定工作模式
-                SendChooseWorkModeRequest();
+            if(DEF_ENABLED == GetWorkModeWaittingForSelectFlag()) { //发送选择工作模式请求，直到上位机选定工作模式   
+                SendChooseWorkModeRequest();  
                 //启动一次数据传输
                 OSSemPost(&g_stCommunicateDataSendSem,
-                          OS_OPT_POST_1,
+                          OS_OPT_POST_NO_SCHED,
                           &err);
             } else { //停止发送请求
-                SendRealTimeAssistInfo();   //向上位机发送一次自检信息,防止上位机没收到主任务中第一次发送的信息。
+//                SendRealTimeAssistInfo();   //向上位机发送一次自检信息,防止上位机没收到主任务中第一次发送的信息。
                 break;
             }
         }
@@ -310,6 +315,7 @@ void CommunicateDataSendTask(void *p_arg)
                 &err);
 
     while(DEF_TRUE) {
+        
         OSSemPend(&g_stCommunicateDataSendSem,
                   OS_CFG_TICK_RATE_HZ,
                   OS_OPT_PEND_BLOCKING,
@@ -386,9 +392,11 @@ void AddRealTimeWorkInfoDataToSendBuff(uint8_t i_uint8_tIsLatestData, uint8_t i_
 
         if(REAL_TIME_RUNNING_INFORMATION_A == i_uint8_RealTimeWorkInfoType) {
             LoadHydrogenProducerRealTimeWorkInfo(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
-        } else if(REAL_TIME_RUNNING_INFORMATION_B == i_uint8_RealTimeWorkInfoType) {
+        } else if(REAL_TIME_RUNNING_INFORMATION_B_1 == i_uint8_RealTimeWorkInfoType) {
             LoadFuelCellRealTimeWorkInfoPartA(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
-        } else {}
+        }else if(REAL_TIME_RUNNING_INFORMATION_B_2 == i_uint8_RealTimeWorkInfoType) {
+            LoadFuelCellRealTimeWorkInfoPartB(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data); 
+        }else {}
 
     } else if(++g_stTxMsgDataSendBuff.Q_length <= TX_MSG_SEND_QUEUE_SIZE) {
         //从缓冲区头搜寻空闲节点
@@ -401,10 +409,11 @@ void AddRealTimeWorkInfoDataToSendBuff(uint8_t i_uint8_tIsLatestData, uint8_t i_
 
                 if(REAL_TIME_RUNNING_INFORMATION_A == i_uint8_RealTimeWorkInfoType) {
                     LoadHydrogenProducerRealTimeWorkInfo(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
-                } else if(REAL_TIME_RUNNING_INFORMATION_B == i_uint8_RealTimeWorkInfoType) {
+                } else if(REAL_TIME_RUNNING_INFORMATION_B_1 == i_uint8_RealTimeWorkInfoType) {
                     LoadFuelCellRealTimeWorkInfoPartA(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
+                } else if(REAL_TIME_RUNNING_INFORMATION_B_2 == i_uint8_RealTimeWorkInfoType) {
+                    LoadFuelCellRealTimeWorkInfoPartB(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
                 } else {}
-
                 break;
             }
         }
@@ -431,12 +440,16 @@ void AddRealTimeWorkInfoDataToSendBuff(uint8_t i_uint8_tIsLatestData, uint8_t i_
 */
 static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData, uint8_t *i_pRealTimeWorkInfo)
 {
+        
     uint16_t    u16CurrentTemp = 0;
     uint16_t    u16HydrgWorkTimes = 0;
-//    uint16_t    u16HydrogenGasConcentration = 0;
+    uint16_t    u16HydrogenGasConcentration = 0;
+    uint16_t    u16VacuumNetativePressure = 0;
+    uint16_t    u16LiquidLevel = 0;
+    uint16_t    u16LiquidFeedPerMinute = 0;
     uint16_t    u16PumpFeedbackSpeed = 0, u16PumpCtlSpeed = 0;
     uint16_t    u16HydrgFanCtlSpd = 0, u16HydrgFeedbackFanSpd = 0;
-    uint32_t    u16FluidWeightPerMinuteMul100 = 0;
+//    uint16_t    u16FluidWeightPerMinuteMul100 = 0;
     uint16_t    m_u16LiquidPress = 0;
     uint32_t    u32AlarmCode = 0;
     uint32_t    u32SystemRunningStatuCode = 0;
@@ -500,6 +513,7 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
         u16PumpFeedbackSpeed = GetPumpFeedBackSpd();
         *(i_pRealTimeWorkInfo + PUMP_SPD_FEEDBACK_HIGH) = (uint8_t)((u16PumpFeedbackSpeed & 0xFF00) >> 8);
         *(i_pRealTimeWorkInfo + PUMP_SPD_FEEDBACK_LOW) = (uint8_t)(u16PumpFeedbackSpeed & 0xFF);
+        
         //本次制氢时间,APP上主界面显示的是这个的值
         stHydrgProduceTimeThisTime = GetHydrgProduceTimeThisTime();
         //  APP_TRACE_INFO(("AAAAA:%d%d\r\nMinut:%d\r\nSecond:%d\r\n",(uint8_t)((stHydrgProduceTimeThisTime.hour & 0xFF00) >> 8),(uint8_t)((stHydrgProduceTimeThisTime.hour & 0xFF)), stHydrgProduceTimeThisTime.minute,stHydrgProduceTimeThisTime.second));
@@ -517,28 +531,35 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
         u16HydrgWorkTimes = GetHydrgProducerWorkTimes();
         *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TOTAL_TIMES_HIGH) = (uint8_t)((u16HydrgWorkTimes & 0xFF00) >> 8);
         *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TOTAL_TIMES_LOW) = (uint8_t)(u16HydrgWorkTimes & 0xFF);
-        //液位数据
-//      *(i_pRealTimeWorkInfo + LIQUID_LEVEL_INTEGER_PART) = (uint8_t)(u16HydrgWorkTimes >> 8);
-//      *(i_pRealTimeWorkInfo + LIQUID_LEVEL_DECIMAL_PART) =(uint8_t)(u16HydrgWorkTimes & 0xFF);
-        //每分钟进液量
-//        u16FluidWeightPerMinuteMul100 = (uint16_t)(GetHydrgProducerFluidWeightPerMinute() * 10000);
-//      APP_TRACE_DEBUG(("FluidWeight:%f\r\n",fFluidWeightPerMinuteMul100));
-//        u16FluidWeightPerMinuteMul100 = 56326;
-        *(i_pRealTimeWorkInfo + FUEL_WEIGHT_INTEGER_PART_HIGH) = (uint8_t)(((u16FluidWeightPerMinuteMul100 / 100) & 0xFF0000) >> 16);
-        *(i_pRealTimeWorkInfo + FUEL_WEIGHT_INTEGER_PART_MID) = (uint8_t)((u16FluidWeightPerMinuteMul100 / 100 & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + FUEL_WEIGHT_INTEGER_PART_LOW) = (uint8_t)((u16FluidWeightPerMinuteMul100 / 100 & 0xFF));
-        *(i_pRealTimeWorkInfo + FUEL_WEIGHT_DECIMAL_PART) = (uint8_t)(u16FluidWeightPerMinuteMul100 % 100);
         
-//        //氢气浓度
+        //液位数据
+//        u16LiquidLevel = (uint16_t)(GetSrcAnaSig(LIQUID_LEVEL) * 100);
+        u16LiquidLevel = 0;
+        *(i_pRealTimeWorkInfo + LIQUID_LEVEL_INTEGER_PART) = (uint8_t)((u16LiquidLevel & 0xFF00)>> 8);
+        *(i_pRealTimeWorkInfo + LIQUID_LEVEL_DECIMAL_PART) =(uint8_t)(u16LiquidLevel & 0xFF);
+        //每分钟进液量
+//        u16LiquidFeedPerMinute = (uint16_t)(ReadLiquidFlowRate() * 100);
+        u16LiquidFeedPerMinute = 0;
+        *(i_pRealTimeWorkInfo + LIQUID_FEED_PER_MINUTE_INTEGER_PART) = (uint8_t)(u16LiquidFeedPerMinute / 100);
+        *(i_pRealTimeWorkInfo + LIQUID_FEED_PER_MINUTE_DECIMAL_PART) = (uint8_t)(u16LiquidFeedPerMinute % 100);
+               
+         //真空负压
+//        u16VacuumNetativePressure = (uint16_t)(GetSrcAnaSig(NEGATIVE_PRESSURE) * 100);
+        u16VacuumNetativePressure = 0;
+        *(i_pRealTimeWorkInfo + VACUUM_NEGATIVE_PRESSURE_HIGH) = (uint8_t)(u16VacuumNetativePressure / 100);
+        *(i_pRealTimeWorkInfo + VACUUM_NEGATIVE_PRESSURE_LOW) = (uint8_t)(u16VacuumNetativePressure % 100);
+        
+        //氢气浓度
 //        u16HydrogenGasConcentration = (uint16_t)(GetSrcAnaSig(HYDROGEN_CONCENTRATION) * 100);
-//        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_GAS_CONCENTRATION_INTEGER_PART) = (uint8_t)(u16HydrogenGasConcentration / 100);
-//        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_GAS_CONCENTRATION_DECIMAL_PART) = (uint8_t)(u16HydrogenGasConcentration % 100);
+        u16HydrogenGasConcentration = 0;
+        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_GAS_CONCENTRATION_INTEGER_PART) = (uint8_t)(u16HydrogenGasConcentration / 100);
+        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_GAS_CONCENTRATION_DECIMAL_PART) = (uint8_t)(u16HydrogenGasConcentration % 100);
 
         //子模块ID号
 //        *(i_pRealTimeWorkInfo + SUB_MODULE_ID_OF_THE_MULTI_MODULE_TYPE) = SUB_MODULE_ID;
         //数据报尾段
-//        *(i_pRealTimeWorkInfo + END_BYTE_ONE) = 0x5F;
-//        *(i_pRealTimeWorkInfo + END_BYTE_TWO) = 0x6F;
+        *(i_pRealTimeWorkInfo + END_BYTE_ONE) = 0x5F;
+        *(i_pRealTimeWorkInfo + END_BYTE_TWO) = 0x6F;
 
     } else { //载入历史数据
 
@@ -579,7 +600,7 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
         *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)(PRODUCT_MODEL_CODE >> 8);
         *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(PRODUCT_MODEL_CODE & 0xFF);
         *(i_pRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = LOCAL_NETWORK_ID;
-        *(i_pRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)REAL_TIME_RUNNING_INFORMATION_B;
+        *(i_pRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)REAL_TIME_RUNNING_INFORMATION_B_1;
 
 //      //数据标签码码值增加
 //      g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION]++;
@@ -587,7 +608,7 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
 //      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF0000) >> 16);
 //      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF00) >> 8);
 //      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF);
-        *(i_pRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_RUNNING_INFO_B_LENGTH;
+        *(i_pRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_RUNNING_INFO_B_1_LENGTH;
 
         //运行警报码
         u32AlarmCode = GetRunAlarmCode();
@@ -676,8 +697,8 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
 //        *(i_pRealTimeWorkInfo + SUB_MODULE_ID_OF_THE_MULTI_MODULE_TYPE) = SUB_MODULE_ID;
 
         //数据报尾段
-//        *(i_pRealTimeWorkInfo + END_BYTE_ONE) = 0x5F;
-//        *(i_pRealTimeWorkInfo + END_BYTE_TWO) = 0x6F;
+        *(i_pRealTimeWorkInfo + END_BYTE_ONE) = 0x5F;
+        *(i_pRealTimeWorkInfo + END_BYTE_TWO) = 0x6F;
 
     } else { //载入历史数据
 
@@ -698,7 +719,6 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
 static void LoadFuelCellRealTimeWorkInfoPartB(uint8_t i_uint8_tIsHistoryData, uint8_t *i_pRealTimeWorkInfo)
 {
     uint16_t   u16DecompressCountPerMin = 0;
-    uint16_t   u16VacuumNetativePressure = 0.0;
     uint16_t   u16BatteryVoltage = 0.0;
     uint16_t   u16BatteryCurrent = 0.0;
 
@@ -711,39 +731,26 @@ static void LoadFuelCellRealTimeWorkInfoPartB(uint8_t i_uint8_tIsHistoryData, ui
         *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)(PRODUCT_MODEL_CODE >> 8);
         *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(PRODUCT_MODEL_CODE & 0xFF);
         *(i_pRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = LOCAL_NETWORK_ID;
-        *(i_pRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)REAL_TIME_RUNNING_INFORMATION_B;
+        *(i_pRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)REAL_TIME_RUNNING_INFORMATION_B_2;
+        *(i_pRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_RUNNING_INFO_B_2_LENGTH;
 
-//      //数据标签码码值增加
-//      g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION]++;
-//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] >> 24);
-//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF0000) >> 16);
-//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF00) >> 8);
-//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF);
-        *(i_pRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_RUNNING_INFO_B_LENGTH;
-
-        //电堆每分钟泄压排气次数
-        u16DecompressCountPerMin = GetPassiveDecompressCountPerMinutes();
+        //电堆一分钟内实时的泄压排气次数
+        u16DecompressCountPerMin = GetRealTimePassiveDecompressCountPerMinutes();
         *(i_pRealTimeWorkInfo + STACK_DECOMPRESS_COUNT_PER_MINUTES_HIGH) = (uint8_t)((u16DecompressCountPerMin & 0xFF00) >> 8);
         *(i_pRealTimeWorkInfo + STACK_DECOMPRESS_COUNT_PER_MINUTES_LOW) = (uint8_t)(u16DecompressCountPerMin & 0xFF);
 
         //电池电压
-        u16BatteryVoltage = (uint16_t)(GetSrcAnaSig(BATTERY_VOLTAGE) * 100);
+//        u16BatteryVoltage = (uint16_t)(GetSrcAnaSig(BATTERY_VOLTAGE) * 100);
+        u16BatteryVoltage = 0;
         *(i_pRealTimeWorkInfo + BATTERY_VOLTAGE_INTEGER_PART) = (uint8_t)(u16BatteryVoltage / 100);
         *(i_pRealTimeWorkInfo + BATTERY_VOLTAGE_IDECIMAL_PART) = (uint8_t)(u16BatteryVoltage % 100);
 
         //电池电流
-        u16BatteryCurrent = (uint16_t)(GetSrcAnaSig(BATTERY_CURRENT) * 100);
+//        u16BatteryCurrent = (uint16_t)(GetSrcAnaSig(BATTERY_CURRENT) * 100);
+        u16BatteryCurrent = 0;
         *(i_pRealTimeWorkInfo + BATTERY_CURRENT_INTEGER_PART) = (uint8_t)(u16BatteryCurrent / 100);
         *(i_pRealTimeWorkInfo + BATTERY_CURRENT_IDECIMAL_PART) = (uint8_t)(u16BatteryCurrent % 100);
-        
-        //真空负压
-        u16VacuumNetativePressure = (uint16_t)(GetSrcAnaSig(NEGATIVE_PRESSURE) * 100);
-        *(i_pRealTimeWorkInfo + VACUUM_NEGATIVE_PRESSURE_HIGH) = (uint8_t)(u16VacuumNetativePressure / 100);
-        *(i_pRealTimeWorkInfo + VACUUM_NEGATIVE_PRESSURE_LOW) = (uint8_t)(u16VacuumNetativePressure % 100);
-        
-        //子模块ID号
-//        *(i_pRealTimeWorkInfo + SUB_MODULE_ID_OF_THE_MULTI_MODULE_TYPE) = SUB_MODULE_ID;
-
+              
         //数据报尾段
         *(i_pRealTimeWorkInfo + END_BYTE_ONE) = 0x5F;
         *(i_pRealTimeWorkInfo + END_BYTE_TWO) = 0x6F;
@@ -771,7 +778,6 @@ static void InsertNonRealTimeWorkInfoDataToSendBuff(uint8_t i_eSendDataType, uin
     uint8_t i;
     uint8_t uint8_tInsertCursor;
 
-//  APP_TRACE_INFO(("Insert the non-real time info...\r\n"));
     OSMutexPend(&TxMsgSendBuffWriteMutex,
                 OS_CFG_TICK_RATE_HZ / 10,
                 OS_OPT_PEND_BLOCKING,
@@ -826,7 +832,7 @@ static void InsertNonRealTimeWorkInfoDataToSendBuff(uint8_t i_eSendDataType, uin
         }
     } else {
         --g_stTxMsgDataSendBuff.Q_length;
-        APP_TRACE_INFO(("The Tx buf is overflow...\r\n"));
+        APP_TRACE_INFO(("The non real time inf add faild,the Tx queue is overflow...\r\n"));
     }
 
     OSMutexPost(&TxMsgSendBuffWriteMutex,
@@ -850,9 +856,9 @@ void LoadNonRealTimeWorkInfo(uint8_t i_eSendDataType, uint8_t i_uint8_tCmdCode, 
     SELF_CHECK_CODE_Typedef stSelfCheckCode;
     uint16_t m_u16ConrolAndCommunicateStatuCode;
 
-//  APP_TRACE_INFO(("load the non real time data...\r\n"));
+//    APP_TRACE_INFO(("load the non real time data...\r\n"));
 
-    if((i_eSendDataType != REAL_TIME_RUNNING_INFORMATION_A) && (i_eSendDataType != REAL_TIME_RUNNING_INFORMATION_B) && (i_eSendDataType < EN_SEND_DATA_TYPE_MAX)) {
+    if((i_eSendDataType != REAL_TIME_RUNNING_INFORMATION_A) && (i_eSendDataType != REAL_TIME_RUNNING_INFORMATION_B_1) && (i_eSendDataType != REAL_TIME_RUNNING_INFORMATION_B_2) && (i_eSendDataType < EN_SEND_DATA_TYPE_MAX)) {
         //数据报头段
         *(i_pNonRealTimeWorkInfo + HEAD_BYTE_ONE) = 0xF1;
         *(i_pNonRealTimeWorkInfo + HEAD_BYTE_TWO) = 0xF2;
@@ -995,16 +1001,17 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
     if((*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_HEAD_ONE)     == 0xFC)
             && (*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_HEAD_TWO)     == 0xFD)
             && (*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_HEAD_THREE)   == 0xFE)
-//            && (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CHILD_MODULE_ID)   == 0x01)//暂不判定子模块ID
-//            && (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_END_OF_DATA)   == 0xAA)//报尾
-//      && (i_PrgmRxMsg[RECEIVE_DATA_BYTE_HEAD_TARGET_LOCAL_NET_ID]     == 0xFF)//暂不判定接收ID
+            && (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_END_OF_DATA)   == 0xAA)//报尾
+//            && (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CHILD_MODULE_ID)   == 0x01)//暂不判定子模块ID            
+//            && (i_PrgmRxMsg[RECEIVE_DATA_BYTE_HEAD_TARGET_LOCAL_NET_ID]     == 0xFF)//暂不判定接收ID
       ) {
         switch(*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_CMD_TYPE) & 0x0F) { //指令类型码的高4位尚未定义——将其清零
             case COMMAND_TYPE_DBG://调试指令
                 switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CODE_VALUE)) {
                     case DBG_SELECT_WORK_MODE:
                         SetWorkMode((SYSTEM_WORK_MODE_Typedef) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1));
-                        OSSemPost(&MannualSelcetWorkModeSem,
+                        APP_TRACE_INFO(("Select the work mode ...\r\n"));
+                        OSSemPost(&WaitSelcetWorkModeSem,
                                   OS_OPT_POST_1,
                                   &err);
                         break;
@@ -1288,7 +1295,7 @@ void CmdStart(void)
                 OSSchedLock(&err);
                 SetSystemWorkStatu(EN_START_PRGM_ONE_FRONT);
             } else {
-                OSSchedLock(&err);                                      //发电模式直接为运行状态
+                OSSchedLock(&err);                   //发电模式直接为运行状态
                 SetSystemWorkStatu(EN_RUNNING);
             }
 
@@ -1298,7 +1305,7 @@ void CmdStart(void)
             OSSchedUnlock(&err);
         } else if(eSysRunningStatu == EN_ALARMING) {
 
-            SetSystemWorkStatu(EN_WAITTING_COMMAND);
+            SetSystemWorkStatu(EN_WAITTING_COMMAND);//故障状态下，如果故障排除,再次按下启动键可排除故障
             ResetDeviceAlarmStatu();
         } else {
 
@@ -1330,7 +1337,7 @@ void CmdShutDown()
             || (eSysRunningStatu == EN_START_PRGM_ONE_BEHIND)
             || (eSysRunningStatu == EN_START_PRGM_TWO)
             || (eSysRunningStatu == EN_RUNNING)) {
-        OSSchedLock(&err);      //锁任务调度器
+        OSSchedLock(&err);      
         SetSystemWorkStatu(EN_SHUTTING_DOWN);
 
         switch((uint8_t)eSysRunningStatu) { //switch不支持枚举型变量，将其转为uint8_t型

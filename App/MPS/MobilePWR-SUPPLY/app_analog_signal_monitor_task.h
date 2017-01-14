@@ -69,6 +69,8 @@ void    SetStackHydrgPressHighEnoughHookSwitch(uint8_t i_NewStatu);
 
 void    SetStackIsPulledStoppedMonitorHookSwitch(uint8_t i_NewStatu);
 uint8_t GetStackNeedRestartLimitCurrentFlag(void);
+
+void StartRunningBeepAlarm(SYSTEM_ALARM_GRADE_Typedef i_AlarmGrade);
 /*
 ***************************************************************************************************
 *                                             MODULE END

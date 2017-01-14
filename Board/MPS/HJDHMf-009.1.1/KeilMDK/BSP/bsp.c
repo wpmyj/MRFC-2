@@ -837,12 +837,6 @@ static void BSP_SwTypePwrDeviceStatuInit(void)
     GPIO_Init(GPIOC, &GPIO_InitStructure);
     GPIO_ResetBits(GPIOC, BSP_GPIOC_IGNITER_PWR_CTRL_PORT_NMB);
 
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB;              // 预留2控制引脚
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
-    GPIO_ResetBits(GPIOB, BSP_GPIOE_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
-
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB;              // 快速加热器控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -904,10 +898,21 @@ static void BSP_SwTypePwrDeviceStatuInit(void)
     
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出5
+    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出4
     GPIO_Init(GPIOE, &GPIO_InitStructure);
     GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
+    
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出3
+    GPIO_Init(GPIOE, &GPIO_InitStructure);
+    GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB);
 
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB; // 预留2控制引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    GPIO_ResetBits(GPIOB, BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 /*
 ***************************************************************************************************
@@ -1115,13 +1120,13 @@ void  BSP_OutsidePumpPwrOff(void)
 */
 void  BSP_StackShortCircuitActivationOn(void)
 {
-    GPIO_SetBits(GPIOE, BSP_GPIOE_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(GPIOB, BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Stack Short Circuit Activation On...\n\r"));
 }
 
 void  BSP_StackShortCircuitActivationOff(void)
 {
-    GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOB, BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Stack Short Circuit Activation Off...\n\r"));
 }
 /*
@@ -1902,7 +1907,6 @@ static void EXTI15_10_StatusCheck_IRQHandler()
             u8VentAirTimeIntervalRecordFlag = NO;
             u8DecompressVentTimeRecordFlag = NO;
         }
-
         EXTI_ClearITPendingBit(EXTI_Line12);
     }
     
@@ -1911,6 +1915,7 @@ static void EXTI15_10_StatusCheck_IRQHandler()
         CmdButtonFuncDisable();      
         StartCmdButtonActionCheckDly(); //定时器定时0.5后的中断中判断按钮按下，然后执行相应流程
         EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE10上的中断标志位
+        
     }
 }
 /*
@@ -1991,26 +1996,53 @@ void TIM7_DlyMilSecondsInit(u16 i_u16DlyMilSeconds)
     TIM_Cmd(TIM7, ENABLE);  //使能定时器7
 }
 
+/*
+***************************************************************************************************
+*                                            BSP_HydorgenFanPwrOff()
+*
+* Description : 硬件按钮动作检测函数.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
 void CmdButtonStatuCheck(void)
 {
+    OS_ERR      err;
     SYSTEM_WORK_STATU_Typedef eSysRunningStatu;
-
+    
     if(GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13) == 0) {
-        
         eSysRunningStatu = GetSystemWorkStatu();
-
         if((EN_WAITTING_COMMAND == eSysRunningStatu) || (eSysRunningStatu == EN_ALARMING)) {
-            CmdStart();
+            
+            if(DEF_ENABLED == GetWorkModeWaittingForSelectFlag()) {//内部调试模式下
+                //硬件启动暂时默认为一体机模式
+                g_u8SerRxMsgBuff[4] = EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL;
+                SetWorkMode((SYSTEM_WORK_MODE_Typedef)g_u8SerRxMsgBuff[4]);
+                OSSemPost(&WaitSelcetWorkModeSem,        //发送工作模式的选择等待信号量
+                          OS_OPT_POST_1,
+                          &err);
+                ResetWorkModeWaittingForSelectFlag();   //复位等待选择标志
+                CmdStart();
+                
+            } else {//已经设置好工作模式
+                
+                CmdStart();  
+            }
         } else {
             CmdShutDown();
-        }
-    }
+        }                
 
+    }
     CmdButtonFuncEnable();
     TIM_ITConfig(TIM7, TIM_IT_Update, DISABLE);
     TIM_ClearITPendingBit(TIM7, TIM_IT_Update); //清除中断标志位
 }
-
 
 /*
 ***************************************************************************************************

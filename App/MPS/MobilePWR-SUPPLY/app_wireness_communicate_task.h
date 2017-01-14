@@ -30,7 +30,7 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define PRODUCT_MODEL_CODE      0x1100              //PS3
+#define PRODUCT_MODEL_CODE      0x1100              //PS3:0x1100,MRFC-2:0x1101
 #define LOCAL_NETWORK_ID        0
 #define PRGM_TX_BUFF_SIZE       60
 #define PRGM_RX_BUFF_SIZE       16
@@ -189,13 +189,19 @@ typedef enum {
     LIQUID_LEVEL_INTEGER_PART = 44,
     LIQUID_LEVEL_DECIMAL_PART,
 
-    FUEL_WEIGHT_INTEGER_PART_HIGH = 46, //燃料重量
-    FUEL_WEIGHT_INTEGER_PART_MID,
-    FUEL_WEIGHT_INTEGER_PART_LOW,
-    FUEL_WEIGHT_DECIMAL_PART,
-    
-    HYDROGEN_PRODUCT_GAS_CONCENTRATION_INTEGER_PART = 50,//氢气浓度
+//    FUEL_WEIGHT_INTEGER_PART_HIGH = 46, //燃料重量位定义暂时取消
+//    FUEL_WEIGHT_INTEGER_PART_MID,
+//    FUEL_WEIGHT_INTEGER_PART_LOW,
+//    FUEL_WEIGHT_DECIMAL_PART,
+
+    LIQUID_FEED_PER_MINUTE_INTEGER_PART = 46,
+    LIQUID_FEED_PER_MINUTE_DECIMAL_PART,
+        
+    HYDROGEN_PRODUCT_GAS_CONCENTRATION_INTEGER_PART = 48,//氢气浓度
     HYDROGEN_PRODUCT_GAS_CONCENTRATION_DECIMAL_PART,
+    
+    VACUUM_NEGATIVE_PRESSURE_HIGH = 50,//真空负压值
+    VACUUM_NEGATIVE_PRESSURE_LOW,
 
     /*实时运行信息段2-1 — 45个字节,12~19字节与段1相同*/
     STACK_CURRENT_INTEGER_PART = 20, //Amp
@@ -255,19 +261,16 @@ typedef enum {
     END_BYTE_ONE = 58,
     END_BYTE_TWO,
 
-    /*实时运行信息段2-2 — 8个字节*/
+    /*实时运行信息段2-2 — 6个字节*/
     STACK_DECOMPRESS_COUNT_PER_MINUTES_HIGH = 12,
     STACK_DECOMPRESS_COUNT_PER_MINUTES_LOW,
 
-    BATTERY_VOLTAGE_INTEGER_PART,
+    BATTERY_VOLTAGE_INTEGER_PART = 14,
     BATTERY_VOLTAGE_IDECIMAL_PART,
     
-    BATTERY_CURRENT_INTEGER_PART,
+    BATTERY_CURRENT_INTEGER_PART = 16,
     BATTERY_CURRENT_IDECIMAL_PART,
-    
-    VACUUM_NEGATIVE_PRESSURE_HIGH,//真空负压值
-    VACUUM_NEGATIVE_PRESSURE_LOW,
-    
+        
     /*固定辅助信息--产地、批次等*/
 
     /*备询、配置信息位定义*/
@@ -317,13 +320,15 @@ typedef enum {
 #define REAL_TIME_REQUEST_INFORMATION           0x01
 #define REAL_TIME_ASSIST_INFORMATION            0x02
 #define CONSTANT_ASSIST_INFORMATION             0x03
-#define REAL_TIME_RUNNING_INFORMATION_B         0x04
+#define REAL_TIME_RUNNING_INFORMATION_B_1       0x04
 #define FOR_QUERY_AND_CONFIG_INFORMATION        0x05    //备询、配置信息
-#define EN_SEND_DATA_TYPE_MAX                   0x06
+#define REAL_TIME_RUNNING_INFORMATION_B_2       0x06
+#define EN_SEND_DATA_TYPE_MAX                   0x07
 
 /*All kinds of sending message length macro definition*/
-#define REAL_TIME_RUNNING_INFO_A_LENGTH                     34
-#define REAL_TIME_RUNNING_INFO_B_LENGTH                     43
+#define REAL_TIME_RUNNING_INFO_A_LENGTH                       38
+#define REAL_TIME_RUNNING_INFO_B_1_LENGTH                     45
+#define REAL_TIME_RUNNING_INFO_B_2_LENGTH                     8
 #define REAL_TIME_REQUEST_INFO_LENGTH                       6
 #define REAL_TIME_ASSIST_INFO_LENGTH                        12
 #define CONSTANT_ASSIST_INFORMATION_LENGTH                  0
@@ -349,7 +354,7 @@ typedef enum {
 #define RECEIVE_DATA_BYTE_HEAD_TWO                              1
 #define RECEIVE_DATA_BYTE_HEAD_THREE                            2
 #define RECEIVE_DATA_BYTE_HEAD_CMD_SOURCE                       3
-#define RECEIVE_DATA_BYTE_HEAD_TARGET_LOCAL_NET_ID              4
+#define RECEIVE_DATA_BYTE_HEAD_TARGET_LOCAL_NET_ID              4//受控机器在其组网网络中的 ID 号
 #define RECEIVE_DATA_BYTE_CMD_TYPE                              5
 #define REDEIVE_DATA_BYTE_CMD_CODE_VALUE                        6
 #define REDEIVE_DATA_BYTE_CMD_PARAMETERS_LENGTH                 7

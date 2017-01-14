@@ -466,18 +466,19 @@ static void StoreLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmp
 */
 void GetStartHydrgPumpSpdParaFromFlash(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
 {
-    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t*)i_StartPumpSpdPara, 2);
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t*)i_StartPumpSpdPara, 3);
 }
 
 static void GetDefaultStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
 {
     i_StartPumpSpdPara->PumpSpdIgniterFirstTime   = 190;
     i_StartPumpSpdPara->PumpSpdIgniterSecondTime  = 250;
+    i_StartPumpSpdPara->PumpSpdAfterLiquidPressExceed4Kg  = 320;
 }
 
 void StoreStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
 {
-    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t*)i_StartPumpSpdPara, 2);
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t*)i_StartPumpSpdPara, 3);
 }
 
 /*

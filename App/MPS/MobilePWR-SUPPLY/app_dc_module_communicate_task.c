@@ -24,6 +24,7 @@
 #include "app_dc_module_communicate_task.h"
 #include "bsp_dc_module_adjust.h"
 #include "app_analog_signal_monitor_task.h"
+#include "app_stack_short_circuit_task.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -86,7 +87,6 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg);
 void DcModuleAutoAdjustTaskCreate(void)
 {
     OS_ERR  err;
-    uint8_t i = 0;
     uint8_t u8RxLength = 0;
     uint16_t u16Rs485RxBuf[2] = {0, 0};
     
@@ -153,7 +153,8 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
 {
     OS_ERR  err;
     float fStackVoltage = 0.0;
-    static uint8_t u8CurrentLimitDelayCount = 0;    
+    static uint8_t u8CurrentLimitDelayCount = 0;
+    static uint8_t u8CurrentLimitHoldCount = 0;        
 
     while(DEF_TRUE) { 
         
@@ -177,15 +178,21 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
                     Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
                     APP_TRACE_INFO(("Smoothly current limit point increase,the IvalueNow is %.2f ...\n\r", fIvalueNow));
                 }else{
-                    APP_TRACE_INFO(("Smoothly current limit finished ...\n\r"));
+                    
+                    APP_TRACE_INFO(("Smoothly current limit finished ...\n\r")); 
+                    OSTaskResume(&StackShortCircuitTaskTCB,&err);//恢复电堆短路活化任务
                     OSTaskResume(&DCModuleAutoAdjustTaskTCB,&err);//恢复动态限流任务
                     break;//平滑限流完成  
                 }
                 u8CurrentLimitDelayCount = 0;
             }else{
-                Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);//保证限流不中断
-                Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
-                APP_TRACE_INFO(("Smoothly current limit point stay the same ,the IvalueNow is %.2f ...\n\r", fIvalueNow));
+                u8CurrentLimitHoldCount ++;
+                if(u8CurrentLimitHoldCount >= 10){//保证限流不中断，隔10s发送一次
+                    Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
+                    Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
+                    u8CurrentLimitHoldCount = 0;
+                    APP_TRACE_INFO(("Smoothly current limit point stay the same ,the IvalueNow is %.2f ...\n\r", fIvalueNow));
+                }
             }
                 
         }
@@ -242,7 +249,7 @@ static void DcModuleAutoAdjustTask(void *p_arg)
             
             Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
             Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
-            APP_TRACE_INFO(("DC current limit point keep the same...\n\r"));            
+            APP_TRACE_INFO(("DC current limit point keep the same,the IvalueNow is %.2f...\n\r",fIvalueNow));            
         } else {
             APP_TRACE_INFO(("DC module Task Sem Pend err code is %d...\n\r", err));
         }

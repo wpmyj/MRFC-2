@@ -366,15 +366,13 @@ static void HydrgProducerDigSigAlarmRunningMonitorHook(void)
     fReformerTemp = GetReformerTemp();
 
     if(fReformerTemp > g_stReformerTempCmpTbl.AlarmUpperLimit) {
-        AlarmCmd(REFORMER_TEMP_HIGH_ALARM, ON);
+        AlarmCmd(REFORMER_TEMP_HIGH_ALARM,GENERAL_GRADE, ON);
     } else    if(fReformerTemp < g_stReformerTempCmpTbl.AlarmLowerLimit) {
-        AlarmCmd(REFORMER_TEMP_LOW_ALARM, ON);
+        AlarmCmd(REFORMER_TEMP_LOW_ALARM,GENERAL_GRADE, ON);
     } else {
-        AlarmCmd(REFORMER_TEMP_HIGH_ALARM, OFF);
-        AlarmCmd(REFORMER_TEMP_LOW_ALARM, OFF);
+        AlarmCmd(REFORMER_TEMP_HIGH_ALARM,GENERAL_GRADE, OFF);
+        AlarmCmd(REFORMER_TEMP_LOW_ALARM,GENERAL_GRADE, OFF);
     }
-
-//  UpdateBuzzerStatuInCruise();
 }
 
 /******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/

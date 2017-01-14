@@ -70,6 +70,7 @@ void IncrementType_PID_Init(void)
 
     IPID.OutValueMax = 1900;
     IPID.OutValueMin = 500;
+    IPID.OutValue = 500;
 
     IPID.CalcCycleCount = 0;//计算/控制周期
 
@@ -97,9 +98,9 @@ void IncrementType_PID_Init(void)
 */
 uint16_t IncrementType_PID_Process(uint8_t i_OptimumTemperature)  
 {
-    float IncrementSpeed = 0.0;
-    float fPout = 0.0 ,fIout = 0.0 ,fDout = 0.0; 
-    uint16_t OutValue = 0;
+    float  IncrementSpeed = 0.0;
+    float  fPout = 0.0 ,fIout = 0.0 ,fDout = 0.0; 
+    
     IPID.Sv = i_OptimumTemperature;
     IPID.Pv = GetSrcAnaSig(STACK_TEMP);
 
@@ -118,20 +119,20 @@ uint16_t IncrementType_PID_Process(uint8_t i_OptimumTemperature)
 //    IncrementSpeed = IPID.Kp * (IPID.Err - IPID.Err_Last) + IPID.Ki * IPID.Err + IPID.Kd * (IPID.Err - 2 * IPID.Err_Last + IPID.Err_Next);
 
     IncrementSpeed = fPout + fIout + fDout; //本次得到的增量
-    OutValue += (int16_t)IncrementSpeed;//本次应该输出的实际控制量
+    IPID.OutValue += (int16_t)IncrementSpeed;//本次应该输出的实际控制量
 
-    if(OutValue < IPID.OutValueMin) {
-        OutValue = IPID.OutValueMin;
+    if(IPID.OutValue < IPID.OutValueMin) {
+        IPID.OutValue = IPID.OutValueMin;
     }
 
-    if(OutValue > IPID.OutValueMax) {
-        OutValue = IPID.OutValueMax;
+    if(IPID.OutValue > IPID.OutValueMax) {
+        IPID.OutValue = IPID.OutValueMax;
     }
 
     IPID.Err_Last = IPID.Err_Next;    //更新偏差
     IPID.Err_Next = IPID.Err;
   
-    return OutValue;
+    return IPID.OutValue;
 }
 
 

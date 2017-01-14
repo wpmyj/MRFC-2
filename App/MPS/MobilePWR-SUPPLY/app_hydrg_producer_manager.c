@@ -106,6 +106,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
         if(GetReformerTemp() <= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt){
             
             OSTimeDlyHMSM(0, 3, 0, 0,   OS_OPT_TIME_HMSM_STRICT,&err);//快速加热三分钟
+//            OSTimeDlyHMSM(0, 0, 10, 0,   OS_OPT_TIME_HMSM_STRICT,&err);//快速加热三分钟
             APP_TRACE_INFO(("Fast heat control finish...\n\r"));
         }
         SetSystemWorkStatu(EN_START_PRGM_ONE_BEHIND);
@@ -134,6 +135,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
                     APP_TRACE_INFO(("Ignite first time behind temperature meet requirement ...\n\r"));
                     m_eIgniteStatu = EN_PASS;
                 } else { //关机
+                    
                     APP_TRACE_INFO(("Ignite first time behind wait has been broken...\n\r"));
                     IgniterWorkForSeconds(0); 
                     BSP_FastHeaterPwrOff();
@@ -144,6 +146,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
                     m_eIgniteStatu = EN_NOT_PASS;
                 }
             } else {
+                
                 APP_TRACE_INFO(("Ignite first time behind sem wait err...\n\r"));
                 IgniterWorkForSeconds(0);
                 SetPumpCtlSpd(0);
@@ -372,7 +375,6 @@ void HydrgProducerManagerDlyStopTask(void)
             }
         }
         OSTaskResume(&Make_Vaccuum_FunctionTaskTCB,&err);//关机结束后等制氢机没有压力了才开始抽真空
-//        SetHydrgFanCtlSpd(0);
         SetHydrgFanCtlSpdSmoothly(0,0,0,0);
         
         g_eHydrgProducerManagerStopDlyStatu = OFF;
@@ -501,5 +503,7 @@ void IgniterWorkTask(uint16_t *p_arg)
         }
     }
 }
-/******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/
+
+
+/******************* (C) COPYRIGHT 2016 Guangdong Eneco *****END OF FILE****/
 

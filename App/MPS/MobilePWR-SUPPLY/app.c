@@ -157,7 +157,8 @@ static  void  AppTaskStart(void *p_arg)
     OSSemCreate(&g_stAnaSigConvertFinishSem, "Ana Signal convert finish sem", 0, &err);
     OSSemCreate(&IgniteFirstBehindWaitSem, "Fast heater finish sem", 0, &err);
     OSSemCreate(&IgniteSecondBehindWaitSem, "IgniteSecondBehindWaitSem...", 0, &err);
-
+    OSSemCreate(&WaitSelcetWorkModeSem, "WaitSelcetWorkModeSem...", 0, &err);
+    
     LoadDriverLayerParameters();     //载入驱动层参数
 
     LoadApplicationLayerParameters();//载入应用层参数

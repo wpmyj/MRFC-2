@@ -36,7 +36,7 @@
 */
 OS_SEM   IgniteFirstBehindWaitSem;
 OS_SEM   IgniteSecondBehindWaitSem;
-OS_SEM   MannualSelcetWorkModeSem;
+OS_SEM   WaitSelcetWorkModeSem;
 
 /*
 ***************************************************************************************************
@@ -156,7 +156,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef DeviceSelfCheck(void)
     AnaSensorSelfCheck();   //模拟信号传感器自检
 
     stSelfCheckCode = GetSysSelfCheckCode();
-    SendRealTimeAssistInfo();  //发送实时辅助信息
+    SendRealTimeAssistInfo();  //发送实时辅助信息：自检信息
 
     eWorkMode = GetWorkMode();
 
@@ -252,17 +252,17 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
 
 #if __INTERNAL_TEST_FLAG > 0u
 
-    APP_TRACE_INFO(("Waitting for the command to select the work mode...\n\r"));
-    SetWorkModeWaittingForSelectFlag();     //打开等待运行模式选择等待标志，提示上位机，需要立即指定工作模式
-    OSTimeDlyResume(&WirenessCommTaskTCB,
-                    &err);                  //立即发送数据，以便及时在上位机界面反映下位机正在等待指令的状态
-    OSSemPend(&MannualSelcetWorkModeSem,
+    APP_TRACE_INFO(("Waitting for the command to select the work mode...\r\n"));
+    SetWorkModeWaittingForSelectFlag();//置位等待运行模式选择等待标志
+    OSTaskResume(&CommunicateRequsetInfSendTaskTCB, &err);//请求发送任务开始运行
+    OSSemPend(&WaitSelcetWorkModeSem,
               0,
               OS_OPT_PEND_BLOCKING,
               NULL,
               &err);
-    ResetWorkModeWaittingForSelectFlag();   //复位等待标志
-
+    ResetWorkModeWaittingForSelectFlag(); //复位选择等待标志
+    OSTimeDlyResume(&CommunicateTaskTCB,&err);
+    
 #elif __HYDROGEN_GENERATOR_MODULE
     SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER);
 #elif __FUEL_CELL_MODULE
@@ -575,7 +575,7 @@ void ShutDown()
             case(u8)EN_DELAY_STOP_PART_ONE:
                 APP_TRACE_DEBUG(("-->Delay stop part one...\r\n"));
                 //此处阻塞等待制氢机延时关闭任务中的任务信号量
-                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 3,         //3分钟后关闭制氢机
+                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 3,   //3分钟后关闭制氢机
                               OS_OPT_PEND_BLOCKING,
                               NULL,
                               &err);
@@ -602,7 +602,7 @@ void ShutDown()
                               NULL,
                               &err);
 
-                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 150,//制氢机30+150秒->3分钟后关闭
+                OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 160,//制氢机30+150秒->3分钟后关闭
                               OS_OPT_PEND_BLOCKING,
                               NULL,
                               &err);
@@ -613,10 +613,10 @@ void ShutDown()
                 } else {
                     APP_TRACE_DEBUG(("The hydrogen producer and stack delay stop over time...\r\n"));
                 }
-
             default:
                 break;
         }
+        OSTaskSemSet(&AppTaskStartTCB,0,&err);//清掉任务信号量，防止因任务信号量累计造成下一次启动异常
     } else {
         APP_TRACE_DEBUG(("The program don't need to start the shut down process...\r\n"));
     }
@@ -646,6 +646,4 @@ void UpdateBuzzerStatuInCruise(void)
         BSP_BuzzerOff();
     }
 }
-
-
 /******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/

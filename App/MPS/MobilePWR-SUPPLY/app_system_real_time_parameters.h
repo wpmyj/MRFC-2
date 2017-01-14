@@ -138,26 +138,35 @@ typedef enum
 	IS_PUMP_AND_VALUE1_WORK = 1,
 	IS_VALUE2_AND_IGNITER_WORK = 2,
 	IS_FAN_WORK = 3,
+    
 }SwType_WORK_STATUS_Typedef; //开关器件工作状态查询
 
 typedef enum {
+    
     STACK_TEMP_LOW_ALARM = 0,           //电堆低温警报
     STACK_TEMP_HIGH_ALARM,              //电堆高温警报
 
-    STACK_VOLTAGE_LOW_ALARM = 2,               //电堆低压警报
+    STACK_VOLTAGE_LOW_ALARM = 2,        //电堆低压警报
 
     HYDROGEN_PRESS_LOW_ALARM = 8,     //低气压警报
-    HYDROGEN_PRESS_HIGH_ALARM,       //高气压警报
-    HYDORGEN_LEAKAGE_ALARM,             //气体泄漏报警
+    HYDROGEN_PRESS_HIGH_ALARM,        //高气压警报
+    HYDORGEN_LEAKAGE_ALARM,           //气体泄漏报警
 
     LIQUID_PRESS_HIGH_ALARM = 16,
-    FUEL_SHORTAGE_ALARM,           //低液位警报
-    REFORMER_TEMP_LOW_ALARM,      //重整室低温警报
-    REFORMER_TEMP_HIGH_ALARM,    //重整室高温警报
+    FUEL_SHORTAGE_ALARM,             //低液位警报
+    REFORMER_TEMP_LOW_ALARM,         //重整室低温警报
+    REFORMER_TEMP_HIGH_ALARM,        //重整室高温警报
     IGNITE_FAILED_ALARM,
 
 } SYSTEM_ALARM_ADDR_Typedef;
 
+typedef enum {
+    
+    SLIGHT_GRADE = 0,       //轻微级
+    GENERAL_GRADE,           //一般级
+    SERIOUS_GRADE,           //严重级
+
+} SYSTEM_ALARM_GRADE_Typedef;
 
 typedef struct {
     uint64_t u32_TimeRecordNum; //计时基数,加1为加0.001s
@@ -431,7 +440,7 @@ STACK_WORK_STATU_Typedef        GetStackWorkStatu(void);
 //系统警报管理相关函数
 void                    ResetAllAlarms(void);
 uint32_t                GetRunAlarmCode(void);
-void                    AlarmCmd(SYSTEM_ALARM_ADDR_Typedef, SWITCH_TYPE_VARIABLE_Typedef);
+void                    AlarmCmd(SYSTEM_ALARM_ADDR_Typedef,SYSTEM_ALARM_GRADE_Typedef, SWITCH_TYPE_VARIABLE_Typedef);
 SWITCH_TYPE_VARIABLE_Typedef    GetAlarmStatu(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind);
 SYSTEM_TIME_Typedef             GetAlarmHoldTime(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind);
 
@@ -457,10 +466,6 @@ void    SetSystemRunningStatuCodeBit(uint8_t);
 void    ResetSystemRunningStatuCodeBit(uint8_t);
 void    ResetSystemRunningStatuCode(void);
 void    SetSystemRunningStatuCodeSysWorkStatuSection(SYSTEM_WORK_STATU_Typedef);
-
-//实时请求信息相关管理函数
-void SendRealTimeRequestInf(REAL_TIME_REQUEST_INF_Typedef i_ReqInfType);
-uint8_t GetRealTimeRequestInf(void);
 
 //控制通信状态码相关管理函数
 void SetConrolAndCommunicateStatuCodeBit(uint8_t i_u8BitNmb);

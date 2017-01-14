@@ -115,7 +115,7 @@ uint8_t GetPrgmRxBuffLen(void);
 *                                          BSP_Ser_Init()
 *
 * Description : Initialize a serial port for communication.
-*                               ´®¿Ú1³õÊ¼»¯
+*                               
 * Argument(s) : baud_rate           The desire RS232 baud rate.
 *
 * Return(s)   : none.

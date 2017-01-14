@@ -37,8 +37,12 @@
 *                                           MACRO DEFINES
 ***************************************************************************************************
 */
-#define         ANA_SIGNAL_MONITOR_TASK_STK_SIZE        200
+#define         ANA_SIGNAL_MONITOR_TASK_STK_SIZE        256
 
+//保护报警开关
+#define         STACK_TEMP_MONITOR_SWITCH                1u
+#define         STACK_AIR_PRESS_MONITOR_SWITCH           1u
+#define         STACK_VOLETAGE_MONITOR_SWITCH            1u
 /*
 ***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
@@ -57,12 +61,13 @@ static      CPU_STK_8BYTE_ALIGNED     AnaSigMonitorTaskStk[ANA_SIGNAL_MONITOR_TA
 ***************************************************************************************************
 */
 static      uint8_t      g_u8HydrgProducerAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;//制氢机运行模拟信号警报监测开关
+static      uint8_t      g_u8HydrgProducerPumpRunningStartAutoAdjHookSw = DEF_DISABLED;   //制氢机泵速自动调节开关
 static      uint8_t      g_u8StackHydrgPressHighEnoughHookSw = DEF_DISABLED; //等待电堆压力满足开关
 static      uint8_t      g_u8StackAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;//电堆运行模拟信号警报监测开关
 static      uint8_t      g_u8StackIsPulledStoppedMonitorHookSw = DEF_DISABLED;//电堆是否被拉停监测开关
 static      uint8_t      g_u8StackNeedRestartLimitCurrentFlag = DEF_CLR;//电堆被拉停后重新限流标志
-
-static      uint16_t     g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;       //电堆气压小于10Kpa的秒数
+static      uint8_t      g_u8PumpAutoAdjFinishStatu = DEF_NO;//首次运行泵速调整状态
+static      uint16_t     g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;       //电堆气压小于10Kpa的秒数
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
@@ -74,7 +79,8 @@ static      void        HydrgProducerAnaSigAlarmRunningMonitorHook(void);
 static      void        StackHydrgPressHighEnoughWaitHook(void);
 static      void        StackAnaSigAlarmRunningMonitorHook(void);
 static      void        JudgeWhetherTheStackIsPulledStoppedMonitorHook(void);
-//static      void        HydrgProducerPumpAutoAdjByDecompressCountHook(void);
+static      void        HydrgProducerPumpAutoAdjByDecompressCountHook(void);
+static      void        HydrgProducerPumpRunningStartAutoAdjHook(void);
 /*
 ***************************************************************************************************
 *                                 AnaSigMonitorTaskCreate()
@@ -154,6 +160,10 @@ void  AnaSigMonitorTask(void *p_arg)
         if(g_u8StackIsPulledStoppedMonitorHookSw == DEF_ENABLED) {
             JudgeWhetherTheStackIsPulledStoppedMonitorHook();
         }
+        
+        if(g_u8HydrgProducerPumpRunningStartAutoAdjHookSw == DEF_ENABLED) {
+            HydrgProducerPumpRunningStartAutoAdjHook();//液压大于4公斤，制氢机自动调节泵速，只调节一次
+        }
         //制氢泵速根据排气次数动态调整
 //        if(g_u8HydrgProducerPumpAutoAdjByDecompressCountHookSw == DEF_ENABLED) {
 //            HydrgProducerPumpAutoAdjByDecompressCountHook();
@@ -171,7 +181,7 @@ void  AnaSigMonitorTask(void *p_arg)
 *
 * Returns     : none.
 *
-* Notes       : none.
+* Notes       : New alarm program.
 ***************************************************************************************************
 */
 void HydrgProducerAnaSigAlarmRunningMonitorHook(void)
@@ -181,22 +191,23 @@ void HydrgProducerAnaSigAlarmRunningMonitorHook(void)
     fLqdPress = GetSrcAnaSig(LIQUID_PRESS);
 
     if(fLqdPress > g_stLqdPressCmpTbl.AlarmUpperLimit) {
-        AlarmCmd(LIQUID_PRESS_HIGH_ALARM, ON);
+        AlarmCmd(LIQUID_PRESS_HIGH_ALARM,SERIOUS_GRADE,ON);
 
         if(fLqdPress > g_stLqdPressCmpTbl.ShutDownUpperLimit) {
             APP_TRACE_INFO(("Hydrogen producer liquid press is above the high press protect line...\n\r"));
         }
     } else {
-        AlarmCmd(LIQUID_PRESS_HIGH_ALARM, OFF);
+        AlarmCmd(LIQUID_PRESS_HIGH_ALARM,SERIOUS_GRADE,OFF);
     }
 
 
     flqdHeight = GetSrcAnaSig(LIQUID_LEVEL);
 
     if(flqdHeight < g_stLqdHeightCmpTbl.AlarmlowerLiquidLevellimit) {
-        AlarmCmd(FUEL_SHORTAGE_ALARM, ON);
+        AlarmCmd(FUEL_SHORTAGE_ALARM,GENERAL_GRADE,ON);
+        
     } else {
-        AlarmCmd(FUEL_SHORTAGE_ALARM, OFF);
+        AlarmCmd(FUEL_SHORTAGE_ALARM,GENERAL_GRADE,OFF);
 
         if(flqdHeight <= g_stLqdHeightCmpTbl.OpenAutomaticliquidValue) { //自动加液水泵
             BSP_OutsidePumpPwrOn();
@@ -204,8 +215,42 @@ void HydrgProducerAnaSigAlarmRunningMonitorHook(void)
             BSP_OutsidePumpPwrOff();
         } else {}
     }
+}
 
-//  UpdateBuzzerStatuInCruise();
+/*
+***************************************************************************************************
+*                               HydrgProducerAnaSigRunningStartAutoAdjHook()
+*
+* Description : The funciton is to auto adjust the pump at beginning of the run process with the analog signal.
+*               
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
+
+void HydrgProducerPumpRunningStartAutoAdjHook(void)
+{
+    float fLqdPress;
+    static u8 i = 0;
+
+    fLqdPress = GetSrcAnaSig(LIQUID_PRESS);
+    i++;
+
+    if(i >= 10) { //模拟信号检测周期是100ms一次，计10次也即1秒调节1次
+        i = 0;
+
+        if((fLqdPress >= 4) && (g_u8PumpAutoAdjFinishStatu == DEF_NO)) {
+            PumpSpdDec();
+
+            if(GetPumpCtlSpd() <= g_stStartHydrgPumpSpdPara.PumpSpdAfterLiquidPressExceed4Kg) {
+                g_u8PumpAutoAdjFinishStatu = DEF_YES;
+                g_u8HydrgProducerPumpRunningStartAutoAdjHookSw = DEF_DISABLED;//关调节开关
+            }
+        }
+    }
 }
 
 /*
@@ -242,50 +287,105 @@ void StackHydrgPressHighEnoughWaitHook(void)
 *
 * Returns     : none.
 *
-* Notes       : none.
+* Notes       : New alarm program.
 ***************************************************************************************************
 */
 void StackAnaSigAlarmRunningMonitorHook(void)
 {
-    float fStackTemp;
-    float fHydrgPress;
-
+    float fStackTemp = 0;
+    float fHydrgPress = 0;
+    float fStackVoletage = 0;
+    static uint8_t StackTempHighFlag = NO;
+    static uint8_t StackHydrogenPressLowFlag = NO;
+    static uint8_t StackVoletageLowFlag = NO;
+    static uint16_t g_u16StackVoletageBelow40VHoldSeconds = 0;
+    static uint16_t g_u16StackVoletageExceed40VHoldSeconds = 0;
+    
+#if STACK_TEMP_MONITOR_SWITCH 
     /* 监测温度 */
     fStackTemp = GetSrcAnaSig(STACK_TEMP);
 
-    if(fStackTemp > 60) {
-        AlarmCmd(STACK_TEMP_HIGH_ALARM, ON);
+    if(fStackTemp > 60){
+        AlarmCmd(STACK_TEMP_HIGH_ALARM,GENERAL_GRADE,ON);
 
-        if(fStackTemp > 70) {
-//            APP_TRACE_INFO(("Stack temp is above the high temp protect line...\n\r"));
+        if(fStackTemp > 68) {
+            if(StackTempHighFlag != YES){
+                BSP_DCConnectValvePwrOff();
+                StackTempHighFlag = YES;
+                APP_TRACE_INFO(("Stack temp is above the high temp protect line,stop output...\n\r"));
+            }
         }
-    } else if(fStackTemp < 20) {
-        AlarmCmd(STACK_TEMP_LOW_ALARM, ON);
+    } else if(fStackTemp < 15) {
+        AlarmCmd(STACK_TEMP_LOW_ALARM,GENERAL_GRADE,ON);
 
         if(fStackTemp < 10) {
-//            APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
+//            CmdShutDown();      //关机命令
+            APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
         }
     } else {
-        AlarmCmd(STACK_TEMP_HIGH_ALARM, OFF);
-        AlarmCmd(STACK_TEMP_LOW_ALARM, OFF);
+        if((fStackTemp >= 20) && (fStackTemp <= 50)) {//系统恢复到正常温度,恢复输出
+            if(StackTempHighFlag == YES){ 
+                BSP_DCConnectValvePwrOn();
+                StackTempHighFlag = NO;
+            }
+            AlarmCmd(STACK_TEMP_HIGH_ALARM, GENERAL_GRADE,OFF);  
+        }
+        AlarmCmd(STACK_TEMP_LOW_ALARM,GENERAL_GRADE, OFF);
     }
-
-    /* 监测气压-可设置低气压关机 */
+#endif
+    
+#if STACK_AIR_PRESS_MONITOR_SWITCH 
+    /* 监测气压 */
     fHydrgPress = GetSrcAnaSig(HYDROGEN_PRESS_1);
 
-    if(fHydrgPress >= 10) {
-        g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;
-        AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, OFF);
-    } else {
-        AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, ON);
-        g_u16StackManagerHydrgPressBelow10KPaHoldSeconds++;
-
-        if(g_u16StackManagerHydrgPressBelow10KPaHoldSeconds >= 30) {//气压过低3s
-//            CmdShutDown();      //关机命令
-            g_u16StackManagerHydrgPressBelow10KPaHoldSeconds = 0;
+    if(fHydrgPress >= 30) {
+        AlarmCmd(HYDROGEN_PRESS_LOW_ALARM,SERIOUS_GRADE,OFF);
+        if(StackHydrogenPressLowFlag != NO){
+            BSP_DCConnectValvePwrOn();
+            StackHydrogenPressLowFlag = NO;
         }
-    }
+    } else if(fHydrgPress >= 10){
+        g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;
+    }else {
+        AlarmCmd(HYDROGEN_PRESS_LOW_ALARM,SERIOUS_GRADE,ON);
+        g_u16StackHydrgPressBelow10KPaHoldSeconds++;
 
+        if(g_u16StackHydrgPressBelow10KPaHoldSeconds >= 30) {//气压过低超过3s,电堆停止输出
+            BSP_DCConnectValvePwrOff();
+            StackHydrogenPressLowFlag = YES;
+            g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;
+//            CmdShutDown();      //关机命令
+        }       
+    }
+#endif
+    
+#if STACK_VOLETAGE_MONITOR_SWITCH    
+    /*监测电压*/
+    fStackVoletage = GetSrcAnaSig(STACK_VOLTAGE);
+    if(EN_IN_WORK == GetStackWorkStatu()){
+        if(fStackVoletage >= 40) {
+            g_u16StackVoletageBelow40VHoldSeconds = 0;
+            AlarmCmd(HYDROGEN_PRESS_LOW_ALARM,GENERAL_GRADE,OFF);
+            if(StackVoletageLowFlag != NO ){
+                g_u16StackVoletageExceed40VHoldSeconds ++;
+                if(g_u16StackVoletageExceed40VHoldSeconds >= 300){
+                    BSP_DCConnectValvePwrOn();
+                    StackVoletageLowFlag = NO;
+                    g_u16StackVoletageExceed40VHoldSeconds = 0;
+                }
+            }
+        }else {
+            g_u16StackVoletageBelow40VHoldSeconds ++;
+            if(g_u16StackVoletageBelow40VHoldSeconds > 300){
+                AlarmCmd(STACK_VOLTAGE_LOW_ALARM,GENERAL_GRADE,ON);
+                StackVoletageLowFlag = YES;
+                BSP_DCConnectValvePwrOff();
+                g_u16StackVoletageBelow40VHoldSeconds = 0;
+            }
+        } 
+    }
+#endif
+    
 }
 /*
 ***************************************************************************************************
@@ -422,4 +522,67 @@ uint8_t GetStackNeedRestartLimitCurrentFlag(void)
 //    }
 //}
 
-/******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/
+
+
+/*
+***************************************************************************************************
+*                    HydrgProducerPumpAutoAdjByDecompressCountHook()
+*
+* Description : open the switch of the stack analog signal alarm manager switch.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
+void ExcuteStackProtectProgram()
+{
+    BSP_DCConnectValvePwrOff();
+    
+    BSP_DCConnectValvePwrOn();
+}
+
+/*
+***************************************************************************************************
+*                               StartRunningAlarm()
+*
+* Description : Start beep alarm by alarm grade.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
+void StartRunningBeepAlarm(SYSTEM_ALARM_GRADE_Typedef i_AlarmGrade)
+{
+    uint8_t     u8Count = 0;
+    u32 u32AlarmCode;
+    u32AlarmCode = GetRunAlarmCode();
+    
+    if(u32AlarmCode != 0) {
+        u8Count ++;
+        if(i_AlarmGrade <= SLIGHT_GRADE){//最低等级报警
+            if(u8Count >= 20){//低等级报警为2s蜂鸣器响一次
+                BSP_BuzzerTurnover();
+                u8Count = 0;
+            }
+        }else if(i_AlarmGrade <= GENERAL_GRADE){
+            if(u8Count >= 10){
+                BSP_BuzzerTurnover();
+                u8Count = 0;
+            }
+        }else{  //最高等级报警
+            if(u8Count >= 5){
+                BSP_BuzzerTurnover();
+                u8Count = 0;
+            }
+        }
+    }else {
+        BSP_BuzzerOff();
+    }
+}
+/******************* (C) COPYRIGHT 2016 Guangdong Eneco *****END OF FILE****/

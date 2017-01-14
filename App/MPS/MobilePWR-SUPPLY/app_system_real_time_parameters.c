@@ -20,16 +20,14 @@
 *                                           INCLUDE FILES
 ***************************************************************************************************
 */
-#include "stm32f10x.h"
-#include "stm32f10x_conf.h"
 #include "app_system_run_cfg_parameters.h"
 #include "app_system_real_time_parameters.h"
+#include "app_analog_signal_monitor_task.h"
 #include "app_wireness_communicate_task.h"
 #include "includes.h"
-#include "bsp.h"
 #include <cpu.h>
 #include <bsp_ana_sensor.h>
-
+#include "app_analog_signal_monitor_task.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -81,7 +79,7 @@ static  STACK_WORK_STATU_Typedef        g_eStackWorkStatu = EN_NOT_IN_WORK;
 
 static          float                   g_fSystemIsolatedGeneratedEnergyThisTime = 0.0;
 
-static          uint8_t                 g_u8WaitWorkModeSelectSwitch = DEF_DISABLED;
+static          uint8_t                 g_u8WaitWorkModeSelectSwitch = DEF_ENABLED;
 
 static          uint32_t                                g_u32SysErrCode = 0;
 //系统预定错误类型有32种，对应g_u32ErrCode中的32位
@@ -193,19 +191,6 @@ void SetWorkModeWaittingForSelectFlag(void)
     CPU_CRITICAL_EXIT();
 }
 
-/*
-***************************************************************************************************
-*                                      ResetWorkModeWaittingForSelectFlag()
-*
-* Description:  Reset the flag that the system is waitting for the control side to select the work mode.
-*
-* Arguments  :  none.
-*
-* Returns    :  none.
-*
-* Note(s)    :  The flag is included in the message that will send to the control side.
-***************************************************************************************************
-*/
 void ResetWorkModeWaittingForSelectFlag(void)
 {
     CPU_SR_ALLOC();
@@ -766,7 +751,7 @@ void ResetAllAlarms()
 * Note(s)    :  none.
 ***************************************************************************************************
 */
-void AlarmCmd(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind, SWITCH_TYPE_VARIABLE_Typedef m_enNewStatu)
+void AlarmCmd(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind, SYSTEM_ALARM_GRADE_Typedef m_enAlarmGrade,SWITCH_TYPE_VARIABLE_Typedef m_enNewStatu)
 {
     if((g_stSystemAlarmsInf.AlarmCode ^ (m_enNewStatu << (u8)m_enSystemAlarmKind)) != 0) { //若状态有变化
         g_stSystemAlarmsInf.HoldTime[m_enSystemAlarmKind].second = 0x00;
@@ -777,6 +762,7 @@ void AlarmCmd(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind, SWITCH_TYPE_VARIABL
             g_stSystemAlarmsInf.AlarmCode &= ~(1 << (u8)m_enSystemAlarmKind);
         } else {
             g_stSystemAlarmsInf.AlarmCode |= (1 << (u8)m_enSystemAlarmKind);
+            StartRunningBeepAlarm(m_enAlarmGrade);//报警码不为零,开始报警
         }
     } else { //否则什么也不做
     }
@@ -1462,7 +1448,6 @@ static  void  SysTimeStatTask(void *p_arg)
                 i = 0;
                 u32AlarmCode &= 0xFFFF;//滤掉前面4位与电堆警报无关的公共组警报和制氢机警报
 
-//          u32AlarmCode >>= 16;//与电堆相关的警报从bit0开始，无需右移
                 while(u32AlarmCode != 0) {
                     if((u32AlarmCode & 1) == 1) {
                         UpdateSysTime(&g_stSystemAlarmsInf.HoldTime[i]);

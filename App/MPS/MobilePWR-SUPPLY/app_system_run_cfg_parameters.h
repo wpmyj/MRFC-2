@@ -40,9 +40,9 @@
 ***************************************************************************************************
 */
 #ifndef __INTERNAL_TEST_FLAG
-    #define __INTERNAL_TEST_FLAG    0u      //Internal debug mode
+    #define __INTERNAL_TEST_FLAG    1u      //Internal debug mode
     #define __HYDROGEN_GENERATOR_MODULE 0u
-    #define __FUEL_CELL_MODULE    1u
+    #define __FUEL_CELL_MODULE    0u
     #define __ONE_MACHINE_MODULE    0u
 #endif
 
@@ -76,7 +76,8 @@ typedef struct {
 typedef struct {
     uint16_t    PumpSpdIgniterFirstTime;
     uint16_t    PumpSpdIgniterSecondTime;
-
+    uint16_t    PumpSpdAfterLiquidPressExceed4Kg;
+    
 } HYDROGEN_PUMP_SPEED_PARA_Typedef;
 
 

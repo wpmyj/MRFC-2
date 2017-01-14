@@ -37,7 +37,7 @@
 *                                    EXTERNAL OS VARIABLE DECLARATIONS
 ***************************************************************************************************
 */
-extern      OS_SEM      MannualSelcetWorkModeSem;
+extern      OS_SEM      WaitSelcetWorkModeSem;
 extern      OS_SEM      IgniteFirstBehindWaitSem;
 extern      OS_SEM      IgniteSecondBehindWaitSem;
 /*

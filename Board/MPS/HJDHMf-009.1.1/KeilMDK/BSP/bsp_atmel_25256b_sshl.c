@@ -65,7 +65,7 @@
 void AT25256B_Init(void)
 {	
     GPIO_InitTypeDef GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd(	RCC_APB2Periph_GPIOD, ENABLE );
+	RCC_APB2PeriphClockCmd(	RCC_APB2Periph_GPIOD, ENABLE);
 
 	GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_FLASH_HOLD_PORT_NMB | BSP_GPIOD_FLASH_WP_PORT_NMB;
  	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;  //ÍÆÍìÊä³ö
