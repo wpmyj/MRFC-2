@@ -34,6 +34,8 @@
 #include "bsp_dc_module_adjust.h"
 #include "bsp_speed_adjust_device.h"
 #include "app_stack_short_circuit_task.h"
+#include "app_mf210_communicate_task.h"
+
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -133,9 +135,11 @@ static  void  AppTaskStart(void *p_arg)
 
     USER_NVIC_Cfg();
 
-    Mem_Init();                                                 /*初始化内存管理模块     */
+    Mem_Init();                                                 /*初始化内存管理模块*/
+    
+    
 
-#if OS_CFG_STAT_TASK_EN > 0u                                                                    /*统计任务*/
+#if OS_CFG_STAT_TASK_EN > 0u                                   /*统计任务*/
     OSStatTaskCPUUsageInit(&err);                             /* Compute CPU capacity with no task running            */
 #endif
 
@@ -150,8 +154,8 @@ static  void  AppTaskStart(void *p_arg)
 #endif
 
 
-#if (APP_CFG_SERIAL_EN == DEF_ENABLED)                                                    /*串口初始化*/
-    BSP_Ser_Init(115200);                                       /* Enable Serial Interface                              */
+#if (APP_CFG_SERIAL_EN == DEF_ENABLED)         /*串口初始化*/
+    BSP_Ser_Init(115200);                      /* 调试串口*/
 #endif
 
     OSSemCreate(&g_stAnaSigConvertFinishSem, "Ana Signal convert finish sem", 0, &err);
@@ -172,6 +176,8 @@ static  void  AppTaskStart(void *p_arg)
     DigSigMonitorTaskCreate();          
 
     CommunicateTaskCreate();           
+    
+    MF210_CommunicateTaskCreate();//3G模块数据发送任务
 
     Make_Vacuum_FunctionTaskCreate(); //自动抽真空任务
 
@@ -183,7 +189,7 @@ static  void  AppTaskStart(void *p_arg)
 
     StackManagerTaskCreate();
     
-    StackShortCircuitTaskCreate();     //电堆短路活化任务
+    StackShortCircuitTaskCreate();//电堆短路活化任务
     
     DcModuleAutoAdjustTaskCreate();    //DC动态限流调节任务,平滑限流任务 
 
@@ -200,6 +206,7 @@ static  void  AppTaskStart(void *p_arg)
 
     while(DEF_TRUE) {
         if(EN_THROUGH == CheckAuthorization()) {
+            
             eWaitCmdCheckStatu = WaittingCommand();
 
             if(EN_THROUGH == eWaitCmdCheckStatu) {

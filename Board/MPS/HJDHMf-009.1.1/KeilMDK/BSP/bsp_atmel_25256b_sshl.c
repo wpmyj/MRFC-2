@@ -67,12 +67,12 @@ void AT25256B_Init(void)
     GPIO_InitTypeDef GPIO_InitStructure;
 	RCC_APB2PeriphClockCmd(	RCC_APB2Periph_GPIOD, ENABLE);
 
-	GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_FLASH_HOLD_PORT_NMB | BSP_GPIOD_FLASH_WP_PORT_NMB;
+	GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN3_FLASH_HOLD_PORT_NMB | BSP_GPIOD_PIN4_FLASH_WP_PORT_NMB;
  	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;  //推挽输出
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
  	GPIO_Init(GPIOD, &GPIO_InitStructure);
     
-    GPIO_ResetBits(GPIOD,BSP_GPIOD_FLASH_HOLD_PORT_NMB | BSP_GPIOD_FLASH_WP_PORT_NMB);//拉低，保持数据传输和写保护
+    GPIO_ResetBits(GPIOD,BSP_GPIOD_PIN3_FLASH_HOLD_PORT_NMB | BSP_GPIOD_PIN4_FLASH_WP_PORT_NMB);//拉低，保持数据传输和写保护
     
     AT25256B_NCS;//SPI FLASH不选中
 	SPI3_Init();//初始化SPI3
@@ -94,9 +94,9 @@ void AT25256B_Init(void)
 */  
 static void AT25256B_Write_Enable(void)   
 {
-    GPIO_SetBits(GPIOD,BSP_GPIOD_FLASH_WP_PORT_NMB);//写使能时必须把WP拉高
+    GPIO_SetBits(GPIOD,BSP_GPIOD_PIN4_FLASH_WP_PORT_NMB);//写使能时必须把WP拉高
     SPI3_ReadWriteByte(WREN);
-    GPIO_ResetBits(GPIOD,BSP_GPIOD_FLASH_WP_PORT_NMB); 	                            		      
+    GPIO_ResetBits(GPIOD,BSP_GPIOD_PIN4_FLASH_WP_PORT_NMB); 	                            		      
 } 
  
 static void AT25256B_Write_Disable(void)   

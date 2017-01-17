@@ -31,7 +31,7 @@
 #include "app_stack_manager.h"
 #include "app_system_run_cfg_parameters.h"
 #include "bsp_scale_data_read.h"
-
+#include "bsp_can.h"
 /*
 ***************************************************************************************************
 *                                       MACRO DEFINITIONS
@@ -188,15 +188,22 @@ void  CommunicateTask(void *p_arg)
     SYSTEM_WORK_MODE_Typedef    eWorkMode;
 
     while(DEF_TRUE) {
+        
         OSTimeDlyHMSM(0, 0, 1, 000,
                       OS_OPT_TIME_HMSM_STRICT,
                       &err);
 
-        if(g_eWirenessCommandReceived == YES) { //收到串口指令而提前结束延时，响应上位机指令
+        if(g_u8WifiCommandReceived == YES) { //收到串口指令而提前结束延时，响应上位机指令
             ResponsePrgmCommand(g_u8SerRxMsgBuff);
-            g_eWirenessCommandReceived = NO;
-        } else {
-        }//正常延时
+            g_u8WifiCommandReceived = NO;
+        }         
+        else if(g_eCanMsgRxStatu == YES)//是否因收到CAN接口指令而提前结束延时
+		{
+			ResponsePrgmCommand(g_u8CanRxMsg);
+			g_eCanMsgRxStatu = NO;
+		}else {
+            //正常延时
+        }
 
         if(DEF_DISABLED == GetWorkModeWaittingForSelectFlag()) {
             eWorkMode = GetWorkMode();      //根据工作模式选择性发送实时信息
@@ -979,6 +986,10 @@ void LoadNonRealTimeWorkInfo(uint8_t i_eSendDataType, uint8_t i_uint8_tCmdCode, 
 static void SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg)
 {
     BSP_PrgmDataDMASend(i_uint8_tTxMsgLen, i_pTxMsg);
+//    if(g_eCAN_BusOnLineFlag == ON)//CAN总线在线
+//	{
+		SendCanMsgContainNodeId(PRGM_TX_BUFF_SIZE, i_pTxMsg, GLOBAL_NET_WORK_ID);
+//	}
 }
 
 /*

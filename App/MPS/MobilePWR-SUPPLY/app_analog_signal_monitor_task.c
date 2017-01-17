@@ -31,7 +31,8 @@
 #include "app_stack_manager.h"
 #include "app_hydrg_producer_manager.h"
 #include "app_dc_module_communicate_task.h"
-
+#include "app_mf210_communicate_task.h"
+#include "bsp_MF210.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINES
@@ -164,6 +165,11 @@ void  AnaSigMonitorTask(void *p_arg)
         if(g_u8HydrgProducerPumpRunningStartAutoAdjHookSw == DEF_ENABLED) {
             HydrgProducerPumpRunningStartAutoAdjHook();//液压大于4公斤，制氢机自动调节泵速，只调节一次
         }
+        
+        if(SocketRecv(1, Uatr_RxBuf)){
+            Receive_Uart_Device();    //接收服务器控制指令
+        }
+        
         //制氢泵速根据排气次数动态调整
 //        if(g_u8HydrgProducerPumpAutoAdjByDecompressCountHookSw == DEF_ENABLED) {
 //            HydrgProducerPumpAutoAdjByDecompressCountHook();

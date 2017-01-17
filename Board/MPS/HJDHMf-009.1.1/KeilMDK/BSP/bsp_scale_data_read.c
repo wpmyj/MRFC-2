@@ -91,7 +91,7 @@ void  BSP_Scale_SerTo485_Init()
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF_PP;
     GPIO_Init(GPIOC, &GPIO_InitStructure);
                                                                 
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOD_UART5_RX_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOD_PIN2_UART5_RX_PORT_NMB;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
     GPIO_Init(GPIOD, &GPIO_InitStructure);
                                                          

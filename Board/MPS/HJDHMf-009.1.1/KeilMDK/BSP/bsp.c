@@ -29,7 +29,7 @@
 #include "app_stack_manager.h"
 #include "app_top_task.h"
 #include "app_system_run_cfg_parameters.h"
-
+#include "bsp_can.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -42,13 +42,13 @@
 #define MAX6675_DATA_CLK_DELAY_SYSTEM_CYCLES    (BSP_CPU_ClkFreq()/10000000 + 1)    //读MAX6675数据时，读取时钟需要保持的系统时钟周期数
 #define MAX6675_DATA_READ_DELAY_SYSTEM_CYCLES   ((MAX6675_DATA_CLK_DELAY_SYSTEM_CYCLES + 1) / 2) //读MAX6675数据时，读取时钟就绪后，为保证准确而将读取动作延后的系统时钟数
 
-#define MAX6675_CS_YES   GPIO_ResetBits(GPIOD, BSP_GPIOD_MAX6675_CHIPS_SELECT_PORT_NMB);   //MAX6675片选选中
-#define MAX6675_CS_NO    GPIO_SetBits(GPIOD, BSP_GPIOD_MAX6675_CHIPS_SELECT_PORT_NMB);
-#define MAX6675_SCK_UP   GPIO_SetBits(GPIOD, BSP_GPIOD_MAX6675_CHIPS_SCLK_PORT_NMB);
-#define MAX6675_SCK_DOWN GPIO_ResetBits(GPIOD, BSP_GPIOD_MAX6675_CHIPS_SCLK_PORT_NMB);
+#define MAX6675_CS_YES   GPIO_ResetBits(GPIOD, BSP_GPIOD_PIN10_MAX6675_CHIPS_SELECT_PORT_NMB);   //MAX6675片选选中
+#define MAX6675_CS_NO    GPIO_SetBits(GPIOD, BSP_GPIOD_PIN10_MAX6675_CHIPS_SELECT_PORT_NMB);
+#define MAX6675_SCK_UP   GPIO_SetBits(GPIOD, BSP_GPIOD_PIN11_MAX6675_CHIPS_SCLK_PORT_NMB);
+#define MAX6675_SCK_DOWN GPIO_ResetBits(GPIOD, BSP_GPIOD_PIN11_MAX6675_CHIPS_SCLK_PORT_NMB);
 
-#define GET_REFORMER_TEMP_DATA_BY_BIT   GPIO_ReadInputDataBit(GPIOD,BSP_GPIOD_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB)
-#define GET_FIRE_TEMP_DATA_BY_BIT       GPIO_ReadInputDataBit(GPIOD,BSP_GPIOD_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB)
+#define GET_REFORMER_TEMP_DATA_BY_BIT   GPIO_ReadInputDataBit(GPIOD,BSP_GPIOD_PIN12_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB)
+#define GET_FIRE_TEMP_DATA_BY_BIT       GPIO_ReadInputDataBit(GPIOD,BSP_GPIOD_PIN13_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB)
 
 #define NUMBER_OF_THE_PUMP_SPEED_GRADES     (2000u)
 #define DAC_DELT_LSB_PER_PUMP_SPEED         (4095 / ((float)NUMBER_OF_THE_PUMP_SPEED_GRADES))      //    4095/ 200
@@ -208,6 +208,7 @@ void  BSP_Init(void)
 
     //HSE起振成功
     if(HSEStartUpStatus == SUCCESS) {
+        
         RCC_PREDIV2Config(RCC_PREDIV2_Div2);                        /* Fprediv2 = HSE      /  2 =  4MHz.                    */
         RCC_PLL2Config(RCC_PLL2Mul_10);                             /* PLL2     = Fprediv2 *  10 = 40MHz.                    */
         RCC_PLL2Cmd(ENABLE);
@@ -259,7 +260,8 @@ void  BSP_Init(void)
     BSP_SwTypePwrDeviceStatuInit(); // 开关型输出设备
     BSP_CmdButtonInit();            // 硬件按钮
     BSP_ImpulseInputPortInit();     //外部脉冲输入引脚初始化
-    
+//    AT25256B_Init();              //外部EEPROM初始化
+    CAN_Configuration();            //CAN总线配置
     BSP_VentingIntervalRecordTimerInit();//电堆排气时间参数定时器初始化
 
 #ifdef TRACE_EN                                                 /* See project / compiler preprocessor options.         */
@@ -346,7 +348,7 @@ static  void  BSP_AnaSensorPortsInit(void)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);//时钟使能
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_ADC1, ENABLE);
 
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN_2_STACK_TEMP_ANA_SIGNAL_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN2_STACK_TEMP_ANA_SIGNAL_PORT_NMB;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
@@ -356,12 +358,12 @@ static  void  BSP_AnaSensorPortsInit(void)
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN_3_STACK_CURRENT_ANA_SIGNAL_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN3_STACK_CURRENT_ANA_SIGNAL_PORT_NMB;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN_1_LIQUID_PRESS_ANA_SIGNAL_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN1_LIQUID_PRESS_ANA_SIGNAL_PORT_NMB;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
@@ -371,17 +373,17 @@ static  void  BSP_AnaSensorPortsInit(void)
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN_7_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN7_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT_NMB;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN_0_LIQUID_LEVEL_ANA_SIGNAL_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN0_LIQUID_LEVEL_ANA_SIGNAL_PORT_NMB;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN_6_BATTERY_VOLETAGE_ANA_SIGNAL_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN6_BATTERY_VOLETAGE_ANA_SIGNAL_PORT_NMB;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
@@ -597,14 +599,14 @@ static void  BSP_DigSensorInit(void)
 
     /******配置GPIOB口引脚*********/
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB | BSP_GPIOD_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN13_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB | BSP_GPIOD_PIN12_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOD, &GPIO_InitStructure);
 
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_MAX6675_CHIPS_SELECT_PORT_NMB | BSP_GPIOD_MAX6675_CHIPS_SCLK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN10_MAX6675_CHIPS_SELECT_PORT_NMB | BSP_GPIOD_PIN11_MAX6675_CHIPS_SCLK_PORT_NMB;
     GPIO_Init(GPIOD, &GPIO_InitStructure);
-    GPIO_ResetBits(GPIOD, BSP_GPIOD_MAX6675_CHIPS_SELECT_PORT_NMB | BSP_GPIOD_MAX6675_CHIPS_SCLK_PORT_NMB);
+    GPIO_ResetBits(GPIOD, BSP_GPIOD_PIN10_MAX6675_CHIPS_SELECT_PORT_NMB | BSP_GPIOD_PIN11_MAX6675_CHIPS_SCLK_PORT_NMB);
 }
 /*
 ***************************************************************************************************
@@ -874,39 +876,39 @@ static void BSP_SwTypePwrDeviceStatuInit(void)
 
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB ;       //预留输出8
+    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOD_PIN7_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB ;       //预留输出8
     GPIO_Init(GPIOD, &GPIO_InitStructure);
-    GPIO_ResetBits(GPIOD,  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOD,  BSP_GPIOD_PIN7_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
 
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB ;      //预留输出6
+    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOD_PIN14_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB ;      //预留输出6
     GPIO_Init(GPIOD, &GPIO_InitStructure);
-    GPIO_ResetBits(GPIOD,  BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOD,  BSP_GPIOD_PIN14_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
 
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB  ; //预留输出7
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN15_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB  ; //预留输出7
     GPIO_Init(GPIOD, &GPIO_InitStructure);
-    GPIO_ResetBits(GPIOD,  BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOD,  BSP_GPIOD_PIN15_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
 
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出5
+    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_PIN14_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出5
     GPIO_Init(GPIOE, &GPIO_InitStructure);
-    GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOE, BSP_GPIOE_PIN14_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
     
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出4
+    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出4
     GPIO_Init(GPIOE, &GPIO_InitStructure);
-    GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOE, BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
     
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出3
+    GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_PIN8_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出3
     GPIO_Init(GPIOE, &GPIO_InitStructure);
-    GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOE, BSP_GPIOE_PIN8_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB);
 
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB; // 预留2控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
@@ -1146,70 +1148,70 @@ void  BSP_StackShortCircuitActivationOff(void)
 */
 void  BSP_TailGasOutValvePwrOn(void)
 {
-    GPIO_SetBits(GPIOE, BSP_GPIOE_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(GPIOE, BSP_GPIOE_PIN8_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Tail Gas Out Valve power on...\n\r"));
 }
 
 void  BSP_TailGasOutValvePwrOff(void)
 {
-    GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOE, BSP_GPIOE_PIN8_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Tail Gas Out Valve power off...\n\r"));
 }
 
 void  BSP_PureHydrogenGasOutValvePwrOn(void)
 {
-    GPIO_SetBits(GPIOE, BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(GPIOE, BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Pure Hydrogen Gas Out Valve power on...\n\r"));
 }
 void  BSP_PureHydrogenGasOutValvePwrOff(void)
 {
-    GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOE, BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Pure Hydrogen Gas Out Valve power off...\n\r"));
 }
 
 void  BSP_MakeVavuumValve2PwrOn(void)
 {
-    GPIO_SetBits(GPIOE, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(GPIOE, BSP_GPIOE_PIN14_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Bsp Make Vavuum Valve2 power on...\n\r"));
 }
 void  BSP_MakeVavuumValve2PwrOff(void)
 {
-    GPIO_ResetBits(GPIOE, BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOE, BSP_GPIOE_PIN14_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Bsp Make Vavuum Valve2 power off...\n\r"));
 }
 
 void  BSP_MakeVavuumValve3PwrOn(void)
 {
-    GPIO_SetBits(GPIOD, BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(GPIOD, BSP_GPIOD_PIN14_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Bsp Make Vavuum Valve3 power on...\n\r"));
 }
 void  BSP_MakeVavuumValve3PwrOff(void)
 {
-    GPIO_ResetBits(GPIOD, BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOD, BSP_GPIOD_PIN14_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Bsp Make Vavuum Valve3 power off...\n\r"));
 }
 
 void  BSP_MakeVavuumValve4PwrOn(void)
 {
-    GPIO_SetBits(GPIOD, BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(GPIOD, BSP_GPIOD_PIN15_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Bsp Make Vavuum Valve4 power on...\n\r"));
 }
 
 void  BSP_MakeVavuumValve4PwrOff(void)
 {
-    GPIO_ResetBits(GPIOD, BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOD, BSP_GPIOD_PIN15_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Bsp Make Vavuum Valve4 power off...\n\r"));
 }
 
 void  BSP_MakeVavuumPumpPwrOn(void)
 {
-    GPIO_SetBits(GPIOD, BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(GPIOD, BSP_GPIOD_PIN7_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Bsp Make Vavuum pump power on...\n\r"));
 }
 
 void  BSP_MakeVavuumPumpPwrOff(void)
 {
-    GPIO_ResetBits(GPIOD, BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOD, BSP_GPIOD_PIN7_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Bsp Make Vavuum pump power off...\n\r"));
 }
 
@@ -1329,17 +1331,17 @@ static  void  BSP_DeviceSpdCheckPortInit(u16 arr, u16 psc)
     GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);  //SWJ完全失能
     /*初始化IO口*/
     //初始化水泵速度检测引脚
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_PUMP_SPEED_CHECK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_PIN9_PUMP_SPEED_CHECK_PORT_NMB;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IPD;    //输入下拉，原来为GPIO_Mode_IPU
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
     //初始化制氢风机速度检测引脚
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_HYDRG_FAN_SPEED_CHECK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_PIN11_HYDRG_FAN_SPEED_CHECK_PORT_NMB;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IPD;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
     //初始化电堆风扇速度检测引脚
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_STACK_FAN_SPEED_CHECK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_PIN13_STACK_FAN_SPEED_CHECK_PORT_NMB;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IPD;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
@@ -1442,7 +1444,7 @@ static void  BSP_PumpCtrlInit(void)
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);       //使能DAC通道时钟
     GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
 
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN_4_PUMP_SPD_ANA_SIGNAL_CTRL_PORT_NMB;   //水泵速度控制引脚
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN4_PUMP_SPD_ANA_SIGNAL_CTRL_PORT_NMB;   //水泵速度控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
@@ -1559,7 +1561,7 @@ static void  BSP_HydrgFanCtrInit(void)
     GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
 
     /*GPIO使能*/
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN_5_HYDROGEN_FAN_SPD_ANA_SIGNAL_CTRL_PORT_NMB;//制氢风机速度控制引脚
+    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN5_HYDROGEN_FAN_SPD_ANA_SIGNAL_CTRL_PORT_NMB;//制氢风机速度控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
@@ -1835,7 +1837,7 @@ static void BSP_ImpulseInputPortInit(void)
     //松下泄压阀脉冲输入引脚1
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;   //下拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PD_PULSE1_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN10_PD_PULSE1_PORT_NMB;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource10);
@@ -1848,7 +1850,7 @@ static void BSP_ImpulseInputPortInit(void)
     //脉冲输入引脚2
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;   //下拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PD_PULSE2_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN12_PD_PULSE2_PORT_NMB;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource12);
@@ -1887,7 +1889,7 @@ static void EXTI15_10_StatusCheck_IRQHandler()
     }
 
     if(EXTI_GetITStatus(EXTI_Line12) != RESET) {//PDPulse2-电堆后端的泄压阀状态
-        if(1 == GPIO_ReadInputDataBit(GPIOE, BSP_GPIOE_PD_PULSE2_PORT_NMB)) {
+        if(1 == GPIO_ReadInputDataBit(GPIOE, BSP_GPIOE_PIN12_PD_PULSE2_PORT_NMB)) {
             DecompressCountPerMinuteInc();
             BSP_StartRunningVentingTimeRecord(); //Start recording the exhaust time parameter
             StackVentAirTimeParameter.fVentAirTimeIntervalValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录排气间隔时间
@@ -2116,7 +2118,7 @@ void BSP_DiagnosticFeedBackPortInit(void)
     //加热器和点火器诊断检测
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_HEATER_AND_IGNITER_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN0_HEATER_AND_IGNITER_DIAGNOSTIC_FEEDBACK_PORT_NMB;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource0);
@@ -2128,7 +2130,7 @@ void BSP_DiagnosticFeedBackPortInit(void)
     //预留1和直流接触器诊断
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_RVD1_AND_DC_OUTPUT_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN1_RVD1_AND_DC_OUTPUT_DIAGNOSTIC_FEEDBACK_PORT_NMB;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource1);
@@ -2140,7 +2142,7 @@ void BSP_DiagnosticFeedBackPortInit(void)
     //进气电磁阀和出气电磁阀诊断监测引脚
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_HYDROGEN_OUTPUT_AND_INPUT_VALVE_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN2_HYDROGEN_OUTPUT_AND_INPUT_VALVE_DIAGNOSTIC_FEEDBACK_PORT_NMB;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource2);
@@ -2152,7 +2154,7 @@ void BSP_DiagnosticFeedBackPortInit(void)
     //预留控制点4和预留控制点3诊断监测引脚
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_RVD4_CTRL_AND_RVD3_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN3_RVD4_AND_RVD3_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource3);
@@ -2164,7 +2166,7 @@ void BSP_DiagnosticFeedBackPortInit(void)
     //预留控制点2和进液电磁阀2诊断监测引脚
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_RVD2_CTRL_AND_WATER_INPUT_VALVE2_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN4_RVD2_AND_WATER_INPUT_VALVE2_DIAGNOSTIC_FEEDBACK_PORT_NMB;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource4);
@@ -2176,7 +2178,7 @@ void BSP_DiagnosticFeedBackPortInit(void)
     //预留控制点7和预留控制点8诊断监测引脚
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_RVD7_CTRL_AND_RVD8_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN5_RVD7_AND_RVD8_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource5);
@@ -2188,7 +2190,7 @@ void BSP_DiagnosticFeedBackPortInit(void)
     //预留控制点5和预留控制点6诊断监测引脚
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_RVD5_CTRL_AND_RVD6_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN6_RVD5_AND_RVD6_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource6);
@@ -2200,7 +2202,7 @@ void BSP_DiagnosticFeedBackPortInit(void)
     //点火状态监测引脚
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_FIRE_STATUS_FEEDBACK_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN7_FIRE_STATUS_FEEDBACK_PORT_NMB;
     GPIO_Init(GPIOE, &GPIO_InitStructure);
 
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource7);

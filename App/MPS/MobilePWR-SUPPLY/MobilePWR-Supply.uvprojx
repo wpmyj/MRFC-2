@@ -467,6 +467,11 @@
               <FileType>1</FileType>
               <FilePath>.\app_stack_short_circuit_task.c</FilePath>
             </File>
+            <File>
+              <FileName>app_mf210_communicate_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\app_mf210_communicate_task.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -551,6 +556,11 @@
               <FileName>bsp_can.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_can.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_MF210.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_MF210.c</FilePath>
             </File>
           </Files>
         </Group>

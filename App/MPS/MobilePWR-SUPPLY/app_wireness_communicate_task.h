@@ -341,7 +341,7 @@ typedef enum {
 
 /*Macro define about the control conmmand type*/
 #define COMMAND_TYPE_DBG                0x00
-#define COMMAND_TYPE_REMOTE_CONTRO      0x01
+#define COMMAND_TYPE_REMOTE_CONTROL      0x01
 #define COMMAND_TYPE_CONFIGURATION      0x02
 #define COMMAND_TYPE_CLEAR              0x03
 #define COMMAND_TYPE_INQUIRE_REQUEST    0x04

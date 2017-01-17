@@ -25,16 +25,19 @@
 
 #define  BSP_SER_MODULE
 #include <bsp.h>
+#include "bsp_ser.h"
 #include <app_system_real_time_parameters.h>
 #include "app_wireness_communicate_task.h"
-
-
+#include "string.h"
+#include "bsp_MF210.h"
+#include "app_mf210_communicate_task.h"
 /*
 ***************************************************************************************************
 *                                            LOCAL DEFINES
 ***************************************************************************************************
 */
-#define UART4_DR_Address   ((uint32_t)UART4_BASE+0x04)
+#define USART2_DR_Address   ((uint32_t)USART2_BASE+0x04)
+#define UART4_DR_Address    ((uint32_t)UART4_BASE+0x04)
 
 /*
 ***************************************************************************************************
@@ -56,7 +59,8 @@
 ***************************************************************************************************
 */
 
-uint8_t g_eWirenessCommandReceived;
+uint8_t g_u8WifiCommandReceived;
+uint8_t g_u83GCommandReceived;
 /*
 ***************************************************************************************************
 *                                       LOCAL GLOBAL VARIABLES
@@ -65,11 +69,16 @@ uint8_t g_eWirenessCommandReceived;
 
 OS_SEM      g_stWirenessCommSem;
 OS_MUTEX    g_stWIFISerTxMutex;
+OS_MUTEX    g_st3GSerTxMutex;
 
 static  BSP_OS_SEM   BSP_SerTxWait;
 static  BSP_OS_SEM   BSP_SerRxWait;
 static  BSP_OS_SEM   BSP_SerLock;
 static  CPU_INT08U   BSP_SerRxData;
+
+static  BSP_OS_SEM   BSP_Ser2TxWait;
+static  BSP_OS_SEM   BSP_Ser2RxWait;
+static  CPU_INT08U   BSP_Ser2RxData;
 
 #if (BSP_CFG_SER_CMD_HISTORY_LEN > 0u)
     static  CPU_CHAR     BSP_SerCmdHistory[BSP_CFG_SER_CMD_HISTORY_LEN];
@@ -87,12 +96,13 @@ static  void        BSP_Ser_ISR_Handler(void);
 static  void        WIFI_DataRx_IRQHandler(void);
 static  void        WIFI_DataTx_IRQHandler(void);
 
-static void UART4_DMA_NVIC_Init(void);
+static  void        BSP_SerTo3G_ISR_Handler(void);
 
+static  void        UART4_DMA_NVIC_Init(void);
 static  void        BSP_SerToWIFI_ISR_Handler(void);
 
-uint8_t *GetPrgmRxBuffAddr(void);
-uint8_t GetPrgmRxBuffLen(void);
+        uint8_t     *GetPrgmRxBuffAddr(void);
+        uint8_t     GetPrgmRxBuffLen(void);
 
 /*
 ***************************************************************************************************
@@ -227,17 +237,187 @@ void  BSP_Ser_ISR_Handler(void)
     }
 }
 
+
+/*
+***************************************************************************************************
+*                                 BSP_Ser_Init2()
+*
+* Description : Initialize a serial port for 3G communication.
+*                               
+* Argument(s) : baud_rate   The desire 3G baud rate.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+uint8_t usart2_recv_buff[1024] = {0};
+uint16_t recv_cursor = 0;
+
+void  BSP_Ser_To_3G_Init(CPU_INT32U  baud_rate)
+{   
+    GPIO_InitTypeDef GPIO_InitStructure;
+    USART_InitTypeDef USART_InitStructure;
+
+    BSP_OS_SemCreate(&BSP_Ser2TxWait,   0, "Serial Tx Wait");
+    BSP_OS_SemCreate(&BSP_Ser2RxWait,   0, "Serial Rx Wait");
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD, ENABLE); //使能USART2，GPIOD时钟
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE); //使能USART2
+    BSP_PeriphEn(BSP_PERIPH_ID_AFIO);
+
+    GPIO_PinRemapConfig(GPIO_Remap_USART2, ENABLE);
+
+    //USART2_TX   PD5
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN5_UART2_TX_PORT_NMB; 
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP; //复用推挽输出
+    GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+    //USART2_RX   PD6
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN6_UART2_RX_PORT_NMB;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;//浮空输入
+    GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+    USART_InitStructure.USART_BaudRate = baud_rate;//一般设置为9600;
+    USART_InitStructure.USART_WordLength = USART_WordLength_8b;//字长为8位数据格式
+    USART_InitStructure.USART_StopBits = USART_StopBits_1;//一个停止位
+    USART_InitStructure.USART_Parity = USART_Parity_No;//无奇偶校验位
+    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;//无硬件数据流控制
+    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx; //收发模式
+    USART_Init(USART2, &USART_InitStructure); //初始化串口
+
+    USART_ITConfig(USART2, USART_IT_TC, DISABLE);
+    USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
+    FlagStatus tc_status = USART_GetFlagStatus(USART2, USART_FLAG_TC);
+
+    while(tc_status == SET)
+    {
+        USART_ClearITPendingBit(USART2, USART_IT_TC);
+        USART_ClearFlag(USART2, USART_IT_TC);
+        BSP_OS_TimeDlyMs(10);
+        tc_status = USART_GetFlagStatus(USART2, USART_FLAG_TC);
+    }
+
+    USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);//开接收中断
+    BSP_IntVectSet(BSP_INT_ID_USART2, BSP_SerTo3G_ISR_Handler);   //中断向量表设置
+    BSP_IntEn(BSP_INT_ID_USART2);
+
+    USART_Cmd(USART2, ENABLE);                //使能串口
+
+}
+
+/*
+***************************************************************************************************
+*                                 BSP_SerTo3G_ISR_Handler()
+*
+* Description : Initialize a serial port for 3G communication.
+*                               
+* Argument(s) : baud_rate   The desire 3G baud rate.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+static void  BSP_SerTo3G_ISR_Handler(void)
+{
+    FlagStatus tc_status;
+    FlagStatus rxne_status;
+
+    rxne_status = USART_GetFlagStatus(USART2, USART_FLAG_RXNE);
+
+    if(rxne_status == SET)
+    {
+       BSP_Ser2RxData = USART_ReceiveData(USART2) & 0xFF;       /* Read one byte from the receive data register.      */
+        usart2_recv_buff[recv_cursor++] = BSP_Ser2RxData;
+        USART_ClearITPendingBit(USART2, USART_IT_RXNE);         /* Clear the USART1 receive interrupt.                */
+        BSP_OS_SemPost(&BSP_Ser2RxWait);                        /* Post to the sempahore                              */
+    }
+
+    tc_status = USART_GetFlagStatus(USART2, USART_FLAG_TC);
+
+    if(tc_status == SET)
+    {
+        USART_ITConfig(USART2, USART_IT_TC, DISABLE);
+        USART_ClearITPendingBit(USART2, USART_IT_TC);           /* Clear the USART1 receive interrupt.                */
+        BSP_OS_SemPost(&BSP_Ser2TxWait);                        /* Post to the semaphore                              */
+    }
+}
+
+/*
+***************************************************************************************************
+*                                 BSP_Ser_ISR2_Handler()
+*
+* Description : Initialize a serial port for 3G communication.
+*                               
+* Argument(s) : baud_rate   The desire 3G baud rate.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+void SendString(USART_TypeDef *USARTx, const char *s)
+{
+    while(*s)
+    {
+        USART_ITConfig(USARTx, USART_IT_TC, ENABLE);
+        USART_SendData(USARTx , *s++);
+        BSP_OS_SemWait(&BSP_Ser2TxWait, 0);
+        USART_ITConfig(USARTx, USART_IT_TC, DISABLE);
+    }
+}
+/*
+***************************************************************************************************
+*                                 BSP_Ser_ISR2_Handler()
+*
+* Description : Initialize a serial port for 3G communication.
+*                               
+* Argument(s) : baud_rate   The desire 3G baud rate.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+void CleanUsartRecvBuf(USART_TypeDef *USARTx)
+{
+    if(USART2 == USARTx)
+    {
+        memset(usart2_recv_buff, 0x00, recv_cursor);
+        recv_cursor = 0;
+    }
+}
+/*
+***************************************************************************************************
+*                                 BSP_Ser_ISR2_Handler()
+*
+* Description : Initialize a serial port for 3G communication.
+*                               
+* Argument(s) : baud_rate   The desire 3G baud rate.
+*
+* Return(s)   : none.
+*
+* Note(s)     : 向串口发送一个数组    buffer指向数组首地址。.
+***************************************************************************************************
+*/
+void Uart_Send_array1(u8 *buffer, u8 count)
+{
+    SocketSend(1, buffer, count);
+}
+
 /*
 ***************************************************************************************************
 *                                          BSP_SerToWIFI_Init()
 *
 * Description : Initialize a serial port for communication to WIFI.
-*               串口(WIFI)初始化
+*               
 * Argument(s) : none.
 *
 * Return(s)   : none.
-*
-* Caller(s)   : Application.
 *
 * Note(s)     : none.
 ***************************************************************************************************
@@ -317,8 +497,19 @@ void  BSP_SerToWIFI_Init()
     USART_Cmd(UART4, ENABLE);
 }
 
-
-
+/*
+***************************************************************************************************
+*                                   UART4_DMA_NVIC_Init()
+*
+* Description : Uart4 DMA NUIV init.
+*               
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
 void UART4_DMA_NVIC_Init()
 {
     NVIC_InitTypeDef NVIC_InitStructure;
@@ -336,7 +527,7 @@ void UART4_DMA_NVIC_Init()
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
-    //
+   
     OSMutexCreate(&g_stWIFISerTxMutex,
                   "WIFI serial mutex",
                   NULL);
@@ -405,6 +596,7 @@ void BSP_SerToWIFI_RxMsgInit(uint8_t *i_u32RxBuffAddr, uint8_t i_u8RxBuffSize)
     BSP_IntEn(BSP_INT_ID_DMA2_CH3);
 }
 
+
 void BSP_PrgmDataDMASend(uint8_t i_u8TxBuffSize, uint8_t *TxBuff)
 {
     OS_ERR      err;
@@ -417,6 +609,8 @@ void BSP_PrgmDataDMASend(uint8_t i_u8TxBuffSize, uint8_t *TxBuff)
 
     BSP_SerToWIFI_TxMsgInit(TxBuff, i_u8TxBuffSize);    //发送数据地址初始化
 }
+
+
 /*
 ***************************************************************************************************
 *                                         WIFI_DataRx_IRQHandler()
@@ -438,11 +632,11 @@ void WIFI_DataRx_IRQHandler(void)
     CPU_SR_ALLOC();
 
     if(DMA_GetITStatus(DMA2_IT_TC3) != RESET) {
-        if(g_eWirenessCommandReceived == NO) {
+        if(g_u83GCommandReceived == NO) {
             CPU_CRITICAL_ENTER();
             OSTimeDlyResume(&CommunicateTaskTCB,
                             &err);
-            g_eWirenessCommandReceived = YES;
+            g_u8WifiCommandReceived = YES;
             CPU_CRITICAL_EXIT();
         }
 
@@ -485,7 +679,7 @@ void WIFI_DataTx_IRQHandler(void)
 
     DMA_ClearITPendingBit(DMA2_IT_TE5);         //清传输错误标志
     DMA_ClearITPendingBit(DMA2_IT_HT5);         //清传输过半中断
-    DMA_ClearITPendingBit(DMA2_IT_GL5);     //清全局中断
+    DMA_ClearITPendingBit(DMA2_IT_GL5);         //清全局中断
 }
 /*
 ***************************************************************************************************

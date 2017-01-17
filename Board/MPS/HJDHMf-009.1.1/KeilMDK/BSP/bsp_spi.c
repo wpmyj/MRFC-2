@@ -79,7 +79,7 @@ void SPI3_Init(void)
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
     
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOA_STM_SPI_NSS_PORT_NMB ;//NSS引脚初始化
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOA_PIN15_STM_SPI_NSS_PORT_NMB ;//NSS引脚初始化
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;  //复用推挽输出
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &GPIO_InitStructure);

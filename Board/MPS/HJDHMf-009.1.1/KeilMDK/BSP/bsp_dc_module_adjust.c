@@ -48,10 +48,10 @@ OS_MUTEX        Rs485RxFiniehedMutex;
 *                                           GLOBAL VARIABLES
 ***************************************************************************************************
 */
-uint16_t g_u16CommandAdress = 0x1C7;//默认为转发命令
-uint16_t RS485_RX_BUF[64] = {0};     //接收缓冲区,最大64个字节
-uint8_t RS485_RX_CNT = 0;           //接收到的数据长度
-uint8_t g_u8RS485TxDateType = 0;//485发送数据的类型
+uint16_t    g_u16CommandAdress = 0x1C7; //默认为转发命令
+uint16_t    RS485_RX_BUF[64] = {0};     //接收缓冲区,最大64个字节
+uint8_t     RS485_RX_CNT = 0;           //接收到的数据长度
+uint8_t     g_u8RS485TxDateType = 0;    //485发送数据的类型
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
@@ -88,7 +88,7 @@ void Bsp_DcModuleConmunicateInit(void)
     GPIO_Init(GPIOC, &GPIO_InitStructure);
 
     //UART5_RX-PD2
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_UART5_RX_PORT_NMB;
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN2_UART5_RX_PORT_NMB;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;   //浮空输入
     GPIO_Init(GPIOD, &GPIO_InitStructure);
 
@@ -331,7 +331,6 @@ void Bsp_GetReportInformationAfterTransportCmd(void)
 /*
 ***************************************************************************************************
 *                           Bsp_SendRequestCmdToDcModule()
-)
 *
 * Description : 发送指令让华为模块开关机.
 *

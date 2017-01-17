@@ -103,20 +103,20 @@
 */
 //管脚定义分为:组别+管脚号
 /* ------------------------------------------ GPIOA PINS ---------------------------------------- */
-#define  BSP_GPIOA_PIN_0_LIQUID_LEVEL_ANA_SIGNAL_PORT_NMB                             DEF_BIT_00//液位传感器
-#define  BSP_GPIOA_PIN_1_LIQUID_PRESS_ANA_SIGNAL_PORT_NMB                             DEF_BIT_01//液压传感器
-#define  BSP_GPIOA_PIN_2_STACK_TEMP_ANA_SIGNAL_PORT_NMB                               DEF_BIT_02//电堆温度传感器
-#define  BSP_GPIOA_PIN_3_STACK_CURRENT_ANA_SIGNAL_PORT_NMB                            DEF_BIT_03//电堆电流传感器
-#define  BSP_GPIOA_PIN_4_PUMP_SPD_ANA_SIGNAL_CTRL_PORT_NMB                            DEF_BIT_04//泵速控制引脚
-#define  BSP_GPIOA_PIN_5_HYDROGEN_FAN_SPD_ANA_SIGNAL_CTRL_PORT_NMB                    DEF_BIT_05//制氢风机速度控制引脚
-#define  BSP_GPIOA_PIN_6_BATTERY_VOLETAGE_ANA_SIGNAL_PORT_NMB                         DEF_BIT_06//电池电压传感器
-#define  BSP_GPIOA_PIN_7_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT_NMB                 DEF_BIT_07//气压传感器2
-#define  BSP_GPIOA_PIN_8_STACK_220_VOLATAGE_MONITOR_PORT_NMB                          DEF_BIT_08//交流220V电压监测
-#define  BSP_GPIOA_PIN_9_USART1_TX_PORT_NMB                                           DEF_BIT_09
-#define  BSP_GPIOA_PIN_10_USART1_RX_PORT_NMB                                           DEF_BIT_10
-#define  BSP_GPIOA_USB_DM_PORT_NMB                                              DEF_BIT_11
-#define  BSP_GPIOA_USB_DP_PORT_NMB                                              DEF_BIT_12
-#define  BSP_GPIOA_STM_SPI_NSS_PORT_NMB                                         DEF_BIT_15
+#define  BSP_GPIOA_PIN0_LIQUID_LEVEL_ANA_SIGNAL_PORT_NMB                        DEF_BIT_00//液位传感器
+#define  BSP_GPIOA_PIN1_LIQUID_PRESS_ANA_SIGNAL_PORT_NMB                        DEF_BIT_01//液压传感器
+#define  BSP_GPIOA_PIN2_STACK_TEMP_ANA_SIGNAL_PORT_NMB                          DEF_BIT_02//电堆温度传感器
+#define  BSP_GPIOA_PIN3_STACK_CURRENT_ANA_SIGNAL_PORT_NMB                       DEF_BIT_03//电堆电流传感器
+#define  BSP_GPIOA_PIN4_PUMP_SPD_ANA_SIGNAL_CTRL_PORT_NMB                       DEF_BIT_04//泵速控制引脚
+#define  BSP_GPIOA_PIN5_HYDROGEN_FAN_SPD_ANA_SIGNAL_CTRL_PORT_NMB               DEF_BIT_05//制氢风机速度控制引脚
+#define  BSP_GPIOA_PIN6_BATTERY_VOLETAGE_ANA_SIGNAL_PORT_NMB                    DEF_BIT_06//电池电压传感器
+#define  BSP_GPIOA_PIN7_STACK_HYDROGEN_PRESS_TWO_ANA_SIGNAL_PORT_NMB            DEF_BIT_07//气压传感器2
+#define  BSP_GPIOA_PIN8_STACK_220_VOLATAGE_MONITOR_PORT_NMB                     DEF_BIT_08//交流220V电压监测
+#define  BSP_GPIOA_PIN9_USART1_TX_PORT_NMB                                      DEF_BIT_09
+#define  BSP_GPIOA_PIN10_USART1_RX_PORT_NMB                                     DEF_BIT_10
+#define  BSP_GPIOA_PIN11_USB_DM_PORT_NMB                                        DEF_BIT_11
+#define  BSP_GPIOA_PIN12_USB_DP_PORT_NMB                                        DEF_BIT_12
+#define  BSP_GPIOA_PIN15_STM_SPI_NSS_PORT_NMB                                   DEF_BIT_15
 
 /* ------------------------------------------ GPIOB PINS ---------------------------------------- */
 
@@ -158,37 +158,40 @@
 
 
 /* ------------------------------------------ GPIOD PINS ---------------------------------------- */
-
-#define  BSP_GPIOD_UART5_RX_PORT_NMB                                            DEF_BIT_02
-#define  BSP_GPIOD_FLASH_HOLD_PORT_NMB                                          DEF_BIT_03
-#define  BSP_GPIOD_FLASH_WP_PORT_NMB                                            DEF_BIT_04
-#define  BSP_GPIOD_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB                               DEF_BIT_07
-#define  BSP_GPIOD_MAX6675_CHIPS_SELECT_PORT_NMB                                DEF_BIT_10
-#define  BSP_GPIOD_MAX6675_CHIPS_SCLK_PORT_NMB                                  DEF_BIT_11
-#define  BSP_GPIOD_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB                         DEF_BIT_12
-#define  BSP_GPIOD_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB                         DEF_BIT_13//热电偶相关管脚                 
-#define  BSP_GPIOD_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB                               DEF_BIT_14
-#define  BSP_GPIOD_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB                               DEF_BIT_15
+#define  BSP_GPIOD_PIN0_CAN1_RX_PORT_NMB                                        DEF_BIT_00
+#define  BSP_GPIOD_PIN1_CAN1_TX_PORT_NMB                                        DEF_BIT_01
+#define  BSP_GPIOD_PIN2_UART5_RX_PORT_NMB                                       DEF_BIT_02
+#define  BSP_GPIOD_PIN3_FLASH_HOLD_PORT_NMB                                     DEF_BIT_03
+#define  BSP_GPIOD_PIN4_FLASH_WP_PORT_NMB                                       DEF_BIT_04
+#define  BSP_GPIOD_PIN5_UART2_TX_PORT_NMB                                       DEF_BIT_05
+#define  BSP_GPIOD_PIN6_UART2_RX_PORT_NMB                                       DEF_BIT_06
+#define  BSP_GPIOD_PIN7_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB                          DEF_BIT_07
+#define  BSP_GPIOD_PIN10_MAX6675_CHIPS_SELECT_PORT_NMB                          DEF_BIT_10
+#define  BSP_GPIOD_PIN11_MAX6675_CHIPS_SCLK_PORT_NMB                            DEF_BIT_11
+#define  BSP_GPIOD_PIN12_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB                   DEF_BIT_12
+#define  BSP_GPIOD_PIN13_MAX6675_CHIP_TWO_DIG_SIGNAL_PORT_NMB                   DEF_BIT_13//热电偶相关管脚                 
+#define  BSP_GPIOD_PIN14_RSVD6_OUTPUT_PWR_CTRL_PORT_NMB                         DEF_BIT_14
+#define  BSP_GPIOD_PIN15_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB                         DEF_BIT_15
 
 
 /* ------------------------------------------ GPIOE PINS ---------------------------------------- */
 /*诊断检测引脚*/
-#define  BSP_GPIOE_HEATER_AND_IGNITER_DIAGNOSTIC_FEEDBACK_PORT_NMB                  DEF_BIT_00//加热器和点火器诊断监测引脚
-#define  BSP_GPIOE_RVD1_AND_DC_OUTPUT_DIAGNOSTIC_FEEDBACK_PORT_NMB                  DEF_BIT_01//预留1和直流接触器诊断
-#define  BSP_GPIOE_HYDROGEN_OUTPUT_AND_INPUT_VALVE_DIAGNOSTIC_FEEDBACK_PORT_NMB     DEF_BIT_02//进气电磁阀和出气电磁阀诊断监测引脚
-#define  BSP_GPIOE_RVD4_CTRL_AND_RVD3_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB             DEF_BIT_03//预留控制点4和预留控制点3诊断监测引脚
-#define  BSP_GPIOE_RVD2_CTRL_AND_WATER_INPUT_VALVE2_DIAGNOSTIC_FEEDBACK_PORT_NMB    DEF_BIT_04//预留控制点2和进液电磁阀2诊断监测引脚
-#define  BSP_GPIOE_RVD7_CTRL_AND_RVD8_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB             DEF_BIT_05
-#define  BSP_GPIOE_RVD5_CTRL_AND_RVD6_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB             DEF_BIT_06
-#define  BSP_GPIOE_FIRE_STATUS_FEEDBACK_PORT_NMB                                    DEF_BIT_07//点火状态监测引脚
-#define  BSP_GPIOE_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB                                   DEF_BIT_08//尾气电磁阀开关引脚
-#define  BSP_GPIOE_PUMP_SPEED_CHECK_PORT_NMB                                        DEF_BIT_09//泵速检测引脚
-#define  BSP_GPIOE_PD_PULSE1_PORT_NMB                                               DEF_BIT_10//外部电位脉冲1
-#define  BSP_GPIOE_HYDRG_FAN_SPEED_CHECK_PORT_NMB                                   DEF_BIT_11//制氢风机速度检测引脚
-#define  BSP_GPIOE_PD_PULSE2_PORT_NMB                                               DEF_BIT_12//外部电位脉冲2
-#define  BSP_GPIOE_STACK_FAN_SPEED_CHECK_PORT_NMB                                   DEF_BIT_13//电堆风机速度检测引脚
-#define  BSP_GPIOE_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB                                   DEF_BIT_14
-#define  BSP_GPIOE_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB                                   DEF_BIT_15//预留口5/6/7/8 (抽真空电磁阀2/3/4/5)
+#define  BSP_GPIOE_PIN0_HEATER_AND_IGNITER_DIAGNOSTIC_FEEDBACK_PORT_NMB                  DEF_BIT_00//加热器和点火器诊断监测引脚
+#define  BSP_GPIOE_PIN1_RVD1_AND_DC_OUTPUT_DIAGNOSTIC_FEEDBACK_PORT_NMB                  DEF_BIT_01//预留1和直流接触器诊断
+#define  BSP_GPIOE_PIN2_HYDROGEN_OUTPUT_AND_INPUT_VALVE_DIAGNOSTIC_FEEDBACK_PORT_NMB     DEF_BIT_02//进气电磁阀和出气电磁阀诊断监测引脚
+#define  BSP_GPIOE_PIN3_RVD4_AND_RVD3_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB                  DEF_BIT_03//预留控制点4和预留控制点3诊断监测引脚
+#define  BSP_GPIOE_PIN4_RVD2_AND_WATER_INPUT_VALVE2_DIAGNOSTIC_FEEDBACK_PORT_NMB         DEF_BIT_04//预留控制点2和进液电磁阀2诊断监测引脚
+#define  BSP_GPIOE_PIN5_RVD7_AND_RVD8_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB                  DEF_BIT_05
+#define  BSP_GPIOE_PIN6_RVD5_AND_RVD6_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB                  DEF_BIT_06
+#define  BSP_GPIOE_PIN7_FIRE_STATUS_FEEDBACK_PORT_NMB                                    DEF_BIT_07//点火状态监测引脚
+#define  BSP_GPIOE_PIN8_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB                                   DEF_BIT_08//尾气电磁阀开关引脚
+#define  BSP_GPIOE_PIN9_PUMP_SPEED_CHECK_PORT_NMB                                        DEF_BIT_09//泵速检测引脚
+#define  BSP_GPIOE_PIN10_PD_PULSE1_PORT_NMB                                              DEF_BIT_10//外部电位脉冲1
+#define  BSP_GPIOE_PIN11_HYDRG_FAN_SPEED_CHECK_PORT_NMB                                  DEF_BIT_11//制氢风机速度检测引脚
+#define  BSP_GPIOE_PIN12_PD_PULSE2_PORT_NMB                                              DEF_BIT_12//外部电位脉冲2
+#define  BSP_GPIOE_PIN13_STACK_FAN_SPEED_CHECK_PORT_NMB                                  DEF_BIT_13//电堆风机速度检测引脚
+#define  BSP_GPIOE_PIN14_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB                                  DEF_BIT_14
+#define  BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB                                  DEF_BIT_15//预留口5/6/7/8 (抽真空电磁阀2/3/4/5)
 
 /*
 ***************************************************************************************************

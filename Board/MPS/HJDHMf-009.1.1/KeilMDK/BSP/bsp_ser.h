@@ -115,7 +115,14 @@
 *                                              DATA TYPES
 ***************************************************************************************************
 */
-extern uint8_t g_eWirenessCommandReceived;
+extern uint8_t  g_u8WifiCommandReceived;
+extern uint8_t  g_u83GCommandReceived;
+
+extern uint8_t  usart2_recv_buff[1024];
+extern uint16_t recv_cursor;
+
+extern u8  Uatr_TxBuf[32]; //注意变量数组不要溢出
+extern u8  Full_TxBuf[32];//燃料电池发送
 
 /*
 ***************************************************************************************************
@@ -142,6 +149,11 @@ void  BSP_SerToWIFI_TxMsgInit(uint8_t *TxBuffAddr, uint8_t);
 void  BSP_SerToWIFI_RxMsgInit(uint8_t *RxBuffAddr, uint8_t);
 void  BSP_PrgmDataDMASend(uint8_t i_u8TxBuffSize, uint8_t *TxBuff);
 
+void  BSP_Ser_To_3G_Init(CPU_INT32U  baud_rate);
+
+void  CleanUsartRecvBuf(USART_TypeDef *USARTx);
+void  Uart_Send_array1(u8 *buffer, u8 count);
+void  SendString(USART_TypeDef *USARTx, const char *s);
 /*
 ***************************************************************************************************
 *                                        CONFIGURATION ERRORS
