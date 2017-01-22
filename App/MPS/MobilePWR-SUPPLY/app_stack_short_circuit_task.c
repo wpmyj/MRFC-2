@@ -72,7 +72,7 @@ static void  StackShortCircuitTask(void *p_arg);
 void StackShortCircuitTaskCreate(void)
 {
     OS_ERR  err;
-
+    
     OSTaskCreate((OS_TCB *)&StackShortCircuitTaskTCB,
                  (CPU_CHAR *)"Stack Short Circuit Task Start",
                  (OS_TASK_PTR)StackShortCircuitTask,
@@ -118,7 +118,7 @@ static void  StackShortCircuitTask(void *p_arg)
              
         while(DEF_TRUE)
         {
-            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 60, 
+            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 30, 
                           OS_OPT_PEND_BLOCKING, 
                           NULL,
                           &err);

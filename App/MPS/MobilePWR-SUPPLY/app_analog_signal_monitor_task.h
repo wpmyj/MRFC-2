@@ -64,13 +64,13 @@ extern      OS_SEM      g_stAnaSigConvertFinishSem;
 */
 void    AnaSigMonitorTaskCreate(void);
 void    SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(unsigned char);
-void    SetHydrgProducerFansSpeedAutoIncreaseHookSwitch(unsigned char);
 void    SetStackHydrgPressHighEnoughHookSwitch(uint8_t i_NewStatu);
+void    SetHydrgProducerPumpRunningStartAutoAdjHookSwitch(uint8_t i_NewStatu);
 
 void    SetStackIsPulledStoppedMonitorHookSwitch(uint8_t i_NewStatu);
 uint8_t GetStackNeedRestartLimitCurrentFlag(void);
 
-void StartRunningBeepAlarm(SYSTEM_ALARM_GRADE_Typedef i_AlarmGrade);
+void    StartRunningBeepAlarm(SYSTEM_ALARM_GRADE_Typedef ,uint8_t);
 /*
 ***************************************************************************************************
 *                                             MODULE END

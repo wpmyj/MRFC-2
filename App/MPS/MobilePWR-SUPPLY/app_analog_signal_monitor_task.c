@@ -43,7 +43,7 @@
 //±£»¤±¨¾¯¿ª¹Ø
 #define         STACK_TEMP_MONITOR_SWITCH                1u
 #define         STACK_AIR_PRESS_MONITOR_SWITCH           1u
-#define         STACK_VOLETAGE_MONITOR_SWITCH            1u
+#define         STACK_VOLETAGE_MONITOR_SWITCH            0u
 /*
 ***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
@@ -67,7 +67,7 @@ static      uint8_t      g_u8StackHydrgPressHighEnoughHookSw = DEF_DISABLED; //µ
 static      uint8_t      g_u8StackAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;//µç¶ÑÔËÐÐÄ£ÄâÐÅºÅ¾¯±¨¼à²â¿ª¹Ø
 static      uint8_t      g_u8StackIsPulledStoppedMonitorHookSw = DEF_DISABLED;//µç¶ÑÊÇ·ñ±»À­Í£¼à²â¿ª¹Ø
 static      uint8_t      g_u8StackNeedRestartLimitCurrentFlag = DEF_CLR;//µç¶Ñ±»À­Í£ºóÖØÐÂÏÞÁ÷±êÖ¾
-static      uint8_t      g_u8PumpAutoAdjFinishStatu = DEF_NO;//Ê×´ÎÔËÐÐ±ÃËÙµ÷Õû×´Ì¬
+static      uint8_t      g_u8PumpAutoAdjFinishStatu = DEF_NO;//ÔËÐÐÊ×´Î±ÃËÙµ÷Õû×´Ì¬
 static      uint16_t     g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;       //µç¶ÑÆøÑ¹Ð¡ÓÚ10KpaµÄÃëÊý
 /*
 ***************************************************************************************************
@@ -80,7 +80,7 @@ static      void        HydrgProducerAnaSigAlarmRunningMonitorHook(void);
 static      void        StackHydrgPressHighEnoughWaitHook(void);
 static      void        StackAnaSigAlarmRunningMonitorHook(void);
 static      void        JudgeWhetherTheStackIsPulledStoppedMonitorHook(void);
-static      void        HydrgProducerPumpAutoAdjByDecompressCountHook(void);
+//static      void        HydrgProducerPumpAutoAdjByDecompressCountHook(void);
 static      void        HydrgProducerPumpRunningStartAutoAdjHook(void);
 /*
 ***************************************************************************************************
@@ -167,7 +167,7 @@ void  AnaSigMonitorTask(void *p_arg)
         }
         
         if(SocketRecv(1, Uatr_RxBuf)){
-            Receive_Uart_Device();    //½ÓÊÕ·þÎñÆ÷¿ØÖÆÖ¸Áî
+            RespondRemoteControlCmd();    //½ÓÊÕ·þÎñÆ÷¿ØÖÆÖ¸Áî
         }
         
         //ÖÆÇâ±ÃËÙ¸ù¾ÝÅÅÆø´ÎÊý¶¯Ì¬µ÷Õû
@@ -253,10 +253,28 @@ void HydrgProducerPumpRunningStartAutoAdjHook(void)
 
             if(GetPumpCtlSpd() <= g_stStartHydrgPumpSpdPara.PumpSpdAfterLiquidPressExceed4Kg) {
                 g_u8PumpAutoAdjFinishStatu = DEF_YES;
-                g_u8HydrgProducerPumpRunningStartAutoAdjHookSw = DEF_DISABLED;//¹Øµ÷½Ú¿ª¹Ø
+                SetHydrgProducerPumpRunningStartAutoAdjHookSwitch(DEF_DISABLED);//¹Øµ÷½Ú¿ª¹Ø
             }
         }
     }
+}
+
+/*
+***************************************************************************************************
+*                               SetHydrgProducerPumpRunningStartAutoAdjHookSwitch
+*
+* Description : open the analog signal manager alarms monitor switch when running.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
+void SetHydrgProducerPumpRunningStartAutoAdjHookSwitch(uint8_t i_NewStatu)
+{
+    g_u8HydrgProducerPumpRunningStartAutoAdjHookSw = i_NewStatu;
 }
 
 /*
@@ -300,97 +318,101 @@ void StackAnaSigAlarmRunningMonitorHook(void)
 {
     float fStackTemp = 0;
     float fHydrgPress = 0;
-    float fStackVoletage = 0;
+//    float fStackVoletage = 0;
     static uint8_t StackTempHighFlag = NO;
     static uint8_t StackHydrogenPressLowFlag = NO;
-    static uint8_t StackVoletageLowFlag = NO;
-    static uint16_t g_u16StackVoletageBelow40VHoldSeconds = 0;
-    static uint16_t g_u16StackVoletageExceed40VHoldSeconds = 0;
+//    static uint8_t StackVoletageLowFlag = NO;
+//    static uint16_t g_u16StackVoletageBelow40VHoldSeconds = 0;
+//    static uint16_t g_u16StackVoletageExceed40VHoldSeconds = 0;
     
+    if(EN_SHUTTING_DOWN != GetSystemWorkStatu()){
 #if STACK_TEMP_MONITOR_SWITCH 
-    /* ¼à²âÎÂ¶È */
-    fStackTemp = GetSrcAnaSig(STACK_TEMP);
+        /* ¼à²âÎÂ¶È */
+        fStackTemp = GetSrcAnaSig(STACK_TEMP);
 
-    if(fStackTemp > 60){
-        AlarmCmd(STACK_TEMP_HIGH_ALARM,GENERAL_GRADE,ON);
+        if(fStackTemp > 60){
+            AlarmCmd(STACK_TEMP_HIGH_ALARM,GENERAL_GRADE,ON);
 
-        if(fStackTemp > 68) {
-            if(StackTempHighFlag != YES){
-                BSP_DCConnectValvePwrOff();
-                StackTempHighFlag = YES;
-                APP_TRACE_INFO(("Stack temp is above the high temp protect line,stop output...\n\r"));
-            }
-        }
-    } else if(fStackTemp < 15) {
-        AlarmCmd(STACK_TEMP_LOW_ALARM,GENERAL_GRADE,ON);
-
-        if(fStackTemp < 10) {
-//            CmdShutDown();      //¹Ø»úÃüÁî
-            APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
-        }
-    } else {
-        if((fStackTemp >= 20) && (fStackTemp <= 50)) {//ÏµÍ³»Ö¸´µ½Õý³£ÎÂ¶È,»Ö¸´Êä³ö
-            if(StackTempHighFlag == YES){ 
-                BSP_DCConnectValvePwrOn();
-                StackTempHighFlag = NO;
-            }
-            AlarmCmd(STACK_TEMP_HIGH_ALARM, GENERAL_GRADE,OFF);  
-        }
-        AlarmCmd(STACK_TEMP_LOW_ALARM,GENERAL_GRADE, OFF);
-    }
-#endif
-    
-#if STACK_AIR_PRESS_MONITOR_SWITCH 
-    /* ¼à²âÆøÑ¹ */
-    fHydrgPress = GetSrcAnaSig(HYDROGEN_PRESS_1);
-
-    if(fHydrgPress >= 30) {
-        AlarmCmd(HYDROGEN_PRESS_LOW_ALARM,SERIOUS_GRADE,OFF);
-        if(StackHydrogenPressLowFlag != NO){
-            BSP_DCConnectValvePwrOn();
-            StackHydrogenPressLowFlag = NO;
-        }
-    } else if(fHydrgPress >= 10){
-        g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;
-    }else {
-        AlarmCmd(HYDROGEN_PRESS_LOW_ALARM,SERIOUS_GRADE,ON);
-        g_u16StackHydrgPressBelow10KPaHoldSeconds++;
-
-        if(g_u16StackHydrgPressBelow10KPaHoldSeconds >= 30) {//ÆøÑ¹¹ýµÍ³¬¹ý3s,µç¶ÑÍ£Ö¹Êä³ö
-            BSP_DCConnectValvePwrOff();
-            StackHydrogenPressLowFlag = YES;
-            g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;
-//            CmdShutDown();      //¹Ø»úÃüÁî
-        }       
-    }
-#endif
-    
-#if STACK_VOLETAGE_MONITOR_SWITCH    
-    /*¼à²âµçÑ¹*/
-    fStackVoletage = GetSrcAnaSig(STACK_VOLTAGE);
-    if(EN_IN_WORK == GetStackWorkStatu()){
-        if(fStackVoletage >= 40) {
-            g_u16StackVoletageBelow40VHoldSeconds = 0;
-            AlarmCmd(HYDROGEN_PRESS_LOW_ALARM,GENERAL_GRADE,OFF);
-            if(StackVoletageLowFlag != NO ){
-                g_u16StackVoletageExceed40VHoldSeconds ++;
-                if(g_u16StackVoletageExceed40VHoldSeconds >= 300){
-                    BSP_DCConnectValvePwrOn();
-                    StackVoletageLowFlag = NO;
-                    g_u16StackVoletageExceed40VHoldSeconds = 0;
+            if(fStackTemp > 68) {
+                if(StackTempHighFlag != YES){
+                    BSP_DCConnectValvePwrOff();
+                    StackTempHighFlag = YES;
+                    APP_TRACE_INFO(("Stack temp is above the high temp protect line,stop output...\n\r"));
                 }
             }
-        }else {
-            g_u16StackVoletageBelow40VHoldSeconds ++;
-            if(g_u16StackVoletageBelow40VHoldSeconds > 300){
-                AlarmCmd(STACK_VOLTAGE_LOW_ALARM,GENERAL_GRADE,ON);
-                StackVoletageLowFlag = YES;
-                BSP_DCConnectValvePwrOff();
-                g_u16StackVoletageBelow40VHoldSeconds = 0;
+        } else if(fStackTemp < 15) {
+            AlarmCmd(STACK_TEMP_LOW_ALARM,GENERAL_GRADE,ON);
+
+            if(fStackTemp < 10) {
+    //            CmdShutDown();      //¹Ø»úÃüÁî
+                APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
             }
-        } 
-    }
+        } else {
+            if((fStackTemp >= 20) && (fStackTemp <= 50)) {//ÏµÍ³»Ö¸´µ½Õý³£ÎÂ¶È,»Ö¸´Êä³ö
+                if(StackTempHighFlag == YES){ 
+                    BSP_DCConnectValvePwrOn();
+                    StackTempHighFlag = NO;
+                }
+                AlarmCmd(STACK_TEMP_HIGH_ALARM, GENERAL_GRADE,OFF);  
+            }
+            AlarmCmd(STACK_TEMP_LOW_ALARM,GENERAL_GRADE, OFF);
+        }
 #endif
+        
+#if STACK_AIR_PRESS_MONITOR_SWITCH 
+        /* ¼à²âÆøÑ¹ */
+        fHydrgPress = GetSrcAnaSig(HYDROGEN_PRESS_1);
+
+        if(fHydrgPress >= 30) {
+            AlarmCmd(HYDROGEN_PRESS_LOW_ALARM,SERIOUS_GRADE,OFF);
+            if(StackHydrogenPressLowFlag != NO){
+                APP_TRACE_INFO(("Stack hydrogen press resume...\n\r"));
+                BSP_DCConnectValvePwrOn();
+                StackHydrogenPressLowFlag = NO;
+            }
+        } else if(fHydrgPress >= 10){
+            g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;
+        }else {
+            AlarmCmd(HYDROGEN_PRESS_LOW_ALARM,SERIOUS_GRADE,ON);
+            g_u16StackHydrgPressBelow10KPaHoldSeconds++;
+
+            if(g_u16StackHydrgPressBelow10KPaHoldSeconds >= 30) {//ÆøÑ¹¹ýµÍ³¬¹ý3s,µç¶ÑÍ£Ö¹Êä³ö
+                BSP_DCConnectValvePwrOff();
+                StackHydrogenPressLowFlag = YES;
+                g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;
+                APP_TRACE_INFO(("Stack hydrogen press is below the low temp protect line...\n\r"));
+    //            CmdShutDown();      //¹Ø»úÃüÁî
+            }       
+        }
+#endif
+        
+#if STACK_VOLETAGE_MONITOR_SWITCH    
+        /*¼à²âµçÑ¹*/
+        fStackVoletage = GetSrcAnaSig(STACK_VOLTAGE);
+        if(EN_IN_WORK == GetStackWorkStatu()){
+            if(fStackVoletage >= 40) {
+                g_u16StackVoletageBelow40VHoldSeconds = 0;
+                AlarmCmd(HYDROGEN_PRESS_LOW_ALARM,GENERAL_GRADE,OFF);
+                if(StackVoletageLowFlag != NO ){
+                    g_u16StackVoletageExceed40VHoldSeconds ++;
+                    if(g_u16StackVoletageExceed40VHoldSeconds >= 300){
+                        BSP_DCConnectValvePwrOn();
+                        StackVoletageLowFlag = NO;
+                        g_u16StackVoletageExceed40VHoldSeconds = 0;
+                    }
+                }
+            }else {
+                g_u16StackVoletageBelow40VHoldSeconds ++;
+                if(g_u16StackVoletageBelow40VHoldSeconds > 300){
+                    AlarmCmd(STACK_VOLTAGE_LOW_ALARM,GENERAL_GRADE,ON);
+                    StackVoletageLowFlag = YES;
+                    BSP_DCConnectValvePwrOff();
+                    g_u16StackVoletageBelow40VHoldSeconds = 0;
+                }
+            } 
+        }
+#endif
+    }
     
 }
 /*
@@ -528,28 +550,6 @@ uint8_t GetStackNeedRestartLimitCurrentFlag(void)
 //    }
 //}
 
-
-
-/*
-***************************************************************************************************
-*                    HydrgProducerPumpAutoAdjByDecompressCountHook()
-*
-* Description : open the switch of the stack analog signal alarm manager switch.
-*
-* Arguments   : none.
-*
-* Returns     : none.
-*
-* Notes       : none.
-***************************************************************************************************
-*/
-void ExcuteStackProtectProgram()
-{
-    BSP_DCConnectValvePwrOff();
-    
-    BSP_DCConnectValvePwrOn();
-}
-
 /*
 ***************************************************************************************************
 *                               StartRunningAlarm()
@@ -563,31 +563,29 @@ void ExcuteStackProtectProgram()
 * Notes       : none.
 ***************************************************************************************************
 */
-void StartRunningBeepAlarm(SYSTEM_ALARM_GRADE_Typedef i_AlarmGrade)
+void StartRunningBeepAlarm(SYSTEM_ALARM_GRADE_Typedef i_AlarmGrade,uint8_t i_u8NewStatus)
 {
-    uint8_t     u8Count = 0;
-    u32 u32AlarmCode;
-    u32AlarmCode = GetRunAlarmCode();
-    
-    if(u32AlarmCode != 0) {
-        u8Count ++;
-        if(i_AlarmGrade <= SLIGHT_GRADE){//×îµÍµÈ¼¶±¨¾¯
-            if(u8Count >= 20){//µÍµÈ¼¶±¨¾¯Îª2s·äÃùÆ÷ÏìÒ»´Î
+    static uint8_t  u8AlarmCount = 0;
+
+    if( ON == i_u8NewStatus){
+        u8AlarmCount ++;
+        if(i_AlarmGrade <= SLIGHT_GRADE){
+            if(u8AlarmCount >= 50){//µÍµÈ¼¶±¨¾¯Îª2s·äÃùÆ÷ÏìÒ»´Î
                 BSP_BuzzerTurnover();
-                u8Count = 0;
+                u8AlarmCount = 0;
             }
         }else if(i_AlarmGrade <= GENERAL_GRADE){
-            if(u8Count >= 10){
+            if(u8AlarmCount >= 30){
                 BSP_BuzzerTurnover();
-                u8Count = 0;
+                u8AlarmCount = 0;
             }
-        }else{  //×î¸ßµÈ¼¶±¨¾¯
-            if(u8Count >= 5){
+        }else{
+            if(u8AlarmCount >= 10){//ÑÏÖØµÈ¼¶±¨¾¯
                 BSP_BuzzerTurnover();
-                u8Count = 0;
+                u8AlarmCount = 0;
             }
         }
-    }else {
+    }else{
         BSP_BuzzerOff();
     }
 }

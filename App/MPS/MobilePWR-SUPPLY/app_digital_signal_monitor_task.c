@@ -41,9 +41,6 @@
 *                                         OS-RELATED    VARIABLES
 ***************************************************************************************************
 */
-extern      OS_SEM      IgniteFirstBehindWaitSem;
-
-extern      OS_SEM      IgniteSecondBehindWaitSem;
 OS_TCB      DigSigMonitorTaskTCB;
 
 static      CPU_STK_8BYTE_ALIGNED     AnaSigMonitorTaskStk[DIG_SIGNAL_MONITOR_TASK_STK_SIZE];
@@ -53,8 +50,6 @@ static      CPU_STK_8BYTE_ALIGNED     AnaSigMonitorTaskStk[DIG_SIGNAL_MONITOR_TA
 *                                       LOCAL GLOBAL VARIABLES
 ***************************************************************************************************
 */
-extern          REFORMER_TEMP_CMP_LINES_Typedef             g_stReformerTempCmpTbl;
-
 static  uint16_t g_u16OriginalTempFilter[2][NMB_OF_AVERAGE_TEMPERATURE_SAMPLE] = {0};   //原始温度滤波数组
 static  uint8_t  g_u8DigTempFilterOperationCursor = 0;
 static  float    g_fAnaTempSum[2] = {0};

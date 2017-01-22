@@ -136,8 +136,6 @@ static  void  AppTaskStart(void *p_arg)
     USER_NVIC_Cfg();
 
     Mem_Init();                                                 /*初始化内存管理模块*/
-    
-    
 
 #if OS_CFG_STAT_TASK_EN > 0u                                   /*统计任务*/
     OSStatTaskCPUUsageInit(&err);                             /* Compute CPU capacity with no task running            */
@@ -189,7 +187,7 @@ static  void  AppTaskStart(void *p_arg)
 
     StackManagerTaskCreate();
     
-    StackShortCircuitTaskCreate();//电堆短路活化任务
+//    StackShortCircuitTaskCreate();//电堆短路活化任务
     
     DcModuleAutoAdjustTaskCreate();    //DC动态限流调节任务,平滑限流任务 
 
@@ -203,6 +201,8 @@ static  void  AppTaskStart(void *p_arg)
     OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
 
     APP_TRACE_INFO(("Running top Task...\n\r"));
+    
+    OSTaskResume(&Make_Vaccuum_FunctionTaskTCB,&err);//开始抽真空
 
     while(DEF_TRUE) {
         if(EN_THROUGH == CheckAuthorization()) {

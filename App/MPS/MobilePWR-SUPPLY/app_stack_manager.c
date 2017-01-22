@@ -172,12 +172,10 @@ void StackManagerTask(void)
 
         fVoltage = GetSrcAnaSig(STACK_VOLTAGE);
 
-        if(fVoltage >= 48){//只有当气压达到45KPA的时候，电压大于48v电堆才进入工作状态  
+//        if(fVoltage >= 48){//只有当气压达到45KPA的时候，电压大于48v电堆才进入工作状态  
             BSP_DCConnectValvePwrOn();
 //            SetStackWorkStatu(EN_IN_WORK);
-            OSTaskResume(&DCModuleAutoAdjustTaskTCB,  //华为限流调节任务开始
-                     &err);
-        }
+//        }
 
         StackHydrogenYieldMatchingOffsetValueMonitorTaskCreate();//电堆匹氢偏移量监测任务创建
         

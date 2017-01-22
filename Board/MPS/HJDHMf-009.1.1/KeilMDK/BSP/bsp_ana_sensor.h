@@ -39,7 +39,7 @@
     #define  BSP_ANA_SENSOR  extern
 #endif
 
-#define BSP_ANA_SENSORS_NMB                      9u     //模拟信号采样通道数-9
+#define BSP_ANA_SENSORS_NMB                      9u     //模拟信号采样通道数-全开为14
 /*
 ***************************************************************************************************
 *                                           EXPORTED DATA TYPE
@@ -55,6 +55,7 @@ typedef struct {
 ***************************************************************************************************
 */
 typedef enum {
+    
     STACK_TEMP = 0,//对应ADC规则组通道
     STACK_VOLTAGE,
     STACK_CURRENT,
@@ -69,7 +70,7 @@ typedef enum {
     BATTERY_CURRENT,
     RAPID_HEATER_CURRETN,
     NEGATIVE_PRESSURE,
-    RESERVED_1,//预留
+    RESERVED_1 = 12,//预留
     RESERVED_2,
 
 } ANALOG_SIGNAL_KIND_Typedef;

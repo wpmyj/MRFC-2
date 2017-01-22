@@ -76,12 +76,12 @@ static      uint8_t     g_u8AnaSensorTypeNmb[BSP_ANA_SENSORS_NMB] = {0};
 static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorParameter[BSP_ANA_SENSORS_NMB];
 static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorDefaultParameter[BSP_ANA_SENSORS_NMB] = {
     {0, 0xFFFF},       //电堆温度
-    {827, 34.0},     //电压，采用电压传感器，比率还会做适当调整
+    {827, 34.0},       //电压，采用电压传感器，比率还会做适当调整
     {2007.35, 16.059}, //电流
     {794.2, 127.06},   //液压
     {359.86, 33.504},  //气压1:0.58 / 2 * 3.3 * 4095 ~ 4.9/2 *3.3 * 4095   359.86 - 3040.23 LSB,对应0.58 - 4.9输入,经2个5.1K电阻降压至0.29-2.45V（满量程0.29V-3.3V对应0-135Kpa），对应0-80KPa，比例为33.504LSB/KPa
     {359.86, 33.504},  //气压2
-    {708.98, 3.1767},  // 液位
+    {794.2, 3.1767},  // 液位
     {0, 1241.21},      // 预留1
     {0, 1241.21}       // 预留2
 };
@@ -437,6 +437,16 @@ float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
 //            APP_TRACE_INFO(("--> g_fDigFilteredValue[HYDROGEN_PRESS_1]: %f \r\n", g_fDigFilteredValue[HYDROGEN_PRESS_1]));
 //            APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue));
 //            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[HYDROGEN_PRESS_1]: %f \r\n\r\n", g_fAnaSigAnaValue[HYDROGEN_PRESS_1]));
+        } else if(LIQUID_LEVEL == i_eAnaSigKind){
+            if(g_fDigFilteredValue[LIQUID_LEVEL] <= g_stAnaSigSensorParameter[LIQUID_LEVEL].BaseDigValue) {
+                g_fAnaSigAnaValue[LIQUID_LEVEL] = 0.0;
+            } else {
+                g_fAnaSigAnaValue[LIQUID_LEVEL] = (g_fDigFilteredValue[LIQUID_LEVEL] - g_stAnaSigSensorParameter[LIQUID_LEVEL].BaseDigValue) / g_stAnaSigSensorParameter[LIQUID_LEVEL].AnaToDigRatio;
+//                APP_TRACE_INFO(("--> g_fDigFilteredValue[LIQUID_LEVEL]: %f \r\n", g_fDigFilteredValue[LIQUID_LEVEL]));
+//                APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[LIQUID_LEVEL].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[LIQUID_LEVEL].BaseDigValue));
+//                APP_TRACE_INFO(("--> g_fAnaSigAnaValue[LIQUID_LEVEL]: %f \r\n\r\n", g_fAnaSigAnaValue[LIQUID_LEVEL]));
+            }
+            
         } else {}
     }
 

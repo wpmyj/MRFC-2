@@ -37,9 +37,9 @@
 *                                       MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define COMMUNICATE_TASK_STK_SIZE       100
+#define COMMUNICATE_TASK_STK_SIZE               100
 #define COMMUNICATA_DATA_SEND_TASK_STK_SIZE     128
-#define COMMUNICATE_REQUEST_SEND_TASK_STK_SIZE 100
+#define COMMUNICATE_REQUEST_SEND_TASK_STK_SIZE  100
 
 
 #define RUNNING_CONFIG_INTERFACE    0       //Running config interface reserved
@@ -185,6 +185,7 @@ void  CommunicateTaskCreate(void)
 void  CommunicateTask(void *p_arg)
 {
     OS_ERR      err;
+    uint8_t     i = 0;
     SYSTEM_WORK_MODE_Typedef    eWorkMode;
 
     while(DEF_TRUE) {
@@ -196,11 +197,21 @@ void  CommunicateTask(void *p_arg)
         if(g_u8WifiCommandReceived == YES) { //收到串口指令而提前结束延时，响应上位机指令
             ResponsePrgmCommand(g_u8SerRxMsgBuff);
             g_u8WifiCommandReceived = NO;
+//            APP_TRACE_INFO(("Wifi rec data:"));
+//            for(i = 0;i<16;i++){
+//                APP_TRACE_INFO(("%X ",g_u8CanRxMsg[i]));
+//            }
+//            APP_TRACE_INFO(("...\n\r"));
         }         
         else if(g_eCanMsgRxStatu == YES)//是否因收到CAN接口指令而提前结束延时
 		{
 			ResponsePrgmCommand(g_u8CanRxMsg);
 			g_eCanMsgRxStatu = NO;
+//            APP_TRACE_INFO(("Can rec data:"));
+//            for(i = 0;i<16;i++){
+//                APP_TRACE_INFO(("%X ",g_u8CanRxMsg[i]));
+//            }
+//            APP_TRACE_INFO(("...\n\r"));
 		}else {
             //正常延时
         }
@@ -463,7 +474,7 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
     SYSTEM_TIME_Typedef     stHydrgProduceTimeThisTime = {0}, stHydrgProduceTimeTotal = {0};
 
     if(i_uint8_tIsHistoryData == EN_LATEST) { //最新的数据
-//      APP_TRACE_INFO(("Load ENECO Producer real time work info...\r\n"));
+//        APP_TRACE_INFO(("Load Hydrogen Producer real time work info...\r\n"));
         //数据报头段
         *(i_pRealTimeWorkInfo + HEAD_BYTE_ONE) = 0xF1;
         *(i_pRealTimeWorkInfo + HEAD_BYTE_TWO) = 0xF2;
@@ -540,9 +551,8 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
         *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TOTAL_TIMES_LOW) = (uint8_t)(u16HydrgWorkTimes & 0xFF);
         
         //液位数据
-//        u16LiquidLevel = (uint16_t)(GetSrcAnaSig(LIQUID_LEVEL) * 100);
-        u16LiquidLevel = 0;
-        *(i_pRealTimeWorkInfo + LIQUID_LEVEL_INTEGER_PART) = (uint8_t)((u16LiquidLevel & 0xFF00)>> 8);
+        u16LiquidLevel = (uint16_t)GetSrcAnaSig(LIQUID_LEVEL);
+        *(i_pRealTimeWorkInfo + LIQUID_LEVEL_INTEGER_PART) = (uint8_t)((u16LiquidLevel & 0xFF00) >> 8);
         *(i_pRealTimeWorkInfo + LIQUID_LEVEL_DECIMAL_PART) =(uint8_t)(u16LiquidLevel & 0xFF);
         //每分钟进液量
 //        u16LiquidFeedPerMinute = (uint16_t)(ReadLiquidFlowRate() * 100);
@@ -599,7 +609,7 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
     SYSTEM_TIME_Typedef     stStackWorkTimeThisTime = {0}, stStackWorkTimeTotal = {0};
 
     if(i_uint8_tIsHistoryData == EN_LATEST) { //最新的数据
-//      APP_TRACE_INFO(("Load Fuel cell real time work info...\r\n"));
+//        APP_TRACE_INFO(("Load Fuel cell real time part A work info...\r\n"));
         //数据报头段
         *(i_pRealTimeWorkInfo + HEAD_BYTE_ONE) = 0xF1;
         *(i_pRealTimeWorkInfo + HEAD_BYTE_TWO) = 0xF2;
@@ -691,7 +701,6 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
 
         //匹氢偏移值
         i16HydrogYieldMatchOffsetValue = (int16_t)(GetStackHydrogenYieldMatchOffsetValue() * 100);
-
         if(i16HydrogYieldMatchOffsetValue > 0 || i16HydrogYieldMatchOffsetValue < -100) { //整数位带符号位
             *(i_pRealTimeWorkInfo + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_INTEGER_PART_MUL100) = (int8_t)(i16HydrogYieldMatchOffsetValue / 100);
             *(i_pRealTimeWorkInfo + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_DECIMAL_PART_MUL100_HIGH) = (uint8_t)(((i16HydrogYieldMatchOffsetValue % 100)) & 0xFF);
@@ -731,6 +740,7 @@ static void LoadFuelCellRealTimeWorkInfoPartB(uint8_t i_uint8_tIsHistoryData, ui
 
     if(i_uint8_tIsHistoryData == EN_LATEST) { //最新的数据
         
+//        APP_TRACE_INFO(("Load Fuel cell real time part B work info...\r\n"));
         //数据报头段
         *(i_pRealTimeWorkInfo + HEAD_BYTE_ONE) = 0xF1;
         *(i_pRealTimeWorkInfo + HEAD_BYTE_TWO) = 0xF2;
@@ -988,7 +998,7 @@ static void SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg)
     BSP_PrgmDataDMASend(i_uint8_tTxMsgLen, i_pTxMsg);
 //    if(g_eCAN_BusOnLineFlag == ON)//CAN总线在线
 //	{
-		SendCanMsgContainNodeId(PRGM_TX_BUFF_SIZE, i_pTxMsg, GLOBAL_NET_WORK_ID);
+//		SendCanMsgContainNodeId(PRGM_TX_BUFF_SIZE, i_pTxMsg, GLOBAL_NET_WORK_ID);
 //	}
 }
 

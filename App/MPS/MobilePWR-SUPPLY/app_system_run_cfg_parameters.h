@@ -102,7 +102,6 @@ typedef struct {
     uint16_t AlarmlowerLiquidLevellimit;//液位低下限
     uint16_t OpenAutomaticliquidValue; //开自动加液液位值
     uint16_t CloseAutomaticliquidValue; //关自动加液液位值
-    uint16_t AlarmUpperLiquidLevellimit;//液位高上限
 
 } LIQUID_HEIGHT_CMP_LINES_Typedef;
 

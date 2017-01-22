@@ -79,7 +79,7 @@ static  STACK_WORK_STATU_Typedef        g_eStackWorkStatu = EN_NOT_IN_WORK;
 
 static          float                   g_fSystemIsolatedGeneratedEnergyThisTime = 0.0;
 
-static          uint8_t                 g_u8WaitWorkModeSelectSwitch = DEF_ENABLED;
+static          uint8_t                 g_u8WaitWorkModeSelectSwitch = DEF_DISABLED;
 
 static          uint32_t                                g_u32SysErrCode = 0;
 //系统预定错误类型有32种，对应g_u32ErrCode中的32位
@@ -762,9 +762,14 @@ void AlarmCmd(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind, SYSTEM_ALARM_GRADE_
             g_stSystemAlarmsInf.AlarmCode &= ~(1 << (u8)m_enSystemAlarmKind);
         } else {
             g_stSystemAlarmsInf.AlarmCode |= (1 << (u8)m_enSystemAlarmKind);
-            StartRunningBeepAlarm(m_enAlarmGrade);//报警码不为零,开始报警
         }
     } else { //否则什么也不做
+    }
+    
+    if(g_stSystemAlarmsInf.AlarmCode != 0){
+        StartRunningBeepAlarm(m_enAlarmGrade,ON);//报警码不为零,开始报警
+    }else{
+        StartRunningBeepAlarm(m_enAlarmGrade,OFF);
     }
 }
 

@@ -180,7 +180,7 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
                 }else{
                     
                     APP_TRACE_INFO(("Smoothly current limit finished ...\n\r")); 
-                    OSTaskResume(&StackShortCircuitTaskTCB,&err);//恢复电堆短路活化任务
+//                    OSTaskResume(&StackShortCircuitTaskTCB,&err);//恢复电堆短路活化任务
                     OSTaskResume(&DCModuleAutoAdjustTaskTCB,&err);//恢复动态限流任务
                     break;//平滑限流完成  
                 }
@@ -217,7 +217,6 @@ static void DcModuleAutoAdjustTask(void *p_arg)
     OS_ERR  err;
 
     OSTaskSuspend(NULL, &err);
-    APP_TRACE_INFO(("Resume dynamic current limit task ...\n\r"));
     
     while(DEF_TRUE) {
                   
@@ -255,6 +254,7 @@ static void DcModuleAutoAdjustTask(void *p_arg)
         }
         
         if(g_u8DCModuleDynamicAdjustTaskSw == DEF_DISABLED){
+            APP_TRACE_INFO(("Suspend dynamic current limit task ...\n\r"));
             break;
         }
     }

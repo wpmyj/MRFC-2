@@ -151,7 +151,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef DeviceSelfCheck(void)
     SELF_CHECK_CODE_Typedef stSelfCheckCode;
     SYSTEM_WORK_MODE_Typedef    eWorkMode;
 
-    APP_TRACE_DEBUG(("Self-checking...\r\n"));
+    APP_TRACE_INFO(("Self-checking...\r\n"));
     ResetAllAlarms();
     AnaSensorSelfCheck();   //模拟信号传感器自检
 
@@ -162,68 +162,68 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef DeviceSelfCheck(void)
 
     switch((u8)eWorkMode) {
         case EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL:
-            APP_TRACE_DEBUG(("Both parts of the machine are expected to work...\r\n"));
+            APP_TRACE_INFO(("Both parts of the machine are expected to work...\r\n"));
 
             if(stSelfCheckCode.DevSelfCheckSensorStatusCode == 0) { //设备自检传感器正常
                 if((stSelfCheckCode.MachinePartASelfCheckCode == 0) && (stSelfCheckCode.MachinePartBSelfCheckCode == 0)) {  //制氢组设备正常,只进行模拟输入组设备自检
-                    APP_TRACE_DEBUG(("Device of hydrogen producer group and stack group is at right statu...\r\n"));
+                    APP_TRACE_INFO(("Device of hydrogen producer group and stack group is at right statu...\r\n"));
                     MachineSelfCheckResult = EN_THROUGH;
                 } else {
                     if(stSelfCheckCode.MachinePartASelfCheckCode != 0) { //发电组设备正常
-                        APP_TRACE_DEBUG(("Device of hydrogen producer group is not at right statu,can not work...\r\n"));
+                        APP_TRACE_INFO(("Device of hydrogen producer group is not at right statu,can not work...\r\n"));
                     } else {
-                        APP_TRACE_DEBUG(("Device of stack group is not at right statu,can not work...\r\n"));
+                        APP_TRACE_INFO(("Device of stack group is not at right statu,can not work...\r\n"));
                         MachineSelfCheckResult = EN_NOT_THROUGH;
                     }
                 }
             } else {
-                APP_TRACE_DEBUG(("Device of device selfcheck sensor is not at right statu,can not work...\r\n"));
+                APP_TRACE_INFO(("Device of device selfcheck sensor is not at right statu,can not work...\r\n"));
                 MachineSelfCheckResult = EN_NOT_THROUGH;
             }
 
             break;
 
         case EN_WORK_MODE_HYDROGEN_PRODUCER:
-            APP_TRACE_DEBUG(("hydrogen producer of the machine is expected to work...\r\n"));
+            APP_TRACE_INFO(("hydrogen producer of the machine is expected to work...\r\n"));
 
             if(stSelfCheckCode.DevSelfCheckSensorStatusCode == 0) { //设备自检传感器正常
                 if(stSelfCheckCode.MachinePartASelfCheckCode == 0) { //制氢组设备正常,只进行模拟输入组设备自检
-                    APP_TRACE_DEBUG(("Device of hydrogen producer group is at right statu...\r\n"));
+                    APP_TRACE_INFO(("Device of hydrogen producer group is at right statu...\r\n"));
                     MachineSelfCheckResult = EN_THROUGH;
                 } else {
-                    APP_TRACE_DEBUG(("Device of hydrogen producer group is not at right statu,can not work...\r\n"));
+                    APP_TRACE_INFO(("Device of hydrogen producer group is not at right statu,can not work...\r\n"));
                     MachineSelfCheckResult = EN_NOT_THROUGH;
                 }
             } else {
-                APP_TRACE_DEBUG(("Device of device selfcheck sensor is not at right statu,can not work...\r\n"));
+                APP_TRACE_INFO(("Device of device selfcheck sensor is not at right statu,can not work...\r\n"));
                 MachineSelfCheckResult = EN_NOT_THROUGH;
             }
 
             break;
 
         case EN_WORK_MODE_FUEL_CELL:
-            APP_TRACE_DEBUG(("Stack of the machine is expected to work...\r\n"));
+            APP_TRACE_INFO(("Stack of the machine is expected to work...\r\n"));
 
             if(stSelfCheckCode.DevSelfCheckSensorStatusCode == 0) { //设备自检传感器正常
                 if(stSelfCheckCode.MachinePartBSelfCheckCode == 0) { //发电组设备正常
-                    APP_TRACE_DEBUG(("Device of stack group is at right statu, the machine can work normal...\r\n"));
+                    APP_TRACE_INFO(("Device of stack group is at right statu, the machine can work normal...\r\n"));
                     MachineSelfCheckResult = EN_THROUGH;
                 } else {
-                    APP_TRACE_DEBUG(("Device of stack group is not at right statu,can not work...\r\n"));
+                    APP_TRACE_INFO(("Device of stack group is not at right statu,can not work...\r\n"));
                     MachineSelfCheckResult = EN_NOT_THROUGH;
                 }
             } else {
-                APP_TRACE_DEBUG(("Device of device selfcheck sensor is not at right statu,can not work...\r\n"));
+                APP_TRACE_INFO(("Device of device selfcheck sensor is not at right statu,can not work...\r\n"));
                 MachineSelfCheckResult = EN_NOT_THROUGH;
             }
 
             break;
 
         case EN_WORK_MODE_MALFUNCTION:  //故障模式
-            APP_TRACE_DEBUG(("Device of machine is not at right statu,can not work...\r\n"));
+            APP_TRACE_INFO(("Device of machine is not at right statu,can not work...\r\n"));
 
         default:
-            APP_TRACE_DEBUG(("Fault: System expected to work on the malfunction mode...\r\n"));
+            APP_TRACE_INFO(("Fault: System expected to work on the malfunction mode...\r\n"));
             MachineSelfCheckResult = EN_NOT_THROUGH;
             break;
     }
@@ -353,8 +353,8 @@ void Starting(void)
             } else {
                 APP_TRACE_INFO(("Ignite for the first time is failed...\n\r"));
 
-                if(GetSystemWorkStatu() != EN_WAITTING_COMMAND) {   //可能因为上位机直接将状态改为关保温，导致点火失败
-                    SetSystemWorkStatu(EN_KEEPING_WARM);
+                if(GetSystemWorkStatu() != EN_WAITTING_COMMAND) {   //上位机操作关机，导致冷启动提前结束
+                    SetShutDownActionFlag(EN_DELAY_STOP_PART_ONE);
                 }
             }
 
@@ -367,7 +367,7 @@ void Starting(void)
                     APP_TRACE_INFO(("Ignite for the second time is failed...\n\r"));
 
                     if(GetSystemWorkStatu() != EN_WAITTING_COMMAND) {   //可能因为上位机直接将状态改为关保温，导致点火失败
-                        SetSystemWorkStatu(EN_KEEPING_WARM);
+                        SetShutDownActionFlag(EN_DELAY_STOP_BOTH_PARTS);
                     }
                 } else {
                     SetSystemWorkStatu(EN_RUNNING);
@@ -376,7 +376,7 @@ void Starting(void)
                 SetShutDownActionFlag(EN_DELAY_STOP_PART_ONE);
             } else {
                 APP_TRACE_INFO(("Ignite for the second time has been leaped over ...\n\r"));
-                SetShutDownActionFlag(EN_STOP_ALL_DIRECT);
+                SetShutDownActionFlag(EN_DELAY_STOP_PART_ONE);//冷启动不成功，也设置延时关闭半机一动作响应标识
             }
         } else {
             APP_TRACE_INFO(("Program's running here is not to start...\n\r"));
@@ -519,14 +519,15 @@ void ShutDown()
     SYSTEM_WORK_STATU_Typedef eWorkStatu;
 
     eWorkStatu = GetSystemWorkStatu();
+    ResetAllAlarms();//清空所有警报
 
     if(eWorkStatu == EN_SHUTTING_DOWN) {
-        APP_TRACE_DEBUG(("Exit the cruise process to shut down...\r\n"));//提示系统退出巡航运行阶段
+        APP_TRACE_INFO(("Exit the cruise process to shut down...\r\n"));//提示系统退出巡航运行阶段
 
         switch((u8)g_eShutDownActionFlag) {
             case EN_STOP_ALL_DIRECT:
 
-                APP_TRACE_DEBUG(("Shutdown all direcetly!!!\r\n"));
+                APP_TRACE_INFO(("Shutdown all direcetly!!!\r\n"));
                 break;
 
             case EN_DELAY_STOP_PART_ONE:
@@ -569,11 +570,11 @@ void ShutDown()
 
         switch((u8)g_eShutDownActionFlag) {
             case(u8)EN_STOP_ALL_DIRECT:
-                APP_TRACE_DEBUG(("--> The system has not start...\r\n"));  //直接关机，不需要关机延时
+                APP_TRACE_INFO(("--> The system has not start...\r\n"));  //直接关机，不需要关机延时
                 break;
 
             case(u8)EN_DELAY_STOP_PART_ONE:
-                APP_TRACE_DEBUG(("-->Delay stop part one...\r\n"));
+                APP_TRACE_INFO(("-->Delay stop part one...\r\n"));
                 //此处阻塞等待制氢机延时关闭任务中的任务信号量
                 OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 3,   //3分钟后关闭制氢机
                               OS_OPT_PEND_BLOCKING,
@@ -585,7 +586,7 @@ void ShutDown()
                 }
 
             case(u8)EN_DELAY_STOP_PART_TWO:
-                APP_TRACE_DEBUG(("-->Delay stop part two...\r\n"));
+                APP_TRACE_INFO(("-->Delay stop part two...\r\n"));
                 //此处阻塞等待电堆延时关闭任务中的任务信号量
                 OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 30,         //30s后关闭电堆
                               OS_OPT_PEND_BLOCKING,
@@ -608,17 +609,17 @@ void ShutDown()
                               &err);
 
                 if(err == OS_ERR_NONE) {
-                    APP_TRACE_DEBUG(("The hydrogen producer and stack delay stop finished...\r\n"));
+                    APP_TRACE_INFO(("The hydrogen producer and stack delay stop finished...\r\n"));
                     break;
                 } else {
-                    APP_TRACE_DEBUG(("The hydrogen producer and stack delay stop over time...\r\n"));
+                    APP_TRACE_INFO(("The hydrogen producer and stack delay stop over time...\r\n"));
                 }
             default:
                 break;
         }
         OSTaskSemSet(&AppTaskStartTCB,0,&err);//清掉任务信号量，防止因任务信号量累计造成下一次启动异常
     } else {
-        APP_TRACE_DEBUG(("The program don't need to start the shut down process...\r\n"));
+        APP_TRACE_INFO(("The program don't need to start the shut down process...\r\n"));
     }
 }
 

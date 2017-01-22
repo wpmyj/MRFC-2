@@ -35,7 +35,7 @@
 #define STRCMP(str1, str2) strncmp(str1, str2, strlen(str2))
 #define SERVER_IP_PORT   "120.25.205.146,40304"
 
-#define DEBUG_3G 1
+#define DEBUG_3G 0
 #define GSM 1
 #define WCDMA 2
 #define NETWORK GSM

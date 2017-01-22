@@ -36,7 +36,6 @@
 *                                            LOCAL DEFINES
 ***************************************************************************************************
 */
-#define USART2_DR_Address   ((uint32_t)USART2_BASE+0x04)
 #define UART4_DR_Address    ((uint32_t)UART4_BASE+0x04)
 
 /*
@@ -69,7 +68,6 @@ uint8_t g_u83GCommandReceived;
 
 OS_SEM      g_stWirenessCommSem;
 OS_MUTEX    g_stWIFISerTxMutex;
-OS_MUTEX    g_st3GSerTxMutex;
 
 static  BSP_OS_SEM   BSP_SerTxWait;
 static  BSP_OS_SEM   BSP_SerRxWait;
@@ -632,7 +630,7 @@ void WIFI_DataRx_IRQHandler(void)
     CPU_SR_ALLOC();
 
     if(DMA_GetITStatus(DMA2_IT_TC3) != RESET) {
-        if(g_u83GCommandReceived == NO) {
+        if(g_u8WifiCommandReceived == NO) {
             CPU_CRITICAL_ENTER();
             OSTimeDlyResume(&CommunicateTaskTCB,
                             &err);

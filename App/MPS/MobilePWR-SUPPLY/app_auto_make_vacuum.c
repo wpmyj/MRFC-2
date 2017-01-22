@@ -115,12 +115,14 @@ static void  Make_Vacuum_FunctionTask(void *p_arg)
         APP_TRACE_INFO(("Start make vacuum task...\n\r"));   
 
         BSP_PureHydrogenGasOutValvePwrOff();
+        BSP_TailGasOutValvePwrOn();//关闭常开尾气电磁阀
         BSP_MakeVavuumValve2PwrOn();
-        BSP_MakeVavuumValve4PwrOn();       
+        BSP_MakeVavuumValve4PwrOn();
         u8MakeVavuumValve4PwrOnFlag = YES;
                 
         while(DEF_TRUE)
         {
+            
             OSTaskSemPend(OS_CFG_TICK_RATE_HZ, 
                           OS_OPT_PEND_BLOCKING, 
                           NULL,
@@ -132,14 +134,16 @@ static void  Make_Vacuum_FunctionTask(void *p_arg)
                         BSP_MakeVavuumValve4PwrOff();
                         BSP_MakeVavuumValve3PwrOn();
                         BSP_MakeVavuumPumpPwrOn();
-                        u8MakeVavuumValve4PwrOnFlag = 0;
+                        u8MakeVavuumValve4PwrOnFlag = NO;
                         u8timeCount = 0;
                     }
                 }
+                //需要考虑如果在启动过程中，关机后采取什么操作
             }
             else if(err == OS_ERR_NONE){//切换后（重整温度达到后）全部关闭
                 APP_TRACE_INFO(("Stop make vacuum task...\n\r"));
                 BSP_PureHydrogenGasOutValvePwrOn();//纯氢出口
+                BSP_TailGasOutValvePwrOff();
                 BSP_MakeVavuumValve2PwrOff();
                 BSP_MakeVavuumValve3PwrOff();            
                 BSP_MakeVavuumValve4PwrOff();

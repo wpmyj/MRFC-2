@@ -52,10 +52,10 @@ static CPU_STK    MF210_TASK_STK[MF210_TASK_STK_SIZE];
 ***************************************************************************************************
 */
 
-u8  Uatr_TxBuf[32]; //注意变量数组不要溢出
-u8  Full_TxBuf[32]; //燃料电池发送
-u8  Uatr_RxBuf[128];//注意变量数组不要溢出
-uint8_t     g_u8Ser2RxMsgBuff[PRGM_RX_BUFF_SIZE];//3G数据接收数组
+u8  Uatr_TxBuf[32]; //制氢半机实时数据
+u8  Full_TxBuf[32]; //发电半机实时数据
+u8  Uatr_RxBuf[PRGM_3G_RX_BUFF_SIZE];//注意变量数组不要溢出
+
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
@@ -66,7 +66,7 @@ static void  MF210_Communicate_Task(void *p_arg);
 
 /*
 ***************************************************************************************************
-*                                willnessdata_write_Full()
+*                                LoadHydrogenProducerRealTimeInfo()
 *
 * Description:  Send stack real time info.
 *
@@ -75,12 +75,12 @@ static void  MF210_Communicate_Task(void *p_arg);
 * Returns    :  none
 ***************************************************************************************************
 */
-void willnessdata_write_Full(u8 com)
+static void LoadHydrogenProducerRealTimeInfo(void)
 {
     uint32_t  u32IsolatedGenratedEnergyThisTime = 0;
     SYSTEM_TIME_Typedef     stStackWorkTimeThisTime = {0};
         
-    Full_TxBuf[0] = com;  //报头
+    Full_TxBuf[0] = 0XF1;  //报头
     Full_TxBuf[1] = 0xF2;
     Full_TxBuf[2] = (u8)((uint16_t)(GetSrcAnaSig(STACK_CURRENT) * 10)%100);                                             //(u8)((uint16_t)(GetSrcAnaSig(STACK_CURRENT))%10);           
     Full_TxBuf[3] = (u8)((uint16_t)(GetSrcAnaSig(STACK_CURRENT) * 10)/100);                                             //* 100))/100;//Ivalue / 100;
@@ -131,7 +131,7 @@ void willnessdata_write_Full(u8 com)
 }
 /*
 ***************************************************************************************************
-*                                willnessdata_write()
+*                                LoadFuelCellRealTimeInfo()
 *
 * Description:  Send hydrogen producer real time info.
 *
@@ -140,12 +140,12 @@ void willnessdata_write_Full(u8 com)
 * Returns    :  none
 ***************************************************************************************************
 */
-void willnessdata_write(u8 com)
+static void LoadFuelCellRealTimeInfo(void)
 {
     SYSTEM_TIME_Typedef     stHydrgProduceTimeThisTime = {0}, stHydrgProduceTimeTotal = {0};
     stHydrgProduceTimeThisTime = GetHydrgProduceTimeThisTime();
     
-    Uatr_TxBuf[0] = com; //信道
+    Uatr_TxBuf[0] = 0xF7; //信道
     Uatr_TxBuf[1] = 0xF8;
     Uatr_TxBuf[2] = (uint8_t)(((uint16_t)GetReformerTemp() & 0xFF));       //Date_Temperature1_Low;   //温度1低两位 十位个位
     Uatr_TxBuf[3] = (uint8_t)(((uint16_t)GetReformerTemp() & 0xFF00) >> 8);          //Date_Temperature1_High;  //温度1高两位 千位百位
@@ -191,7 +191,7 @@ void willnessdata_write(u8 com)
 
 /*
 ***************************************************************************************************
-*                              Receive_Uart_Device()
+*                              RespondRemoteControlCmd()
 *
 * Description:  Respone promote control cmd.
 *
@@ -200,7 +200,7 @@ void willnessdata_write(u8 com)
 * Returns    :  none
 ***************************************************************************************************
 */
-void Receive_Uart_Device(void)
+void RespondRemoteControlCmd(void)
 {
     OS_ERR  err;
     if((Uatr_RxBuf[0] == 0xAA) && (Uatr_RxBuf[1] == 0x78))
@@ -241,7 +241,7 @@ void Receive_Uart_Device(void)
 
 /*
 ***************************************************************************************************
-*                                willnessdata_write_Full()
+*                                SendConsolidatedRealTimeInfo()
 *
 * Description:  Load fuel cell real time work Info.
 *
@@ -250,11 +250,11 @@ void Receive_Uart_Device(void)
 * Returns    :  none
 ***************************************************************************************************
 */
-void Android_SendArray(void)
+void SendConsolidatedRealTimeInfo(void)
 {
     uint8_t send_buff[64] = {0};
-    willnessdata_write_Full(0XF1); //读写处理
-    willnessdata_write(0xF7);      //整理数据
+    LoadHydrogenProducerRealTimeInfo(); //更新发电半机数据
+    LoadFuelCellRealTimeInfo();      //更新制氢半机数据
     memcpy(&send_buff[0], Full_TxBuf, 32);
     memcpy(&send_buff[32], Uatr_TxBuf, 32);
     Uart_Send_array1(send_buff, 64);
@@ -262,7 +262,7 @@ void Android_SendArray(void)
 
 /*
 ***************************************************************************************************
-*                                willnessdata_write_Full()
+*                                LoadHydrogenProducerRealTimeInfo()
 *
 * Description:  Load fuel cell real time work Info.
 *
@@ -314,28 +314,12 @@ static void  MF210_Communicate_Task(void *p_arg)
               NULL,
               &err);
         if(err == OS_ERR_TIMEOUT){
-            //通过3G模块发送整合后的数据给服务器
-            Android_SendArray();
+            
+            SendConsolidatedRealTimeInfo();//通过3G模块发送整合后的数据给服务器
         }
     }
 }
 
-
-/*
-***************************************************************************************************
-*                                      GetPrgm3GRxBuffAddr()
-*
-* Description:  get the address of the message that receive in.
-*
-* Arguments  :  none
-*
-* Returns    :  address
-***************************************************************************************************
-*/
-uint8_t *GetPrgm3GRxBuffAddr(void)
-{
-    return g_u8Ser2RxMsgBuff;
-}
 
 
 

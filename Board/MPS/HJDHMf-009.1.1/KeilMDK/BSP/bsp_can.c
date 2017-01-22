@@ -60,7 +60,7 @@ const unsigned int CAN_baud_table[20][5] = {
     {20,    CAN_SJW_1tq,    CAN_BS1_6tq,    CAN_BS2_2tq,    200  },     //20k
     {25,    CAN_SJW_1tq,    CAN_BS1_13tq,   CAN_BS2_2tq,    90   },     //25k
     {40,    CAN_SJW_1tq,    CAN_BS1_6tq,    CAN_BS2_2tq,    100  },     //40k
-    {50,    CAN_SJW_1tq,    CAN_BS1_13tq,   CAN_BS2_2tq,    45   },     //50k
+    {50,    CAN_SJW_1tq,    CAN_BS1_3tq,    CAN_BS2_2tq,    120  },    //50k
     {62,    CAN_SJW_1tq,    CAN_BS1_13tq,   CAN_BS2_2tq,    36   },     //62.5k
     {80,    CAN_SJW_1tq,    CAN_BS1_6tq,    CAN_BS2_2tq,    50   },     //80k
     {100,   CAN_SJW_1tq,    CAN_BS1_5tq,    CAN_BS2_2tq,    45   },     //100K
@@ -101,8 +101,6 @@ uint8_t     g_u8CanRxMsg[PRGM_RX_BUFF_SIZE];//汇总后CAN接收数据
 void CAN_Configuration(void)
 {
     uint8_t err_code;
-    
-    APP_TRACE_INFO(("CAN 1 init successed......\n\r"));
     err_code = CAN1_Init(CAN_Mode_Normal);//CAN_Mode_LoopBack
     if( 0 ==err_code){
         APP_TRACE_INFO(("CAN 1 init successed......\n\r"));
@@ -136,8 +134,9 @@ static uint8_t CAN1_Init(uint8_t i_u8CanMode)
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_CAN1, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOD, ENABLE);
 
-    GPIO_PinRemapConfig(GPIO_Remap1_CAN1, ENABLE);
+    GPIO_PinRemapConfig(GPIO_Remap1_CAN1, ENABLE);//引脚重定义
 //    GPIO_PinRemapConfig(GPIO_Remap2_CAN1, ENABLE);  
+    
     //CAN1 TX
     GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN1_CAN1_TX_PORT_NMB;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -275,11 +274,11 @@ uint8_t CANx_Send_Msg(CAN_TypeDef * CANx, Message *m)
     uint8_t i;
     CanTxMsg TxMessage;
 
-    TxMessage.StdId = (uint32_t)(m->cob_id);
-    TxMessage.ExtId = 0x00;
-    TxMessage.RTR = m->rtr;
-    TxMessage.IDE = CAN_ID_STD;
-    TxMessage.DLC = m->len;
+    TxMessage.StdId = (uint32_t)(m->cob_id);// 标准标识符11位,即发送优先级
+    TxMessage.ExtId = 0x00;         // 设置扩展标示符
+    TxMessage.RTR = m->rtr;         //消息类型为数据帧，一帧8位
+    TxMessage.IDE = CAN_ID_STD;     // 使用标准标识符
+    TxMessage.DLC = m->len;         // 要发送的数据长度
 
     for(i = 0; i < m->len; i++) {
         TxMessage.Data[i] = m->data[i];
@@ -289,8 +288,10 @@ uint8_t CANx_Send_Msg(CAN_TypeDef * CANx, Message *m)
 
     if(ret != CAN_TxStatus_NoMailBox) {
         u8SendStatu = 0;
+//		APP_TRACE_INFO(("MailBox Num: %d\r\n", ret));
     } else {
         u8SendStatu = 1;
+//		APP_TRACE_INFO(("MailBox has no empty space!\r\n"));
     }
 
     return u8SendStatu;
@@ -316,33 +317,25 @@ uint8_t SendCanMsgContainNodeId(uint32_t i_Msglen, uint8_t *msg, uint8_t i_NodeI
     uint32_t i, j;
     uint8_t  u8SendErrCount = 0;
     uint8_t  LastTimeSendErrFlag = NO;
-    Message stStdMsg;
-    
+    Message ProcessedData;   
 
-    stStdMsg.cob_id = i_NodeId | CAN_MSG_TX_FLAG;
-    stStdMsg.rtr = CAN_RTR_DATA;
+    ProcessedData.cob_id = i_NodeId | CAN_MSG_TX_FLAG;
+    ProcessedData.rtr = CAN_RTR_DATA;
 
     for(i = 0; i < (i_Msglen / 8 + ((i_Msglen % 8) ? 1 : 0)); i++) { //长消息拆包的分包数,8为CAN消息的标准包长度
         if(LastTimeSendErrFlag == NO) {
-            stStdMsg.len = ((i_Msglen - i * 8) > 8) ? 8 : (i_Msglen - i * 8);//每个短包的数据长度，除最后一包需要另算外，其余均为8
+            ProcessedData.len = ((i_Msglen - i * 8) > 8) ? 8 : (i_Msglen - i * 8);//每个短包的数据长度，除最后一包需要另算外，其余均为8
 
-            for(j = 0; j < stStdMsg.len; j++) {
-                stStdMsg.data[j] = msg[i * 8 + j];
-//                APP_TRACE_INFO(("stStdMsg.data %x:..\r\n",stStdMsg.data[j]));
+            for(j = 0; j < ProcessedData.len; j++) {
+                ProcessedData.data[j] = msg[i * 8 + j];
+//                APP_TRACE_INFO(("ProcessedData.data %x:..\r\n",ProcessedData.data[j]));
             }
-
-//            if(stStdMsg.len < 8)//若判断到是数据包尾，则在尾部加上NodeID，用于主机拣包
-//            {
-//                stStdMsg.len++;
-//                stStdMsg.data[stStdMsg.len - 1] = i_NodeId;
-//            }
-//            else
-//            {}//否则不需要额外处理
                 
         } else {
-        }//上次发送出错，直接发送数组即可，不需要重新复制
+            //上次发送出错，直接发送数组即可，不需要重新复制
+        }
 
-        ret = CANx_Send_Msg(CAN1, &stStdMsg);
+        ret = CANx_Send_Msg(CAN1, &ProcessedData);
 
         if(ret != 0) {
             LastTimeSendErrFlag = YES;
@@ -353,7 +346,7 @@ uint8_t SendCanMsgContainNodeId(uint32_t i_Msglen, uint8_t *msg, uint8_t i_NodeI
 
             if(++u8SendErrCount >= 10) {
 //              g_eCAN_BusOnLineFlag = OFF;
-                APP_TRACE_INFO(("CAN bus has dropped,send err..\r\n"));
+//                APP_TRACE_INFO(("CAN bus has dropped,send err..\r\n"));
                 break;
             }
         } else {

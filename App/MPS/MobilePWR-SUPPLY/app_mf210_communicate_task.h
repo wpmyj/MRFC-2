@@ -30,10 +30,11 @@
 #include "os.h"
 /*
 ***************************************************************************************************
-*                                           MACRO DEFINITIONS
+*                                           EXPORTED MACRO
 ***************************************************************************************************
 */
-
+#define PRGM_3G_TX_BUFF_SIZE       64
+#define PRGM_3G_RX_BUFF_SIZE       128
 /*
 ***************************************************************************************************
 *                                           EXPORTED TYPE
@@ -47,16 +48,9 @@
 */
 extern OS_TCB     MF210_CommunicateTaskTCB;
 
-extern u8  Uatr_TxBuf[32]; //注意变量数组不要溢出
-extern u8  Full_TxBuf[32];//燃料电池发送
-extern u8  Uatr_RxBuf[128]; 
-/*
-***************************************************************************************************
-*                                           EXPORTED MACRO
-***************************************************************************************************
-*/
-#define PRGM_3G_TX_BUFF_SIZE       64
-#define PRGM_3G_RX_BUFF_SIZE       128
+extern u8  Uatr_TxBuf[32]; //制氢半机实时数据
+extern u8  Full_TxBuf[32]; //发电半机实时数据
+extern u8  Uatr_RxBuf[PRGM_3G_RX_BUFF_SIZE];//注意变量数组不要溢出
 /*
 ***************************************************************************************************
 *                                           EXPORTED FUNCTION
@@ -65,11 +59,9 @@ extern u8  Uatr_RxBuf[128];
 
 void MF210_CommunicateTaskCreate(void);
 
-void Android_SendArray(void);
-void willnessdata_write(u8 com);
-void willnessdata_write_Full(u8 com);
+void SendConsolidatedRealTimeInfo(void);
 
-void Receive_Uart_Device(void);
+void RespondRemoteControlCmd(void);
 
 uint8_t *GetPrgm3GRxBuffAddr(void);
 /*

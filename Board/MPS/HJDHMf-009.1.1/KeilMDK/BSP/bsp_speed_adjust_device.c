@@ -37,7 +37,7 @@
 */
 #define SPEED_CONTROL_DEVICE_MANAGE_TASK_STK_SIZE       100
 
-#define SPEED_SAMPLE_CHANNEL          4u//速度反馈信号采样通道数
+#define SPEED_SAMPLE_CHANNEL          3u//速度反馈信号采样通道数
 
 #define FRONT_EDGE      0 //捕获脉冲前沿
 #define LAST_EDGE       1 //捕获脉冲后沿
@@ -63,13 +63,11 @@ static  uint16_t    g_u16HydrgPumpCtlSpd = 0;
 static  uint16_t    g_u16StackFanCtlSpd = 0;
 
 static  SWITCH_TYPE_VARIABLE_Typedef g_eSpdCaptureWorkSwitch[3] = {OFF, OFF, OFF}; //3路通道监测开关
-static  float g_fSpdCaptureFrequency[SPEED_SAMPLE_CHANNEL] = {0.0, 0.0, 0.0, 0.0}; //对应检测通道的脉冲频率数
+static  float g_fSpdCaptureFrequency[SPEED_SAMPLE_CHANNEL] = {0.0, 0.0, 0.0}; //对应检测通道的脉冲频率数
 
 static  uint16_t g_u16SpdCaptureEdgeNum[3] = {0, 0, 0}; //三个通道进入中断次数
 static  uint16_t g_u16SpeedCaptureValue[3][2] = {0}; //三个通道周期内第一次进入中断和最后一次进入中断的计数值
 
-//uint16_t TIM1CHX_CAPTURE_STA[3] = {0, 0,0};
-uint16_t g_EnableChannelNum = 0;
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
@@ -493,7 +491,7 @@ void StackFanSpdDec()
 
 /*
 ***************************************************************************************************
-*                                         GetStackFanCtlSpd()
+*                           GetStackFanCtlSpd()
 *
 * Description : get the stack fan speed grade number.
 *
@@ -530,6 +528,26 @@ void SetStackFanCtlSpd(uint16_t i_u16NewSpd)
     CPU_CRITICAL_EXIT();
 }
 
+/*
+***************************************************************************************************
+*                                         ResetSpdCaptureValue()
+*
+* Description : set the stack fan speed grade.
+*
+* Arguments   : the expected stack fan speed.
+*
+* Returns     : none.
+*
+* Notes       : the speed grade whole number is 2000.
+***************************************************************************************************
+*/
+void ResetSpdCaptureValue(uint8_t i_CaptureChannel)
+{
+    g_fSpdCaptureFrequency[i_CaptureChannel] = 0;
+    g_u16SpdCaptureEdgeNum[i_CaptureChannel] = 0;
+    g_u16SpeedCaptureValue[i_CaptureChannel][LAST_EDGE] = 0;
+    g_u16SpeedCaptureValue[i_CaptureChannel][FRONT_EDGE] = 0; 
+}
 
 /*
 ********************************************************************************************************
@@ -551,7 +569,6 @@ void BSP_DevSpdCaptureFinishedHandler(void)
     /*输入捕获状态:bit15-捕获使能位，bit14-捕获中状态位,,其余位做捕获边沿计数位*/
     static uint16_t TIM1CHX_CAPTURE_STA[3] = {0, 0,0};
     static uint8_t  stEnableChannelNum = 0;//通道切换计数,每0.5秒切换一次
-    static uint16_t u16SpeedCaptureValue[3][2];  //临时保存三个通道捕获周期内第一次和最后一次的计数值
 
     if(TIM_GetITStatus(TIM1, TIM_IT_CC1) != RESET) { //捕获到水泵转速脉冲
         if(g_eSpdCaptureWorkSwitch[PUMP_SPD_MONITOR] == ON) {
@@ -560,14 +577,14 @@ void BSP_DevSpdCaptureFinishedHandler(void)
                 TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR]++;
 
                 if(TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] & 0x4000) { //不是第一次进入中断
-                    u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE] = TIM_GetCapture1(TIM1);//不断更新该计数值,直到记录到捕获周期内最后一次进入中断的计数值
+                    g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE] = TIM_GetCapture1(TIM1);//不断更新该计数值,直到记录到捕获周期内最后一次进入中断的计数值
                 } else {
                     TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] |= 0x4000;//标记首次捕获到水泵转速脉冲
-                    u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] = TIM_GetCapture1(TIM1);//记录第一次的计数值
+                    g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] = TIM_GetCapture1(TIM1);//记录第一次的计数值
                 }
             }
         }else{
-            g_fSpdCaptureFrequency[PUMP_SPD_MONITOR] = 0;
+            ResetSpdCaptureValue(PUMP_SPD_MONITOR);
         }
 
         TIM_ClearITPendingBit(TIM1, TIM_IT_CC1);
@@ -578,14 +595,14 @@ void BSP_DevSpdCaptureFinishedHandler(void)
                 TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR]++;
 
                 if(TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR] & 0x4000) { //不是第一次进入中断
-                    u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][LAST_EDGE] = TIM_GetCapture2(TIM1);
+                    g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][LAST_EDGE] = TIM_GetCapture2(TIM1);
                 } else {
                     TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR] |= 0x4000;
-                    u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][FRONT_EDGE] = TIM_GetCapture2(TIM1);
+                    g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][FRONT_EDGE] = TIM_GetCapture2(TIM1);
                 }
             }
         }else{
-            g_fSpdCaptureFrequency[HYDROGEN_FAN_SPD_MONITOR] = 0;
+            ResetSpdCaptureValue(HYDROGEN_FAN_SPD_MONITOR);
         }
 
         TIM_ClearITPendingBit(TIM1, TIM_IT_CC2);
@@ -596,14 +613,14 @@ void BSP_DevSpdCaptureFinishedHandler(void)
                 TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR]++;
 
                 if(TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR] & 0x4000) {
-                    u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][LAST_EDGE] = TIM_GetCapture3(TIM1);
+                    g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][LAST_EDGE] = TIM_GetCapture3(TIM1);
                 } else {
                     TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR] |= 0x4000;
-                    u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE] = TIM_GetCapture3(TIM1);
+                    g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE] = TIM_GetCapture3(TIM1);
                 }
             }
         }else{
-            g_fSpdCaptureFrequency[STACK_FAN_SPD_MONITOR] = 0;
+            ResetSpdCaptureValue(STACK_FAN_SPD_MONITOR);
         }
 
         TIM_ClearITPendingBit(TIM1, TIM_IT_CC3);
@@ -614,40 +631,35 @@ void BSP_DevSpdCaptureFinishedHandler(void)
     if(TIM_GetITStatus(TIM1, TIM_IT_Update) != RESET) {
         stEnableChannelNum++;
         if(stEnableChannelNum == 1) {
+            
             if((TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] & 0x3FFF) != 0) {
                 g_u16SpdCaptureEdgeNum[PUMP_SPD_MONITOR] = (TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] & 0x3FFF);//保存捕获边沿次数
-                g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] = u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE];//保存捕获前沿计数值
-                g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE] = u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE];//保存捕获后沿计数值
-            } else {
-                g_fSpdCaptureFrequency[PUMP_SPD_MONITOR] = 0;
+                g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] = g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE];//保存捕获前沿计数值
+                g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE] = g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE];//保存捕获后沿计数值
             }
-
             TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] = 0;  //关闭本捕获通道捕获并清空捕获边沿计数
             TIM_ITConfig(TIM1, TIM_IT_CC1, DISABLE);
             TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR] = 0x8000;   //开启下一通道捕获
             TIM_ITConfig(TIM1, TIM_IT_CC2, ENABLE);
         } else if(stEnableChannelNum == 2) {
+            
             if((TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR] & 0x3FFF) != 0) {
                 g_u16SpdCaptureEdgeNum[HYDROGEN_FAN_SPD_MONITOR] = (TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR] & 0x3FFF);//保存捕获边沿次数
-                g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][FRONT_EDGE] = u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][FRONT_EDGE];
-                g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][LAST_EDGE] = u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][LAST_EDGE];
-            } else {
-                g_fSpdCaptureFrequency[HYDROGEN_FAN_SPD_MONITOR] = 0;
+                g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][FRONT_EDGE] = g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][FRONT_EDGE];
+                g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][LAST_EDGE] = g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][LAST_EDGE];
             }
-
             TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR] = 0;  //关闭本捕获通道捕获并清空捕获边沿计数
             TIM_ITConfig(TIM1, TIM_IT_CC2, DISABLE);
             TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR] = 0x8000;   //开启下一通道捕获
             TIM_ITConfig(TIM1, TIM_IT_CC3, ENABLE);
+            
         } else if(stEnableChannelNum == 3) {
+            
             if((TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR] & 0x3FFF) != 0) {
                 g_u16SpdCaptureEdgeNum[STACK_FAN_SPD_MONITOR] = (TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR] & 0x3FFF);//保存捕获边沿次数
-                g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE] = u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE];
-                g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][LAST_EDGE] = u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][LAST_EDGE];
-            } else {
-                g_fSpdCaptureFrequency[STACK_FAN_SPD_MONITOR] = 0;
+                g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE] = g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE];
+                g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][LAST_EDGE] = g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][LAST_EDGE];
             }
-
             TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR] = 0;  //关闭本捕获通道捕获并清空捕获边沿计数
             TIM_ITConfig(TIM1, TIM_IT_CC3, DISABLE);
             TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] = 0x8000;   //开启下一通道捕获

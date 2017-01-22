@@ -113,8 +113,6 @@ static  void  BSP_HydrgFanCtrInit(void);
 static  void  BSP_HydrgFanPwrOn(void);
 static  void  BSP_HydrgFanPwrOff(void);
 
-//static void ButtonStatusCheck_IRQHandler(void);
-//static void PDPulseStatusCheck_IRQHandler(void);
 static void EXTI15_10_StatusCheck_IRQHandler(void);
 
 static  void  BSP_SwTypePwrDeviceStatuInit(void);
@@ -124,8 +122,8 @@ static  void  BSP_StackFanCtrInit(void);
 static  void  BSP_StackFanPwrOn(void);
 static  void  BSP_StackFanPwrOff(void);
 
-static void BSP_DeviceSpdCheckPortInit(u16 arr, u16 psc);
-static void BSP_VentingTimeRecordHandler(void);
+static void   BSP_DeviceSpdCheckPortInit(u16 arr, u16 psc);
+static void   BSP_VentingTimeRecordHandler(void);
 /*
 ***************************************************************************************************
 *                                             REGISTERS
@@ -260,8 +258,9 @@ void  BSP_Init(void)
     BSP_SwTypePwrDeviceStatuInit(); // 开关型输出设备
     BSP_CmdButtonInit();            // 硬件按钮
     BSP_ImpulseInputPortInit();     //外部脉冲输入引脚初始化
-//    AT25256B_Init();              //外部EEPROM初始化
     CAN_Configuration();            //CAN总线配置
+//    AT25256B_Init();              //外部EEPROM初始化
+    
     BSP_VentingIntervalRecordTimerInit();//电堆排气时间参数定时器初始化
 
 #ifdef TRACE_EN                                                 /* See project / compiler preprocessor options.         */
@@ -1072,11 +1071,13 @@ void  BSP_HydrgOutValvePwrOff(void)
 */
 void  BSP_DCConnectValvePwrOn(void)
 {
+    APP_TRACE_INFO(("Dc connect power on...\n\r"));
     GPIO_SetBits(GPIOB, BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB);
 }
 
 void  BSP_DCConnectValvePwrOff(void)
 {
+    APP_TRACE_INFO(("Dc connect power off...\n\r"));
     GPIO_ResetBits(GPIOB, BSP_GPIOB_DC_CONNECTER_PWR_CTRL_PORT_NMB);
 }
 
@@ -1097,11 +1098,13 @@ void  BSP_DCConnectValvePwrOff(void)
 */
 void  BSP_OutsidePumpPwrOn(void)
 {
+    
     GPIO_SetBits(GPIOC, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 
 void  BSP_OutsidePumpPwrOff(void)
 {
+    
     GPIO_ResetBits(GPIOC, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 
@@ -1122,13 +1125,13 @@ void  BSP_OutsidePumpPwrOff(void)
 */
 void  BSP_StackShortCircuitActivationOn(void)
 {
-    GPIO_SetBits(GPIOB, BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(GPIOB, BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Stack Short Circuit Activation On...\n\r"));
 }
 
 void  BSP_StackShortCircuitActivationOff(void)
 {
-    GPIO_ResetBits(GPIOB, BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOB, BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Stack Short Circuit Activation Off...\n\r"));
 }
 /*
@@ -1160,12 +1163,12 @@ void  BSP_TailGasOutValvePwrOff(void)
 
 void  BSP_PureHydrogenGasOutValvePwrOn(void)
 {
-    GPIO_SetBits(GPIOE, BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(GPIOE, BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Pure Hydrogen Gas Out Valve power on...\n\r"));
 }
 void  BSP_PureHydrogenGasOutValvePwrOff(void)
 {
-    GPIO_ResetBits(GPIOE, BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOE, BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Pure Hydrogen Gas Out Valve power off...\n\r"));
 }
 

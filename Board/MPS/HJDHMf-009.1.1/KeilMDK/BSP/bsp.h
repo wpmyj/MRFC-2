@@ -520,6 +520,10 @@ void  BSP_StackShortCircuitActivationOff(void);
 
 void  BSP_PureHydrogenGasOutValvePwrOn(void);
 void  BSP_PureHydrogenGasOutValvePwrOff(void);
+
+void  BSP_TailGasOutValvePwrOn(void);
+void  BSP_TailGasOutValvePwrOff(void);
+    
 void  BSP_MakeVavuumValve2PwrOn(void);
 void  BSP_MakeVavuumValve3PwrOn(void);
 void  BSP_MakeVavuumValve4PwrOn(void);
@@ -529,6 +533,7 @@ void  BSP_MakeVavuumValve2PwrOff(void);
 void  BSP_MakeVavuumValve3PwrOff(void);
 void  BSP_MakeVavuumValve4PwrOff(void);
 void  BSP_MakeVavuumPumpPwrOff(void);
+
 /*
 ***************************************************************************************************
 *                                              SPEED CONTROL DEVICE SERVICES

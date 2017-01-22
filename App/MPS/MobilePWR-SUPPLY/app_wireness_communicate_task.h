@@ -35,7 +35,7 @@
 #define PRGM_TX_BUFF_SIZE       60
 #define PRGM_RX_BUFF_SIZE       16
 
-#define TX_MSG_SEND_QUEUE_SIZE          5
+#define TX_MSG_SEND_QUEUE_SIZE          10
 
 /* Send queue data status */
 #define EN_FREE             0

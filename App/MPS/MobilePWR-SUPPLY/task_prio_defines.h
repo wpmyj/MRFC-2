@@ -32,7 +32,7 @@
 #define  COMMUNICATE_TASK_PRIO                      5
 #define  COMMUNICATE_DATA_SEND_TASK_PRIO            6
 #define  COMMUNICATE_REQUEST_SEND_TASK_PRIO         7
-#define  MF210_COMMUNICATE_TASK_PRIO                  8
+#define  MF210_COMMUNICATE_TASK_PRIO                8
 
 
 #define  HYDRG_PRODUCER_DELAY_STOP_TASK_PRIO        10

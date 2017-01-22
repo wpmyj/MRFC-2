@@ -57,7 +57,7 @@
 #define RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR                          20  //12个数
 #define RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR                       40  // 液压4个数
 #define RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR                     50  //液位参数4个
-#define RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR                  60  //泵参数2个
+#define RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR                  60  //泵参数3个
 #define RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR                   70  //制氢风机参数4个
 #define RUN_PURIFY_AMP_INTEGRAL_VALUE                                   80  //电堆提纯膜间电荷量1个
 #define DRIVER_LAYER_CALIBRATED_LINEAR_ANA_SENSOR_PARAMETERS_OFFSET_ADDR  82  //驱动层线性传感器校准参数,28个数
@@ -208,7 +208,7 @@ void LoadApplicationLayerParameters()
         GetReformerTempCmpTblFromFlash(&g_stReformerTempCmpTbl);
         GetLqdPressCmpTblFromFlash(&g_stLqdPressCmpTbl);
         GetLqdHeightCmpTblFromFlash(&g_stLqdHeightCmpTbl);
-        GetStartHydrgPumpSpdParaFromFlash(&g_stStartHydrgPumpSpdPara);
+        GetStartHydrgPumpSpdParaFromFlash(&g_stStartHydrgPumpSpdPara);               
         GetStartHydrgFanSpdParaFromFlash(&g_stStartHydrgFanSpdPara);
         GetRunPurifyAmpIntegralValueFromFlash(&g_u16RunPurifyAmpIntegralValue);
         
@@ -435,7 +435,7 @@ static void StoreLqdPressCmpTbl(LIQUID_PRESSURE_CMP_LINES_Typedef *i_LqdPressCmp
 */
 static void GetLqdHeightCmpTblFromFlash(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmpTbl)
 {
-    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_LqdHeightCmpTbl, 4);
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_LqdHeightCmpTbl, 3);
 }
 
 static void GetDefaultLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmpTbl)
@@ -443,12 +443,11 @@ static void GetDefaultLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeig
     i_LqdHeightCmpTbl->AlarmlowerLiquidLevellimit = 70;
     i_LqdHeightCmpTbl->OpenAutomaticliquidValue = 100;
     i_LqdHeightCmpTbl->CloseAutomaticliquidValue = 200;
-    i_LqdHeightCmpTbl->AlarmUpperLiquidLevellimit = 230;//暂定
 }
 
 static void StoreLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmpTbl)
 {
-    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_LqdHeightCmpTbl, 4);
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_LqdHeightCmpTbl, 3);
 }
 
 /*
@@ -472,8 +471,8 @@ void GetStartHydrgPumpSpdParaFromFlash(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_Start
 static void GetDefaultStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
 {
     i_StartPumpSpdPara->PumpSpdIgniterFirstTime   = 190;
-    i_StartPumpSpdPara->PumpSpdIgniterSecondTime  = 250;
-    i_StartPumpSpdPara->PumpSpdAfterLiquidPressExceed4Kg  = 320;
+    i_StartPumpSpdPara->PumpSpdIgniterSecondTime  = 320;
+    i_StartPumpSpdPara->PumpSpdAfterLiquidPressExceed4Kg  = 250;//稳定运行的泵速
 }
 
 void StoreStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)

@@ -99,7 +99,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
 
     if(EN_START_PRGM_ONE_FRONT == GetSystemWorkStatu()) {
         
-        OSTaskResume(&Make_Vaccuum_FunctionTaskTCB,&err);//开始抽真空
+//        OSTaskResume(&Make_Vaccuum_FunctionTaskTCB,&err);//开始抽真空
         APP_TRACE_INFO(("Start program one front,fast heat 3 minutes...\n\r"));
         BSP_FastHeaterPwrOn();
         
@@ -138,11 +138,8 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
                     
                     APP_TRACE_INFO(("Ignite first time behind wait has been broken...\n\r"));
                     IgniterWorkForSeconds(0); 
-                    BSP_FastHeaterPwrOff();
-                    SetHydrgFanCtlSpdSmoothly(0,0,0,0);
                     SetPumpCtlSpd(0);
-                    SetSystemWorkStatu(EN_SHUTTING_DOWN);
-                    SetShutDownActionFlag(EN_DELAY_STOP_PART_ONE);
+                    BSP_FastHeaterPwrOff();
                     m_eIgniteStatu = EN_NOT_PASS;
                 }
             } else {
@@ -190,6 +187,7 @@ IGNITE_CHECK_STATU_Typedef IgniteSecondTime(float m_IgniteCheckTable2, float m_G
     BSP_LqdValve2_PwrOn();
     SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime);
     SetHydrgFanCtlSpdSmoothly(g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime,90,5,g_stStartHydrgFanSpdPara.FanSpdAfterIgniterSecondSuccessd);
+    
     IgniterWorkForSeconds(180);
 
     m_eIgniteStatu = EN_PASS;
@@ -280,7 +278,8 @@ void HydrgProducerManagerTask()
 
         SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);//开运行数字信号警报监测开关
         SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);//开运行模拟信号警报监测开关
-
+        SetHydrgProducerPumpRunningStartAutoAdjHookSwitch(DEF_ENABLED);//允許自動減泵速,在泵速降到300以后会自动失能
+        
         while(DEF_TRUE) {
             OSSemPend(&HydrgProducerManagerStopSem, 
                        OS_CFG_TICK_RATE_HZ, 
@@ -295,6 +294,7 @@ void HydrgProducerManagerTask()
 
         SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);
         SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);
+        
         APP_TRACE_INFO(("Hydrogen producer manager stop...\n\r"));
     }
 }
