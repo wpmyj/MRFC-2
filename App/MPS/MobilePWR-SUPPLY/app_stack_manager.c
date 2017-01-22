@@ -164,7 +164,7 @@ void StackManagerTask(void)
         BSP_HydrgOutValvePwrOn();
         SetStackFanCtlSpd(1000);
         OSTimeDlyHMSM(0, 0, 3, 0, OS_OPT_TIME_HMSM_STRICT, &err);
-        SetStackFanCtlSpd(500);
+        SetStackFanCtlSpd(300);
         OSTimeDlyHMSM(0, 0, 2, 0, OS_OPT_TIME_HMSM_STRICT, &err);
         BSP_HydrgOutValvePwrOff();
         APP_TRACE_INFO(("Finish the stack start purify...\n\r"));
@@ -174,14 +174,13 @@ void StackManagerTask(void)
 
 //        if(fVoltage >= 48){//只有当气压达到45KPA的时候，电压大于48v电堆才进入工作状态  
             BSP_DCConnectValvePwrOn();
-//            SetStackWorkStatu(EN_IN_WORK);
 //        }
 
         StackHydrogenYieldMatchingOffsetValueMonitorTaskCreate();//电堆匹氢偏移量监测任务创建
         
         SetStackIsPulledStoppedMonitorHookSwitch(DEF_ENABLED);//监测电堆是否被拉停
         SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(DEF_ENABLED);
-        SetDCModuleAutoAdjustTaskSwitch(DEF_ENABLED);//DC自动限流任务开关
+        SetDCModuleAutoAdjustTaskSwitch(DEF_ENABLED);//DC动态限流任务开关
         SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(DEF_ENABLED);//定时清零一次排气次数
         SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);
         SetStackFanSpdAutoAdjSwitch(DEF_ENABLED);
@@ -229,6 +228,7 @@ void StackManagerTask(void)
             }                    
         }
         SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(DEF_DISABLED);
+        SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(DEF_DISABLED);
         SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);
         SetDCModuleAutoAdjustTaskSwitch(DEF_DISABLED);
         SetStackIsPulledStoppedMonitorHookSwitch(DEF_DISABLED);
@@ -413,8 +413,14 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
     while(DEF_TRUE) {
         
         OSTaskSuspend(NULL, &err);
+        APP_TRACE_INFO(("Resume Stack V-hymo value monitor task...\n\r"));
         
         while(DEF_TRUE) {
+            
+            if(g_u8StackHydrogenYieldMatchingOffsetValueMonitorTaskSw == DEF_DISABLED) {
+                APP_TRACE_INFO(("Stack V-hymo value monitor task break...\n\r"));
+                break;
+            }
             
             OSTaskSemPend(0,   //接收泄压阀输入脉冲中断中的时间参数记录完成任务信号量
                           OS_OPT_PEND_BLOCKING,
@@ -440,7 +446,7 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
                     u8HydrogenYieldLackCount = 0;
 
                     if(u8HydrogenYieldEnoughCount >= 5) {
-                        OSTaskSemPost(&DCModuleAutoAdjustTaskTCB,
+                        OSTaskSemPost(&DCModuleDynamicAdjustTaskTCB,
                                       OS_OPT_POST_1,
                                       &err);
                         SetDCModuleCurrentLimitingPointImproveFlag(DEF_SET);
@@ -452,7 +458,7 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
                     u8HydrogenYieldEnoughCount = 0;
 
                     if(u8HydrogenYieldLackCount >= 5) {
-                        OSTaskSemPost(&DCModuleAutoAdjustTaskTCB,
+                        OSTaskSemPost(&DCModuleDynamicAdjustTaskTCB,
                                       OS_OPT_POST_1,
                                       &err);
                         SetDcModuleCurrentLimitingPointReduceFlag(DEF_SET);
@@ -463,11 +469,7 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
                     u8HydrogenYieldEnoughCount = 0;
                     u8HydrogenYieldLackCount = 0;
                 }
-            }
-
-            if(g_u8StackHydrogenYieldMatchingOffsetValueMonitorTaskSw == DEF_DISABLED) {
-                break;
-            }
+            }  
         }
     }
 }

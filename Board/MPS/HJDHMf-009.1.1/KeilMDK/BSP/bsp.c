@@ -1163,12 +1163,12 @@ void  BSP_TailGasOutValvePwrOff(void)
 
 void  BSP_PureHydrogenGasOutValvePwrOn(void)
 {
-    GPIO_SetBits(GPIOE, BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(GPIOB, BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Pure Hydrogen Gas Out Valve power on...\n\r"));
 }
 void  BSP_PureHydrogenGasOutValvePwrOff(void)
 {
-    GPIO_ResetBits(GPIOE, BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOB, BSP_GPIOB_RSVD2_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Pure Hydrogen Gas Out Valve power off...\n\r"));
 }
 
@@ -1689,7 +1689,7 @@ static void  BSP_StackFanCtrInit(void)
     TIM_DeInit(TIM4);
     /* Time base configuration */
     TIM_TimeBaseStructure.TIM_Period = TIMER_UPDATE_NUMBER; //当定时器从0计数到999，即为1000次，为一个定时周期50ms
-    TIM_TimeBaseStructure.TIM_Prescaler = 3599;     //设置预分频：72MHz/3600 = 20KHz
+    TIM_TimeBaseStructure.TIM_Prescaler = 7199;     //设置预分频：72MHz/7200 = 10KHz
     TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1; //设置时钟分频系数：不分频
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;  //向上计数模式
 
@@ -1898,6 +1898,7 @@ static void EXTI15_10_StatusCheck_IRQHandler()
             StackVentAirTimeParameter.fVentAirTimeIntervalValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录排气间隔时间
             StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num
             u8VentAirTimeIntervalRecordFlag = YES;
+            
         } else {
             StackVentAirTimeParameter.fDecompressVentTimeValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录泄压时间
             StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num

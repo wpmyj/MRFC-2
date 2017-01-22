@@ -49,7 +49,7 @@
 ***************************************************************************************************
 */
 extern      OS_TCB      DCLimitCurrentSmoothlyTaskTCB;
-extern      OS_TCB      DCModuleAutoAdjustTaskTCB;
+extern      OS_TCB      DCModuleDynamicAdjustTaskTCB;
 /*
 ***************************************************************************************************
 *                                   EXPORTED GLOABLE VARIABLE DECLARATIONS
@@ -63,7 +63,7 @@ extern      float   fVvalueNow;
 ***************************************************************************************************
 */
 
-void DcModuleAutoAdjustTaskCreate(void);
+void DcModuleDynamicAdjustTaskCreate(void);
 
 void SetDCModuleCurrentLimitingPointImproveFlag(uint8_t i_NewStatu);
 uint8_t GetDcModuleCurrentLimitingPointImproveFlagStatus(void);

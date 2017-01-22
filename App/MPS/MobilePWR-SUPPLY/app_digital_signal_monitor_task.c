@@ -52,8 +52,8 @@ static      CPU_STK_8BYTE_ALIGNED     AnaSigMonitorTaskStk[DIG_SIGNAL_MONITOR_TA
 */
 static  uint16_t g_u16OriginalTempFilter[2][NMB_OF_AVERAGE_TEMPERATURE_SAMPLE] = {0};   //原始温度滤波数组
 static  uint8_t  g_u8DigTempFilterOperationCursor = 0;
-static  float    g_fAnaTempSum[2] = {0};
-static  float    g_fAnaTemp[2] = {0};
+static  float    g_fAnaTempSum[2] = {0.0,0.0};
+static  float    g_fAnaTemp[2] = {0.0,0.0};
 
 static  uint8_t  g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw = DEF_DISABLED;   //制氢机第一次点火后的数字信号监测任务开关
 static  uint8_t  g_u8HydrgProducerDigSigRunningMonitorAlarmHookSw = DEF_DISABLED;            //制氢机运行数字信号监测警报开关

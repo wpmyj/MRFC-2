@@ -734,7 +734,7 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
 */
 static void LoadFuelCellRealTimeWorkInfoPartB(uint8_t i_uint8_tIsHistoryData, uint8_t *i_pRealTimeWorkInfo)
 {
-    uint16_t   u16DecompressCountPerMin = 0;
+    uint16_t   u8DecompressCountPerMin = 0;
     uint16_t   u16BatteryVoltage = 0.0;
     uint16_t   u16BatteryCurrent = 0.0;
 
@@ -752,9 +752,9 @@ static void LoadFuelCellRealTimeWorkInfoPartB(uint8_t i_uint8_tIsHistoryData, ui
         *(i_pRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_RUNNING_INFO_B_2_LENGTH;
 
         //电堆一分钟内实时的泄压排气次数
-        u16DecompressCountPerMin = GetRealTimePassiveDecompressCountPerMinutes();
-        *(i_pRealTimeWorkInfo + STACK_DECOMPRESS_COUNT_PER_MINUTES_HIGH) = (uint8_t)((u16DecompressCountPerMin & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + STACK_DECOMPRESS_COUNT_PER_MINUTES_LOW) = (uint8_t)(u16DecompressCountPerMin & 0xFF);
+        u8DecompressCountPerMin = GetPassiveDecompressCountPerMinutes();
+        *(i_pRealTimeWorkInfo + STACK_DECOMPRESS_COUNT_PER_MINUTES_HIGH) = 0;
+        *(i_pRealTimeWorkInfo + STACK_DECOMPRESS_COUNT_PER_MINUTES_LOW) = (uint8_t)(u8DecompressCountPerMin & 0xFF);
 
         //电池电压
 //        u16BatteryVoltage = (uint16_t)(GetSrcAnaSig(BATTERY_VOLTAGE) * 100);

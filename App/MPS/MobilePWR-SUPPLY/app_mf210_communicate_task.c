@@ -28,6 +28,7 @@
 #include "bsp_speed_adjust_device.h"
 #include <string.h>
 #include "bsp_ser.h"
+#include "app_stack_manager.h"
 /*
 ***************************************************************************************************
 *                                       MICRO DEFINE
@@ -88,8 +89,8 @@ static void LoadHydrogenProducerRealTimeInfo(void)
     Full_TxBuf[5] = (u8)((uint16_t)(GetSrcAnaSig(STACK_VOLTAGE) * 10)/100);                                             //Vvalue / 100;
     Full_TxBuf[6] = (u8)((uint16_t)((GetSrcAnaSig(STACK_CURRENT) )* (GetSrcAnaSig(STACK_VOLTAGE))) % 100);      //Power / 10000;
     Full_TxBuf[7] = (u8)((uint16_t)((GetSrcAnaSig(STACK_CURRENT) )* (GetSrcAnaSig(STACK_VOLTAGE)))  / 100);      //Power ;    
-    Full_TxBuf[8] =  ((uint16_t)GetSrcAnaSig(STACK_TEMP)& 0xFF);//Temperature1;
-    Full_TxBuf[9] =   GetSrcAnaSig(HYDROGEN_PRESS_1);                           //H2Press;
+    Full_TxBuf[8] =  ((uint16_t)GetSrcAnaSig(STACK_TEMP)& 0xFF);                    //Temperature1;
+    Full_TxBuf[9] =   GetSrcAnaSig(HYDROGEN_PRESS_1);                               //H2Press;
     
     stStackWorkTimeThisTime = GetStackProductTimeThisTime();
     Full_TxBuf[10] = (uint8_t)(stStackWorkTimeThisTime.second);                    //Full_Timer_Buffer[0];
@@ -98,22 +99,18 @@ static void LoadHydrogenProducerRealTimeInfo(void)
     Full_TxBuf[13] = (uint8_t)((stStackWorkTimeThisTime.hour & 0xFF00) >> 8);      //Full_Timer_Buffer[3];
     Full_TxBuf[14] = 0;
     
-//    Full_TxBuf[15] = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyThisTime % 1000 ) & 0xFF);            //Energy_Array[0];
-//    Full_TxBuf[16] = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyThisTime / 1000) & 0xFF00) >> 8);   //(uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyThisTime % 1000) & 0xFF00) >> 8);   //Energy_Array[1];
-//    Full_TxBuf[17] = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyThisTime % 1000) & 0xFF00) >> 8);   //(uint8_t)((uint16_t)(u32IsolatedGenratedEnergyThisTime / 1000) & 0xFF);            //Energy_Array[2];
+    u32IsolatedGenratedEnergyThisTime = (uint32_t)(GetIsolatedGenratedEnergyThisTime() * 10);
+    Full_TxBuf[15] = (uint8_t)((u32IsolatedGenratedEnergyThisTime) % 100);                     //Energy_Array[0];
+    Full_TxBuf[16] = (uint8_t)(u32IsolatedGenratedEnergyThisTime  % 10000 / 100);             //Energy_Array[1];
+    Full_TxBuf[17] = (uint8_t)((u32IsolatedGenratedEnergyThisTime % 1000000 / 10000));       //Energy_Array[2];
+    Full_TxBuf[18] = (uint8_t)(u32IsolatedGenratedEnergyThisTime  / 1000000);                 //Energy_Array[3];
     
-    u32IsolatedGenratedEnergyThisTime = (uint32_t)(GetIsolatedGenratedEnergyThisTime());
-    Full_TxBuf[15] = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyThisTime) % 100));                     //Energy_Array[0];
-    Full_TxBuf[16] = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyThisTime ) % 10000 / 100);             //Energy_Array[1];
-    Full_TxBuf[17] = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyThisTime) % 1000000 / 10000));       //Energy_Array[2];
-    Full_TxBuf[18] = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyThisTime ) / 1000000);                 //Energy_Array[3];
-    
-    Full_TxBuf[19] = 0;//H2Towork;
-    Full_TxBuf[20] = 0;//H2ToStop;
-    Full_TxBuf[21] = 0;//LowGes_press_err;
-    Full_TxBuf[22] = 0;//HighGes_press_err;
-    Full_TxBuf[23] = 0;//High_Temper_err;
-    Full_TxBuf[24] = 0;//Vvalue_err;
+    Full_TxBuf[19] = 0;                                                     //H2Towork;
+    Full_TxBuf[20] = 0;                                                     //H2ToStop;
+    Full_TxBuf[21] = 0;                                                     //LowGes_press_err;
+    Full_TxBuf[22] = 0;                                                     //HighGes_press_err;
+    Full_TxBuf[23] = 0;                                                     //High_Temper_err;
+    Full_TxBuf[24] = 0;                                                     //Vvalue_err;
     Full_TxBuf[25] = 0;
     Full_TxBuf[26] = 0x4E;
     Full_TxBuf[27] = 0x54;
@@ -121,12 +118,6 @@ static void LoadHydrogenProducerRealTimeInfo(void)
     Full_TxBuf[29] = 0x30;
     Full_TxBuf[30] = 0x39;
     Full_TxBuf[31] = 0x39;
-
-//NT0021    4E 54 30 30 32 31
-//NT0003    4E 54 30 30 30 33
-//NT0020    4E 54 30 30 32 30
-//NT0022    4E 54 30 30 32 32
-//NT0023    4E 54 30 30 32 37
 
 }
 /*
@@ -142,50 +133,57 @@ static void LoadHydrogenProducerRealTimeInfo(void)
 */
 static void LoadFuelCellRealTimeInfo(void)
 {
-    SYSTEM_TIME_Typedef     stHydrgProduceTimeThisTime = {0}, stHydrgProduceTimeTotal = {0};
-    stHydrgProduceTimeThisTime = GetHydrgProduceTimeThisTime();
+    SYSTEM_TIME_Typedef     stHydrgProduceTimeThisTime = {0,0,0}, stHydrgProduceTimeTotal = {0,0,0};
+    u8 u8DecompressCountPerMin = 0;
+    uint16_t u16PumpFeedbackSpeed = 0;
+    uint16_t flqdHeight = 0;
+    uint16_t u16ReformerTemp  = 0;
+    uint16_t u16FireOrRodTemp  = 0;
     
     Uatr_TxBuf[0] = 0xF7; //信道
     Uatr_TxBuf[1] = 0xF8;
-    Uatr_TxBuf[2] = (uint8_t)(((uint16_t)GetReformerTemp() & 0xFF));       //Date_Temperature1_Low;   //温度1低两位 十位个位
-    Uatr_TxBuf[3] = (uint8_t)(((uint16_t)GetReformerTemp() & 0xFF00) >> 8);          //Date_Temperature1_High;  //温度1高两位 千位百位
-    Uatr_TxBuf[4] = (uint8_t)(((uint16_t)GetFireOrRodTemp() & 0xFF));    // Date_Temperature2_Low;   //温度2低两位 十位个位
-    Uatr_TxBuf[5] = (uint8_t)(((uint16_t)GetFireOrRodTemp() & 0xFF00) >> 8);          //Date_Temperature2_High;  //温度2高两位 千位百位
-    Uatr_TxBuf[6] =  0;                                                         //HOT;    //加热指示灯
-    Uatr_TxBuf[7] =  0;                                                          //RUN;    //运行指示灯
-    Uatr_TxBuf[8] =  0;                                                          //FIRE;   //点火指示灯
-    Uatr_TxBuf[9] =  0;                                                          //BLOWER; //鼓风指示灯
-    Uatr_TxBuf[10] = 0;                                                          //WATER; //液位指示灯
-    Uatr_TxBuf[11] = stHydrgProduceTimeThisTime.second;                          //Device_Timer_Buffer[0]; //秒
-    Uatr_TxBuf[12] = stHydrgProduceTimeThisTime.minute;                          //Device_Timer_Buffer[1]; //分
-    Uatr_TxBuf[13] = (uint8_t)(stHydrgProduceTimeThisTime.hour & 0xFF);          //Device_Timer_Buffer[2]; //时 十位个位
-    Uatr_TxBuf[14] = (uint8_t)((stHydrgProduceTimeThisTime.hour & 0xFF00) >> 8); //Device_Timer_Buffer[3]; //时 千位百位
-    Uatr_TxBuf[15] = 0;                                                          //Device_Timer_Buffer[4]; //时 十万位万位
-    Uatr_TxBuf[16] = stHydrgProduceTimeTotal.minute;                             //Device_Time_Buffer[0]; //累计使用次数 十位个位
-    Uatr_TxBuf[17] = (uint8_t)(stHydrgProduceTimeTotal.hour & 0xFF);             //Device_Time_Buffer[1];  //累计使用次数  千位百位
-    Uatr_TxBuf[18] = (uint8_t)((stHydrgProduceTimeTotal.hour & 0xFF00) >> 8);    //Device_Time_Buffer[2];  //累计使用次数  十万位万位
-    Uatr_TxBuf[19] = 0;                                                          //SpeedPump1;
-    Uatr_TxBuf[20] = 0;                                                          //SpeedPump2;
-    Uatr_TxBuf[21] = GetPumpCtlSpd() / 10 ;                                            //Pump_CountValue;
-    Uatr_TxBuf[22] = 0;                                                          //Get_H2Concentration1;   //氢气泄露报警值0-50PP
-    Uatr_TxBuf[23] = 124;                                                          //Get_WaterValue1 / 2;  //液位高度: 0-500MM
-
-//    if(    )0;//Get_PumpPress1 <= 255)   //液压显示
-//    {
-//        Uatr_TxBuf[24] = 0;//Get_PumpPress1;
-//    }
-//    else
-//    {
-//        Uatr_TxBuf[24] = 255;
-//    }
-    Uatr_TxBuf[24] = (u8)((uint16_t)(GetSrcAnaSig(LIQUID_PRESS)*10));
-    Uatr_TxBuf[25] = 0;                                                     //Pump_Blower_Number[0]; //制氢机启动状态反馈信号0x01有效，其他数据无效
-    Uatr_TxBuf[26] = 0;                                                     //Pump_Blower_Number[1]; //制氢机待机状态反馈信号0x02有效，其他数据无效
-    Uatr_TxBuf[27] = 0;                                                     //Pump_Blower_Number[2]; //制氢机运行状态反馈信号0x03有效，其他数据无效
-//  Uatr_TxBuf[28]=Pump_Blower_Number[3]; //制氢机停机状态反馈信号0x04有效，其他数据无效
-//  Uatr_TxBuf[29]=0;   //制氢机保养提示！1有效
-    Uatr_TxBuf[30] = (uint8_t)GetHydrgFanCurrentCtlSpd()  ;    //Blower_Value;              //鼓风机值
-    Uatr_TxBuf[31] = 0;//g_u8PassiveDecompressCountComputRegister;
+    
+    u16ReformerTemp = (uint16_t) GetReformerTemp();
+    Uatr_TxBuf[2] =   (uint8_t)(u16ReformerTemp  % 100);                                //Date_Temperature1_Low;   //温度1低两位 十位个位
+    Uatr_TxBuf[3] =   (uint8_t)(u16ReformerTemp / 100);                                //Date_Temperature1_High;  //温度1高两位 千位百位
+    
+    u16FireOrRodTemp = (uint16_t)GetFireOrRodTemp();
+    Uatr_TxBuf[4] =   (uint8_t)(u16FireOrRodTemp  % 100);                                // Date_Temperature2_Low;   //温度2低两位 十位个位
+    Uatr_TxBuf[5] =   (uint8_t)(u16FireOrRodTemp / 100);                               //Date_Temperature2_High;  //温度2高两位 千位百位
+    Uatr_TxBuf[6] =  0;                                                                 //HOT;    //加热指示灯
+    Uatr_TxBuf[7] =  0;                                                                 //RUN;    //运行指示灯
+    Uatr_TxBuf[8] =  0;                                                                 //FIRE;   //点火指示灯
+    Uatr_TxBuf[9] =  0;                                                                 //BLOWER; //鼓风指示灯
+    Uatr_TxBuf[10] = 0;                                                                 //WATER; //液位指示灯
+    
+    stHydrgProduceTimeThisTime = GetHydrgProduceTimeThisTime();
+    Uatr_TxBuf[11] = stHydrgProduceTimeThisTime.second;                                 //Device_Timer_Buffer[0]; //秒
+    Uatr_TxBuf[12] = stHydrgProduceTimeThisTime.minute;                                 //Device_Timer_Buffer[1]; //分
+    Uatr_TxBuf[13] = (uint8_t)(stHydrgProduceTimeThisTime.hour & 0xFF);                 //Device_Timer_Buffer[2]; //时 十位个位
+    Uatr_TxBuf[14] = (uint8_t)((stHydrgProduceTimeThisTime.hour & 0xFF00) >> 8);        //Device_Timer_Buffer[3]; //时 千位百位
+    Uatr_TxBuf[15] = 0;                                                                 //Device_Timer_Buffer[4]; //时 十万位万位
+    Uatr_TxBuf[16] = stHydrgProduceTimeTotal.minute;                                    //Device_Time_Buffer[0]; //累计使用次数 十位个位
+    Uatr_TxBuf[17] = (uint8_t)(stHydrgProduceTimeTotal.hour & 0xFF);                    //Device_Time_Buffer[1];  //累计使用次数  千位百位
+    Uatr_TxBuf[18] = (uint8_t)((stHydrgProduceTimeTotal.hour & 0xFF00) >> 8);           //Device_Time_Buffer[2];  //累计使用次数  十万位万位           
+    
+    u16PumpFeedbackSpeed = GetPumpFeedBackSpd();                                        //泵速反馈
+    Uatr_TxBuf[19] = (uint8_t)(u16PumpFeedbackSpeed / 100);                         //水泵转速千位百位
+    Uatr_TxBuf[20] = (uint8_t)(u16PumpFeedbackSpeed  % 100);                        //水泵转速十位个位
+    Uatr_TxBuf[21] = GetPumpCtlSpd() / 10 ;                                             //Pump_CountValue;
+    Uatr_TxBuf[22] = 0;                                                                 //Get_H2Concentration1;   //氢气泄露报警值0-50PP
+    
+    flqdHeight = GetSrcAnaSig(LIQUID_LEVEL);
+    Uatr_TxBuf[23] = flqdHeight / 2;                                                    //Get_WaterValue1 / 2;  //液位高度: 0-500MM
+    Uatr_TxBuf[24] = (uint8_t)((uint16_t)(GetSrcAnaSig(LIQUID_PRESS)*10));
+    Uatr_TxBuf[25] = 0;                                                                 //Pump_Blower_Number[0]; //制氢机启动状态反馈信号0x01有效，其他数据无效
+    Uatr_TxBuf[26] = 0;                                                                 //Pump_Blower_Number[1]; //制氢机待机状态反馈信号0x02有效，其他数据无效
+    Uatr_TxBuf[27] = 0;                                                                 //Pump_Blower_Number[2]; //制氢机运行状态反馈信号0x03有效，其他数据无效
+    Uatr_TxBuf[28] = 0;                                                                   //制氢机停机状态反馈信号0x04有效，其他数据无效
+    Uatr_TxBuf[29] = 0;                                                                   //制氢机保养提示！1有效
+    Uatr_TxBuf[30] = (uint8_t)(GetHydrgFanCurrentCtlSpd() / 100) ;                             //鼓风机值
+    
+    u8DecompressCountPerMin = GetPassiveDecompressCountPerMinutes();
+    Uatr_TxBuf[31] = (uint8_t)(u8DecompressCountPerMin & 0xFF);
 }
 
 

@@ -159,7 +159,7 @@ void  AnaSigMonitorTask(void *p_arg)
 
         //监测电堆是否被拉停
         if(g_u8StackIsPulledStoppedMonitorHookSw == DEF_ENABLED) {
-            JudgeWhetherTheStackIsPulledStoppedMonitorHook();
+//            JudgeWhetherTheStackIsPulledStoppedMonitorHook();
         }
         
         if(g_u8HydrgProducerPumpRunningStartAutoAdjHookSw == DEF_ENABLED) {
@@ -340,13 +340,11 @@ void StackAnaSigAlarmRunningMonitorHook(void)
                     APP_TRACE_INFO(("Stack temp is above the high temp protect line,stop output...\n\r"));
                 }
             }
-        } else if(fStackTemp < 15) {
+        } else if(fStackTemp < 10) {
             AlarmCmd(STACK_TEMP_LOW_ALARM,GENERAL_GRADE,ON);
 
-            if(fStackTemp < 10) {
-    //            CmdShutDown();      //关机命令
-                APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
-            }
+//            CmdShutDown();      //关机命令
+            APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
         } else {
             if((fStackTemp >= 20) && (fStackTemp <= 50)) {//系统恢复到正常温度,恢复输出
                 if(StackTempHighFlag == YES){ 

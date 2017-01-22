@@ -189,7 +189,7 @@ static  void  AppTaskStart(void *p_arg)
     
 //    StackShortCircuitTaskCreate();//电堆短路活化任务
     
-    DcModuleAutoAdjustTaskCreate();    //DC动态限流调节任务,平滑限流任务 
+    DcModuleDynamicAdjustTaskCreate();    //DC动态限流调节任务,平滑限流任务 
 
     HydrgProducerDlyStopTaskCreate();  
 
@@ -201,8 +201,6 @@ static  void  AppTaskStart(void *p_arg)
     OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
 
     APP_TRACE_INFO(("Running top Task...\n\r"));
-    
-    OSTaskResume(&Make_Vaccuum_FunctionTaskTCB,&err);//开始抽真空
 
     while(DEF_TRUE) {
         if(EN_THROUGH == CheckAuthorization()) {

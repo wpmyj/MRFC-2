@@ -101,7 +101,7 @@ void StackShortCircuitTaskCreate(void)
 *
 * Returns     : none.
 *
-* Notes       : 一小时一次.
+* Notes       : 半小时一次.
 ***************************************************************************************************
 */
 static void  StackShortCircuitTask(void *p_arg)                   
@@ -111,8 +111,7 @@ static void  StackShortCircuitTask(void *p_arg)
     while(DEF_TRUE)
     {
         OSTaskSuspend(NULL, &err);
-        OSTaskSuspend(&DCLimitCurrentSmoothlyTaskTCB, &err);//挂起平滑限流任务
-        OSTaskSuspend(&DCModuleAutoAdjustTaskTCB, &err);//挂起动态限流任务
+        OSTaskSuspend(&DCModuleDynamicAdjustTaskTCB, &err);//挂起动态限流任务
         
         APP_TRACE_INFO(("Stack short circuit task resume...\n\r"));   
              

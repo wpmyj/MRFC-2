@@ -764,6 +764,7 @@ void AlarmCmd(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind, SYSTEM_ALARM_GRADE_
             g_stSystemAlarmsInf.AlarmCode |= (1 << (u8)m_enSystemAlarmKind);
         }
     } else { //否则什么也不做
+        
     }
     
     if(g_stSystemAlarmsInf.AlarmCode != 0){

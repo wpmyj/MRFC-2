@@ -265,10 +265,12 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
     
 #elif __HYDROGEN_GENERATOR_MODULE
     SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER);
+    OSTaskResume(&Make_Vaccuum_FunctionTaskTCB,&err);//开始抽真空
 #elif __FUEL_CELL_MODULE
-    SetWorkMode(EN_WORK_MODE_FUEL_CELL);
+    SetWorkMode(EN_WORK_MODE_FUEL_CELL);//发电模式下不需要抽真空
 #else
     SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL);
+    OSTaskResume(&Make_Vaccuum_FunctionTaskTCB,&err);//开始抽真空
 #endif
 
     eWorkMode = GetWorkMode();

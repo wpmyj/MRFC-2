@@ -471,8 +471,8 @@ void GetStartHydrgPumpSpdParaFromFlash(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_Start
 static void GetDefaultStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
 {
     i_StartPumpSpdPara->PumpSpdIgniterFirstTime   = 190;
-    i_StartPumpSpdPara->PumpSpdIgniterSecondTime  = 320;
-    i_StartPumpSpdPara->PumpSpdAfterLiquidPressExceed4Kg  = 250;//稳定运行的泵速
+    i_StartPumpSpdPara->PumpSpdIgniterSecondTime  = 360;
+    i_StartPumpSpdPara->PumpSpdAfterLiquidPressExceed4Kg  = 320;//稳定运行的泵速
 }
 
 void StoreStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)

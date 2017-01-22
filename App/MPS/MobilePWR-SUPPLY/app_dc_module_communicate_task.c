@@ -43,7 +43,7 @@
 */
 
 OS_TCB      DCLimitCurrentSmoothlyTaskTCB ;
-OS_TCB      DCModuleAutoAdjustTaskTCB ;
+OS_TCB      DCModuleDynamicAdjustTaskTCB ;
 
 static      CPU_STK     DC_LIMIT_CURRENT_SMOOTHLY_TASK_STK[DC_lIMIT_CURRENT_SMOOTHLY_TASK_SIZE];
 static      CPU_STK     DC_MODULE_ADJUST_TASK_STK[DC_MODULE_ADJUST_TASK_SIZE];
@@ -69,11 +69,11 @@ float   fVvalueNow = (float)VOLTAGE_LIMIT_MAX;
 ***************************************************************************************************
 */
 
-static void DcModuleAutoAdjustTask(void *p_arg);
+static void DcModuleDynamicAdjustTask(void *p_arg);
 static void DcModuleLimitCurrentSmoothlyTask(void *p_arg);
 /*
 ***************************************************************************************************
-*                                      DcModuleAutoAdjustTaskCreate()
+*                                      DcModuleDynamicAdjustTaskCreate()
 *
 * Description:  Create DC Module Adjust Task .
 *
@@ -84,7 +84,7 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg);
 * Note(s)    :  none.
 ***************************************************************************************************
 */
-void DcModuleAutoAdjustTaskCreate(void)
+void DcModuleDynamicAdjustTaskCreate(void)
 {
     OS_ERR  err;
     uint8_t u8RxLength = 0;
@@ -92,9 +92,9 @@ void DcModuleAutoAdjustTaskCreate(void)
     
     Bsp_DcModuleConmunicateInit();//485初始化
     //DC动态限流任务
-    OSTaskCreate((OS_TCB *)&DCModuleAutoAdjustTaskTCB,                    // Create the start task
+    OSTaskCreate((OS_TCB *)&DCModuleDynamicAdjustTaskTCB,                    // Create the start task
                  (CPU_CHAR *)"DC Module Adjust Task Create",
-                 (OS_TASK_PTR) DcModuleAutoAdjustTask,
+                 (OS_TASK_PTR) DcModuleDynamicAdjustTask,
                  (void *) 0,
                  (OS_PRIO) DC_MODULE_ADJUST_TASK_PRIO,
                  (CPU_STK *)&DC_MODULE_ADJUST_TASK_STK[0],
@@ -159,7 +159,7 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
     while(DEF_TRUE) { 
         
         OSTaskSuspend(NULL, &err);
-        OSTaskSuspend(&DCModuleAutoAdjustTaskTCB, &err);//挂起动态限流任务
+        APP_TRACE_INFO(("Resume Limit Current Smoothly Task...\n\r"));
         
         fIvalueNow = 0.0;//重新开始限流   
         Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
@@ -181,7 +181,8 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
                     
                     APP_TRACE_INFO(("Smoothly current limit finished ...\n\r")); 
 //                    OSTaskResume(&StackShortCircuitTaskTCB,&err);//恢复电堆短路活化任务
-                    OSTaskResume(&DCModuleAutoAdjustTaskTCB,&err);//恢复动态限流任务
+                    SetDCModuleAutoAdjustTaskSwitch(DEF_ENABLED);   //开动态限流开关
+                    OSTaskResume(&DCModuleDynamicAdjustTaskTCB,&err);//恢复动态限流任务
                     break;//平滑限流完成  
                 }
                 u8CurrentLimitDelayCount = 0;
@@ -200,7 +201,7 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
 }
 /*
 ***************************************************************************************************
-*                                   DcModuleAutoAdjustTask()
+*                                   DcModuleDynamicAdjustTask()
 *
 * Description:  DC Module adjust Voltage and current task.
 *
@@ -212,13 +213,19 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
 ***************************************************************************************************
 */
 
-static void DcModuleAutoAdjustTask(void *p_arg)
+static void DcModuleDynamicAdjustTask(void *p_arg)
 {
     OS_ERR  err;
 
     OSTaskSuspend(NULL, &err);
+    APP_TRACE_INFO(("Resume dynamic current limit task ...\n\r"));
     
     while(DEF_TRUE) {
+        
+        if(g_u8DCModuleDynamicAdjustTaskSw == DEF_DISABLED){
+            APP_TRACE_INFO(("Dynamic current limit task break ...\n\r"));
+            break;
+        }
                   
         OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 8,//隔8s请求匹氢偏移监测任务的限流调节任务信号量
                       OS_OPT_PEND_BLOCKING,
@@ -232,7 +239,7 @@ static void DcModuleAutoAdjustTask(void *p_arg)
                     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
                     Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
                     SetDCModuleCurrentLimitingPointImproveFlag(DEF_CLR);
-                    APP_TRACE_INFO(("DC outPut current limit point increase,the IvalueNow is %.2f ...\n\r", fIvalueNow));
+                    APP_TRACE_INFO(("DC dynamic current limit point increase,the IvalueNow is %.2f ...\n\r", fIvalueNow));
                 }
             } else if(DEF_SET == g_u8DCModuleCurrentLimitingPointReduceFlag) {
                 if(fIvalueNow >= CURRENT_LIMIT_MIN) { //降低限流点
@@ -240,7 +247,7 @@ static void DcModuleAutoAdjustTask(void *p_arg)
                     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
                     Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
                     SetDcModuleCurrentLimitingPointReduceFlag(DEF_CLR);
-                    APP_TRACE_INFO(("DC outPut current limit point decrease,the IvalueNow is %.2f ...\n\r", fIvalueNow));
+                    APP_TRACE_INFO(("DC dynamic current limit point decrease,the IvalueNow is %.2f ...\n\r", fIvalueNow));
                 }
             } else {}
                 
@@ -248,14 +255,9 @@ static void DcModuleAutoAdjustTask(void *p_arg)
             
             Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
             Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
-            APP_TRACE_INFO(("DC current limit point keep the same,the IvalueNow is %.2f...\n\r",fIvalueNow));            
+            APP_TRACE_INFO(("DC dynamic current limit point keep the same,the IvalueNow is %.2f...\n\r",fIvalueNow));            
         } else {
-            APP_TRACE_INFO(("DC module Task Sem Pend err code is %d...\n\r", err));
-        }
-        
-        if(g_u8DCModuleDynamicAdjustTaskSw == DEF_DISABLED){
-            APP_TRACE_INFO(("Suspend dynamic current limit task ...\n\r"));
-            break;
+            APP_TRACE_INFO(("DC dynamic Task Sem Pend err code is %d...\n\r", err));
         }
     }
 }
