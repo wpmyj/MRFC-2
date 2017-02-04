@@ -356,6 +356,7 @@ void HydrgProducerManagerDlyStopTask(void)
         APP_TRACE_INFO(("The Hydrogen producer manager start to delay stop...\n\r"));
         IgniterWorkForSeconds(0);//防止关机时，点火器因未到定时时间而继续运行，故将其关闭
         SetPumpCtlSpd(0);
+        SetPumpExpectSpdSmoothly(0,10);
         BSP_LqdValve2_PwrOff();
 //        SetHydrgFanCtlSpd(2000);
         SetHydrgFanCtlSpdSmoothly(2000,0,0,2000);

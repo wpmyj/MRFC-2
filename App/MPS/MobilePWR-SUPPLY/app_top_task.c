@@ -28,7 +28,7 @@
 #include "app_hydrg_producer_manager.h"
 #include "app_stack_manager.h"
 #include "app_wireness_communicate_task.h"
-
+#include "app_auto_make_vacuum.h"
 /*
 ***************************************************************************************************
 *                                         OS-RELATED    VARIABLES

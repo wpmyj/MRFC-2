@@ -42,8 +42,8 @@
 #ifndef __INTERNAL_TEST_FLAG
     #define __INTERNAL_TEST_FLAG    0u      //Internal debug mode
     #define __HYDROGEN_GENERATOR_MODULE 0u
-    #define __FUEL_CELL_MODULE    1u
-    #define __ONE_MACHINE_MODULE    0u
+    #define __FUEL_CELL_MODULE    0u
+    #define __ONE_MACHINE_MODULE    1u
 #endif
 
 #define     SYSTEM_STACK_USAGE_CHECK     0  //系统任务堆栈监测使能开关   

@@ -50,6 +50,8 @@
 OS_TCB      SpeedControlDevManageTaskTCB;
 static      CPU_STK     SpdCtrlDevManageTaskStk[SPEED_CONTROL_DEVICE_MANAGE_TASK_STK_SIZE];
 
+static      OS_TMR      PumpSpdAdjustTmr;//±ÃËÙÆ½»¬µ÷½Ú¶¨Ê±Æ÷
+
 static      OS_TMR      HydrgFanSpdDlyAdjTmr;//ÑÓÊ±µ÷½Ú¶¨Ê±Æ÷
 static      OS_TMR      HydrgFanSpdCycleDlyTimeAdjustTmr;//ÖÜÆÚÑÓÊ±µ÷½Ú¶¨Ê±Æ÷
 /*
@@ -59,7 +61,10 @@ static      OS_TMR      HydrgFanSpdCycleDlyTimeAdjustTmr;//ÖÜÆÚÑÓÊ±µ÷½Ú¶¨Ê±Æ÷
 */
 static  uint16_t    g_u16HydrgFanExpectCtlSpd = 0;
 static  uint16_t    g_u16HydrgFanCurrentCtlSpd = 0;
+
 static  uint16_t    g_u16HydrgPumpCtlSpd = 0;
+static  uint16_t    g_u16HydrgExpectPumpCtlSpd = 0;
+
 static  uint16_t    g_u16StackFanCtlSpd = 0;
 
 static  SWITCH_TYPE_VARIABLE_Typedef g_eSpdCaptureWorkSwitch[3] = {OFF, OFF, OFF}; //3Â·Í¨µÀ¼à²â¿ª¹Ø
@@ -75,6 +80,8 @@ static  uint16_t g_u16SpeedCaptureValue[3][2] = {0}; //Èý¸öÍ¨µÀÖÜÆÚÄÚµÚÒ»´Î½øÈëÖ
 */
 static void HydrgFanSpdDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg);
 static void HydrgFanSpdCycleDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg);
+
+static void PumpAdjustCallBack(OS_TMR *p_tmr, void *p_arg);
 
 static void SpeedControlDevManageTask(void);
 /*
@@ -209,6 +216,11 @@ uint16_t GetPumpCtlSpd(void)
 {
     return g_u16HydrgPumpCtlSpd;
 }
+
+uint16_t GetPumpExpectCtlSpd(void)
+{
+    return g_u16HydrgExpectPumpCtlSpd;
+}
 /*
 ***************************************************************************************************
 *                                         SetPumpCtlSpd()
@@ -231,6 +243,100 @@ void SetPumpCtlSpd(uint16_t i_u16NewSpd)
     CPU_CRITICAL_EXIT();
 }
 
+/*
+***************************************************************************************************
+*                            SetPumpExpectSpdSmoothly()
+*
+* Description : Control the speed of the pump smoothly.
+*
+* Argument(s) : i_u16ExpectSpdValue:Expect Speed.
+*               i_u8AdjustTimeDly:Adjust pump Delay Time >= 0;if i_u8AdjustTimeDly = 0,set immediately.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : none.
+*
+* Note(s)     : the actual speed grade whole number is 2000.
+***************************************************************************************************
+*/
+void SetPumpExpectSpdSmoothly(u16 i_u16ExpectSpdValue, u8 i_u8AdjustTimeDly)
+{
+    OS_ERR err;
+    uint8_t AdjustTimerTick;
+    uint16_t m_PumpCurrentCtlSpd = 0;
+    uint16_t m_u16PumpSpdDiffValue = 0;
+
+    if(i_u8AdjustTimeDly > 0) { //ÐèÒªËÙ¶ÈÆ½»¬´¦Àí
+        g_u16HydrgExpectPumpCtlSpd = i_u16ExpectSpdValue;
+        m_PumpCurrentCtlSpd = GetPumpCtlSpd();
+
+        if(m_PumpCurrentCtlSpd != g_u16HydrgExpectPumpCtlSpd) {
+            if(g_u16HydrgExpectPumpCtlSpd > m_PumpCurrentCtlSpd) {
+                m_u16PumpSpdDiffValue = g_u16HydrgExpectPumpCtlSpd - m_PumpCurrentCtlSpd;
+            } else {
+                m_u16PumpSpdDiffValue = m_PumpCurrentCtlSpd - g_u16HydrgExpectPumpCtlSpd;
+            }
+
+            /* Every adjustment of ticks */
+            AdjustTimerTick = i_u8AdjustTimeDly * OS_CFG_TICK_RATE_HZ / m_u16PumpSpdDiffValue;
+
+            if(AdjustTimerTick > 1) {
+                AdjustTimerTick = AdjustTimerTick;
+            } else {
+                AdjustTimerTick = 1;
+            }
+
+            OSTmrCreate((OS_TMR *)&PumpSpdAdjustTmr,
+                        (CPU_CHAR *)"Pump Speed Adjust Timer",
+                        (OS_TICK)0,
+                        (OS_TICK)AdjustTimerTick,      /* AdjustTimerTick * 10ms */
+                        (OS_OPT)OS_OPT_TMR_PERIODIC,
+                        (OS_TMR_CALLBACK_PTR)PumpAdjustCallBack,
+                        (void *)0,
+                        (OS_ERR *)&err);
+
+            if(err == OS_ERR_NONE) {
+                OSTmrStart(&PumpSpdAdjustTmr, &err);
+            }
+        }
+    } else {
+        SetPumpCtlSpd(i_u16ExpectSpdValue);
+    }
+}
+/*
+***************************************************************************************************
+*                            PumpAdjustCallBack()
+*
+* Description : when PumpSpdAdjustTmr time out that call back function.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Caller(s)   : Application.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+static void PumpAdjustCallBack(OS_TMR *p_tmr, void *p_arg)
+{
+    OS_ERR err;
+    uint16_t u16HydrgPumpCurrentCtlSpd;
+
+    u16HydrgPumpCurrentCtlSpd = GetPumpCtlSpd();
+
+    if(u16HydrgPumpCurrentCtlSpd != GetPumpExpectCtlSpd()) {
+        if(u16HydrgPumpCurrentCtlSpd > GetPumpExpectCtlSpd()) {
+            u16HydrgPumpCurrentCtlSpd -= 10;
+        } else {
+            u16HydrgPumpCurrentCtlSpd += 10;
+        }
+
+        SetPumpCtlSpd(u16HydrgPumpCurrentCtlSpd);
+    } else {
+        OSTmrDel(&PumpSpdAdjustTmr, &err);
+    }
+}
 /*
 ***************************************************************************************************
 *                                         HydrgFanSpdInc()

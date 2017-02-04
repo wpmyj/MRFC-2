@@ -730,7 +730,7 @@ void BSP_MAX6675_Temp_Read(float *i_fTemp, uint8_t *err)
 * Note(s)     : none.
 ***************************************************************************************************
 */
-
+//不要调用这个函数
 void  BSP_BuzzerInit(void)
 {
     GPIO_InitTypeDef  GPIO_InitStructure;
@@ -744,10 +744,10 @@ void  BSP_BuzzerInit(void)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
     GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
 
-    PWR_BackupAccessCmd(ENABLE);//允许修改RTC 和后备寄存器
-    RCC_LSEConfig(RCC_LSE_OFF);//关闭外部低速外部时钟信号功能 后，PC13 PC14 PC15 才可以当普通IO用。
-    BKP_TamperPinCmd(DISABLE);//关闭入侵检测功能，也就是 PC13，也可以当普通IO 使用
-    PWR_BackupAccessCmd(DISABLE);//禁止修改后备寄存器
+//    PWR_BackupAccessCmd(ENABLE);//允许修改RTC 和后备寄存器
+//    RCC_LSEConfig(RCC_LSE_OFF);//关闭外部低速外部时钟信号功能 后，PC13 PC14 PC15 才可以当普通IO用。
+//    BKP_TamperPinCmd(DISABLE);//关闭入侵检测功能，也就是 PC13，也可以当普通IO 使用
+//    PWR_BackupAccessCmd(DISABLE);//禁止修改后备寄存器
 
 
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_BUZZER_CTRL_PORT_NMB;
@@ -818,8 +818,8 @@ static void BSP_SwTypePwrDeviceStatuInit(void)
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
-
     GPIO_ResetBits(GPIOB, BSP_GPIOB_BUZZER_CTRL_PORT_NMB);
+    
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB;  // 进液电磁阀1控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;

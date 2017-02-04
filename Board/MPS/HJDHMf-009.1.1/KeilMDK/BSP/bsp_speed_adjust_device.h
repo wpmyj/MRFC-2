@@ -75,6 +75,8 @@ void        PumpSpdDec(void);
 uint16_t    GetPumpCtlSpd(void);
 uint16_t    GetPumpFeedBackSpd(void);
 void        SetPumpCtlSpd(uint16_t);
+void        SetPumpExpectSpdSmoothly(u16 i_u16ExpectSpdValue, u8 i_u8AdjustTimeDly);
+
 
 void        HydrgFanSpdInc(void);
 void        HydrgFanSpdDec(void);

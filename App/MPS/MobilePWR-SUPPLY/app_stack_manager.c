@@ -63,6 +63,7 @@ static      CPU_STK_8BYTE_ALIGNED     StackHydrogenYieldMatchingOffsetValueMonit
 *                                          GLOBAL VARIABLES
 ***************************************************************************************************
 */
+uint8_t                                 g_u8DecompressCountPerMinute = 0;//每分钟电堆尾部泄压排气次数
 SWITCH_TYPE_VARIABLE_Typedef            g_eStackManagerStopDlyStatu = OFF;
 STACK_VENTING_TIME_PARAMETER_Typedef    StackVentAirTimeParameter = {0, 0.0, 0.0}; //电堆排气时间参数
 
@@ -73,7 +74,6 @@ STACK_VENTING_TIME_PARAMETER_Typedef    StackVentAirTimeParameter = {0, 0.0, 0.0
 */
 static  float                           g_fHydrogenYieldMatchOffsetValue = 0.0;//电堆匹氢偏移值
 static  uint8_t                         g_u8RealTimeDecompressCountPerMinute = 0; //电堆尾部实时泄压排气次数
-static  uint8_t                         g_u8DecompressCountPerMinute = 0;//每分钟电堆尾部泄压排气次数
 static  uint8_t                         g_u8StackFanAutoAdjSw = DEF_ENABLED;//电堆风扇自动调速开关
 static  uint8_t                         g_u8StackHydrogenYieldMatchingOffsetValueMonitorTaskSw = DEF_DISABLED;
 

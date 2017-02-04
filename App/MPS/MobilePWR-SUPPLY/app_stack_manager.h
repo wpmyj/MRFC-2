@@ -60,6 +60,7 @@ extern      OS_TCB      StackProgramControlAirPressureReleaseTaskTCB;
 extern      uint16_t                                u16AmpIntegralTimeCount;
 extern      STACK_VENTING_TIME_PARAMETER_Typedef    StackVentAirTimeParameter;
 
+extern      uint8_t                                g_u8DecompressCountPerMinute;
 /*
 ***************************************************************************************************
 *                                           EXPORTED FUNCTION

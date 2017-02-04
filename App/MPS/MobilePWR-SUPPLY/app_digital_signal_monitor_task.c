@@ -28,6 +28,7 @@
 #include "app_top_task.h"
 #include "app_stack_manager.h"
 #include "app_auto_make_vacuum.h"
+#include "app_stack_manager.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -313,15 +314,17 @@ void SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(uint8_t i_NewStatu)
 
 static void SetStackExhaustTimesCountPerMinutesMonitorHook()
 {
-    static uint16_t u16CountPerMinutes = 0;
+    float RealTimePassiveDecompressCount = 0;
+    static uint8_t  u8CountPerMinutes = 0;
+    
+    u8CountPerMinutes ++;
 
-    u16CountPerMinutes ++;
-
-    if(u16CountPerMinutes >= 240) { //一分钟清零一次电堆排气次数
-        SaveRealTimeStackExhaustTimesCountPerMinutes();
-        ResetRealTimeStackExhaustTimesCountPerMinutes();    
-        u16CountPerMinutes = 0;
-    }
+    if(u8CountPerMinutes >= 20) {//5s更新一下每分钟排气次数
+        RealTimePassiveDecompressCount = GetRealTimePassiveDecompressCountPerMinutes();
+        g_u8DecompressCountPerMinute = (uint8_t)((RealTimePassiveDecompressCount / 5) * 60); //大概算出每分钟泄压次数
+        ResetRealTimeStackExhaustTimesCountPerMinutes();
+        u8CountPerMinutes = 0;
+    }   
 }
 /*
 ***************************************************************************************************
