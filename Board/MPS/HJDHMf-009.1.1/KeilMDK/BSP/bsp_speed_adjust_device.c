@@ -278,7 +278,7 @@ void SetPumpExpectSpdSmoothly(u16 i_u16ExpectSpdValue, u8 i_u8AdjustTimeDly)
             }
 
             /* Every adjustment of ticks */
-            AdjustTimerTick = i_u8AdjustTimeDly * OS_CFG_TICK_RATE_HZ / m_u16PumpSpdDiffValue;
+            AdjustTimerTick = i_u8AdjustTimeDly * OS_CFG_TICK_RATE_HZ / m_u16PumpSpdDiffValue;//调节加速度
 
             if(AdjustTimerTick > 1) {
                 AdjustTimerTick = AdjustTimerTick;
@@ -321,7 +321,7 @@ void SetPumpExpectSpdSmoothly(u16 i_u16ExpectSpdValue, u8 i_u8AdjustTimeDly)
 static void PumpAdjustCallBack(OS_TMR *p_tmr, void *p_arg)
 {
     OS_ERR err;
-    uint16_t u16HydrgPumpCurrentCtlSpd;
+    uint16_t u16HydrgPumpCurrentCtlSpd = 0;
 
     u16HydrgPumpCurrentCtlSpd = GetPumpCtlSpd();
 
@@ -472,7 +472,7 @@ void SetHydrgFanCtlSpdSmoothly(uint16_t i_u16CurrentSpdValue,uint8_t i_u8StartDl
         OSTmrCreate((OS_TMR *)&HydrgFanSpdDlyAdjTmr,
                     (CPU_CHAR *)"Hydrg fan Speed Delay Adjust Timer",
                     (OS_TICK)i_u8StartDlyAdjTime * OS_CFG_TMR_TASK_RATE_HZ,//dly
-                    (OS_TICK)0,                                             //period
+                    (OS_TICK)0,                                            //period
                     (OS_OPT)OS_OPT_TMR_ONE_SHOT,    
                     (OS_TMR_CALLBACK_PTR)HydrgFanSpdDlyAdjCallBack,
                     (void *)0,

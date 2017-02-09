@@ -432,6 +432,8 @@ SYSTEM_WORK_STATU_Typedef       GetSystemWorkStatu(void);
 void SetExternalScreenUpdateStatu(WHETHER_TYPE_VARIABLE_Typedef i_NewStatu);
 WHETHER_TYPE_VARIABLE_Typedef GetExternalScreenUpdateStatu(void);
 
+//获取启动剩余时间
+uint16_t GetStartRemainSencond(void);
 
 //电堆工作状态管理相关函数
 void                    SetStackWorkStatu(STACK_WORK_STATU_Typedef);

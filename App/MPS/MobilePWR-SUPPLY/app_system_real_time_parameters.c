@@ -77,6 +77,9 @@ static          uint32_t                g_SystemRunningStatuCode = 0x00000000;
 static  SYSTEM_WORK_STATU_Typedef       g_eSystemWorkStatu = EN_WAITTING_COMMAND;
 static  STACK_WORK_STATU_Typedef        g_eStackWorkStatu = EN_NOT_IN_WORK;
 
+static  WHETHER_TYPE_VARIABLE_Typedef g_eExternalScreenUpdateStatu = YES;
+
+static	        uint16_t                g_u16StartRemainSecond = 900;//冷启动剩余时间
 static          float                   g_fSystemIsolatedGeneratedEnergyThisTime = 0.0;
 
 static          uint8_t                 g_u8WaitWorkModeSelectSwitch = DEF_DISABLED;
@@ -628,6 +631,44 @@ uint16_t GetStackWorkTimes()
 }
 
 /*
+*********************************************************************************************************
+*                                      SetExternalScreenUpdateStatu()
+*
+* Description:  set the screen update statu.
+*								
+* Arguments  :  none.
+*
+* Returns    :  enum type.
+*
+* Note(s)	 :	none.
+*********************************************************************************************************
+*/
+void SetExternalScreenUpdateStatu(WHETHER_TYPE_VARIABLE_Typedef i_NewStatu)
+{
+	CPU_SR_ALLOC();	
+	CPU_CRITICAL_ENTER();
+	g_eExternalScreenUpdateStatu = i_NewStatu;
+	CPU_CRITICAL_EXIT();
+}
+/*
+*********************************************************************************************************
+*                                      GetExternalScreenUpdateStatu()
+*
+* Description:  get the screen update statu.
+*
+* Arguments  :  none.
+*
+* Returns    :  g_eExternalScreenUpdateStatu.
+*
+* Note(s)	 :	none.
+*********************************************************************************************************
+*/
+WHETHER_TYPE_VARIABLE_Typedef GetExternalScreenUpdateStatu(void)
+{
+	return g_eExternalScreenUpdateStatu;
+}
+
+/*
 ***************************************************************************************************
 *                                      SetSystemWorkStatu()
 *
@@ -650,6 +691,7 @@ void SetSystemWorkStatu(SYSTEM_WORK_STATU_Typedef m_enNewStatu)
 
     CPU_CRITICAL_ENTER();
     g_eSystemWorkStatu = m_enNewStatu;
+    SetExternalScreenUpdateStatu(YES);	//改变工作状态，串口屏更新状态
     SetSystemRunningStatuCodeSysWorkStatuSection(g_eSystemWorkStatu);
     CPU_CRITICAL_EXIT();
 }
@@ -1514,6 +1556,24 @@ static void UpdateSysTime(SYSTEM_TIME_Typedef *i_stTargetTime)
 float GetCurrentPower(void)
 {
     return GetSrcAnaSig(STACK_VOLTAGE) * GetSrcAnaSig(STACK_CURRENT);
+}
+
+/*
+*********************************************************************************************************
+*                          uint16_t GetStartRemainSencond(void)
+*
+* Description : The use of the funciton is to get the start remain sencond. 
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+*********************************************************************************************************
+*/
+uint16_t GetStartRemainSencond(void)
+{
+	return g_u16StartRemainSecond;
 }
 /******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/
 

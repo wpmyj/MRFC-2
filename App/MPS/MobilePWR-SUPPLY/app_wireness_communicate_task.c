@@ -186,6 +186,8 @@ void  CommunicateTask(void *p_arg)
 {
     OS_ERR      err;
     uint8_t     i = 0;
+    uint8_t     status = 0;
+    uint8_t canbuf[4] = {0xF1,0xF2,0xF3,0xF4};
     SYSTEM_WORK_MODE_Typedef    eWorkMode;
 
     while(DEF_TRUE) {
@@ -194,24 +196,31 @@ void  CommunicateTask(void *p_arg)
                       OS_OPT_TIME_HMSM_STRICT,
                       &err);
 
+        status = CANx_Send_Msg(CAN1,GLOBAL_NET_WORK_ID,canbuf,4);
+        if(status == 0){
+            APP_TRACE_INFO(("can sending ... \r\n"));
+        }else{
+            APP_TRACE_INFO(("send error \r\n"));
+        }
+        
         if(g_u8WifiCommandReceived == YES) { //收到串口指令而提前结束延时，响应上位机指令
             ResponsePrgmCommand(g_u8SerRxMsgBuff);
             g_u8WifiCommandReceived = NO;
-//            APP_TRACE_INFO(("Wifi rec data:"));
-//            for(i = 0;i<16;i++){
-//                APP_TRACE_INFO(("%X ",g_u8CanRxMsg[i]));
-//            }
-//            APP_TRACE_INFO(("...\n\r"));
+            APP_TRACE_INFO(("Wifi Rx data:"));
+            for(i = 0;i<16;i++){
+                APP_TRACE_INFO(("%X ",g_u8SerRxMsgBuff[i]));
+            }
+            APP_TRACE_INFO(("...\n\r"));
         }         
         else if(g_eCanMsgRxStatu == YES)//是否因收到CAN接口指令而提前结束延时
 		{
 			ResponsePrgmCommand(g_u8CanRxMsg);
 			g_eCanMsgRxStatu = NO;
-//            APP_TRACE_INFO(("Can rec data:"));
-//            for(i = 0;i<16;i++){
-//                APP_TRACE_INFO(("%X ",g_u8CanRxMsg[i]));
-//            }
-//            APP_TRACE_INFO(("...\n\r"));
+            APP_TRACE_INFO(("Can Rx data:"));
+            for(i = 0;i<16;i++){
+                APP_TRACE_INFO(("%X ",g_u8CanRxMsg[i]));
+            }
+            APP_TRACE_INFO(("...\n\r"));
 		}else {
             //正常延时
         }
@@ -326,7 +335,7 @@ void  CommunicateRequsetInfSendTask(void *p_arg)
 void CommunicateDataSendTask(void *p_arg)
 {
     OS_ERR      err;
-
+    
     OSSemCreate(&g_stCommunicateDataSendResponseSem,
                 "Communicate data send response sem",
                 0,
@@ -344,7 +353,7 @@ void CommunicateDataSendTask(void *p_arg)
             g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].OccupyStatu = EN_SENDING;
             //一帧一帧的发送数据,暂时不能灵活改变帧的长度，接收方的长度是固定的，如要变则需要在帧数据包中加上一个帧类型
             SendAPrgmMsgFrame(PRGM_TX_BUFF_SIZE, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].Data);
-
+            
             OSSemPend(&g_stCommunicateDataSendResponseSem,
                       OS_CFG_TICK_RATE_HZ / 5,//五分之一秒
                       OS_OPT_PEND_BLOCKING,
@@ -995,11 +1004,19 @@ void LoadNonRealTimeWorkInfo(uint8_t i_eSendDataType, uint8_t i_uint8_tCmdCode, 
 */
 static void SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg)
 {
+    uint8_t i =0;
+    
     BSP_PrgmDataDMASend(i_uint8_tTxMsgLen, i_pTxMsg);
-//    if(g_eCAN_BusOnLineFlag == ON)//CAN总线在线
-//	{
+//    APP_TRACE_INFO(("Wifi Tx data:"));
+//    for(i = 0;i<60;i++){
+//        APP_TRACE_INFO(("%X ",i_pTxMsg[i]));
+//    }
+//    APP_TRACE_INFO(("...\n\r"));
+    if(g_eCAN_BusOnLineFlag == YES)//CAN总线在线
+	{
+        CANx_Send_Msg(CAN1,GLOBAL_NET_WORK_ID,i_pTxMsg,PRGM_TX_BUFF_SIZE);
 //		SendCanMsgContainNodeId(PRGM_TX_BUFF_SIZE, i_pTxMsg, GLOBAL_NET_WORK_ID);
-//	}
+	}
 }
 
 /*

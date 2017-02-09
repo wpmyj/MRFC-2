@@ -72,6 +72,7 @@ void SetDcModuleCurrentLimitingPointReduceFlag(uint8_t i_NewStatu);
 uint8_t GetDcModuleCurrentLimitingPointReduceFlagStatus(void);
 
 void SetDCModuleAutoAdjustTaskSwitch(uint8_t i_NewStatu);
+void SetDCModuleLimitCurrentSmoothlyTaskSwitch(uint8_t i_NewStatu);
 /*
 ***************************************************************************************************
 *                                             MODULE END

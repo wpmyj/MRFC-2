@@ -35,7 +35,7 @@
 #include "bsp_speed_adjust_device.h"
 #include "app_stack_short_circuit_task.h"
 #include "app_mf210_communicate_task.h"
-
+#include "app_screen_display_task.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -175,6 +175,8 @@ static  void  AppTaskStart(void *p_arg)
 
     CommunicateTaskCreate();           
     
+    ScreenDisplayTaskCreate();  //串口显示屏任务创建
+    
     MF210_CommunicateTaskCreate();//3G模块数据发送任务
 
     Make_Vacuum_FunctionTaskCreate(); //自动抽真空任务
@@ -187,7 +189,7 @@ static  void  AppTaskStart(void *p_arg)
 
     StackManagerTaskCreate();
     
-//    StackShortCircuitTaskCreate();//电堆短路活化任务
+    StackShortCircuitTaskCreate();//电堆短路活化任务
     
     DcModuleDynamicAdjustTaskCreate();    //DC动态限流调节任务,平滑限流任务 
 

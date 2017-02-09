@@ -53,7 +53,9 @@
 #define  MAKE_VACCUUM_TASK_PRIO                             18
 #define  STACK_SHORT_CIRCUIT_TASK_PRIO                      19
 #define  IGNITER_WORK_TASK_PRIO                             20
+#define  SERIAL_SCREEN_DISPLAY_TASK_PRIO                    21
 
-#define  SPEED_CONTROL_DEVICE_MANAGE_TASK_PRIO              21
+
+#define  SPEED_CONTROL_DEVICE_MANAGE_TASK_PRIO              22
 
 #endif

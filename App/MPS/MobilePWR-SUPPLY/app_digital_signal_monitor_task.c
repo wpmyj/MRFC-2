@@ -58,7 +58,7 @@ static  float    g_fAnaTemp[2] = {0.0,0.0};
 
 static  uint8_t  g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw = DEF_DISABLED;   //制氢机第一次点火后的数字信号监测任务开关
 static  uint8_t  g_u8HydrgProducerDigSigRunningMonitorAlarmHookSw = DEF_DISABLED;            //制氢机运行数字信号监测警报开关
-static  uint8_t  g_u8StackExhaustTimesCountPerMinutesMonitorHookSw = DEF_DISABLED;//电堆每分钟排气次数监测开关
+//static  uint8_t  g_u8StackExhaustTimesCountPerMinutesMonitorHookSw = DEF_DISABLED;//电堆每分钟排气次数监测开关
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
@@ -68,7 +68,7 @@ static   void   UpdateThermocoupleTemp(uint8_t *i_TempErr);
 static   void   DigSigMonitorTask(void *p_arg);
 static   void   HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook(void);
 static   void   HydrgProducerDigSigAlarmRunningMonitorHook(void);
-static   void   SetStackExhaustTimesCountPerMinutesMonitorHook(void);
+//static   void   SetStackExhaustTimesCountPerMinutesMonitorHook(void);
 /*
 ***************************************************************************************************
 *                                                UpdateThermocoupleTemp()
@@ -238,11 +238,6 @@ static void  DigSigMonitorTask(void *p_arg)
         if(g_u8HydrgProducerDigSigRunningMonitorAlarmHookSw == DEF_ENABLED) {
             HydrgProducerDigSigAlarmRunningMonitorHook();
         }
-
-        if(g_u8StackExhaustTimesCountPerMinutesMonitorHookSw == DEF_ENABLED) {
-            SetStackExhaustTimesCountPerMinutesMonitorHook();
-        }
-
     }
 }
 
@@ -294,38 +289,6 @@ static void HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook(void)
 
 }
 
-/*
-***************************************************************************************************
-*                     SetStackExhaustTimesCountPerMinutesMonitorHookSwitch()
-*
-* Description : Monitor the digital signal that fluid weight per minute.
-*
-* Arguments   : none.
-*
-* Returns     : none.
-*
-* Notes       : .
-***************************************************************************************************
-*/
-void SetStackExhaustTimesCountPerMinutesMonitorHookSwitch(uint8_t i_NewStatu)
-{
-    g_u8StackExhaustTimesCountPerMinutesMonitorHookSw = i_NewStatu;
-}
-
-static void SetStackExhaustTimesCountPerMinutesMonitorHook()
-{
-    float RealTimePassiveDecompressCount = 0;
-    static uint8_t  u8CountPerMinutes = 0;
-    
-    u8CountPerMinutes ++;
-
-    if(u8CountPerMinutes >= 20) {//5s更新一下每分钟排气次数
-        RealTimePassiveDecompressCount = GetRealTimePassiveDecompressCountPerMinutes();
-        g_u8DecompressCountPerMinute = (uint8_t)((RealTimePassiveDecompressCount / 5) * 60); //大概算出每分钟泄压次数
-        ResetRealTimeStackExhaustTimesCountPerMinutes();
-        u8CountPerMinutes = 0;
-    }   
-}
 /*
 ***************************************************************************************************
 *                     SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch()

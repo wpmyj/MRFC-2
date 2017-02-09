@@ -258,7 +258,7 @@ void  BSP_Init(void)
     BSP_SwTypePwrDeviceStatuInit(); // 开关型输出设备
     BSP_CmdButtonInit();            // 硬件按钮
     BSP_ImpulseInputPortInit();     //外部脉冲输入引脚初始化
-    CAN_Configuration();            //CAN总线配置
+    CAN1_Init(50);                    //CAN总线配置，波特率50K
 //    AT25256B_Init();              //外部EEPROM初始化
     
     BSP_VentingIntervalRecordTimerInit();//电堆排气时间参数定时器初始化
@@ -1705,7 +1705,7 @@ static void  BSP_StackFanCtrInit(void)
     TIM_OC1Init(TIM4, &TIM_OCInitStructure);
     TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable); //使能TIM4在CCR1上的预装载寄存器,即TIM4_CCR1的预装载值在更新事件到来时才能被传送至当前寄存器中。
 
-    TIM_ARRPreloadConfig(TIM4, ENABLE);          // 使能TIM4重载寄存器ARR
+    TIM_ARRPreloadConfig(TIM4, ENABLE);// 使能TIM4重载寄存器ARR
     TIM_GenerateEvent(TIM4, TIM_EventSource_Update);   // 产生软件更新事件，立即更新数据,使重载寄存器中的数据立即生效
     TIM_ClearFlag(TIM4, TIM_FLAG_Update);             //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
     TIM_ITConfig(TIM4, TIM_IT_Update | TIM_IT_CC1, DISABLE); //允许更新中断
@@ -1893,7 +1893,7 @@ static void EXTI15_10_StatusCheck_IRQHandler()
 
     if(EXTI_GetITStatus(EXTI_Line12) != RESET) {//PDPulse2-电堆后端的泄压阀状态
         if(1 == GPIO_ReadInputDataBit(GPIOE, BSP_GPIOE_PIN12_PD_PULSE2_PORT_NMB)) {
-            DecompressCountPerMinuteInc();
+//            DecompressCountPerMinuteInc();
             BSP_StartRunningVentingTimeRecord(); //Start recording the exhaust time parameter
             StackVentAirTimeParameter.fVentAirTimeIntervalValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录排气间隔时间
             StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num
@@ -2050,46 +2050,6 @@ void CmdButtonStatuCheck(void)
     TIM_ClearITPendingBit(TIM7, TIM_IT_Update); //清除中断标志位
 }
 
-/*
-***************************************************************************************************
-*                                            SwitchTypeDevicesSelfCheck()
-*
-* Description : 开关型设备自检流程，进行过程不能被打断.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Note(s)     : none.
-***************************************************************************************************
-*/
-void SwitchTypeDevicesSelfCheck()
-{
-    OS_ERR      err;
-    BSP_LqdValve1_PwrOn();
-    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
-    BSP_LqdValve1_PwrOff();
-
-    BSP_LqdValve2_PwrOn();
-    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
-    BSP_LqdValve2_PwrOff();
-
-    BSP_IgniterPwrOn();
-    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
-    BSP_IgniterPwrOff();
-
-    BSP_HydrgInValvePwrOn();
-    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
-    BSP_HydrgInValvePwrOff();
-
-    BSP_HydrgOutValvePwrOn();
-    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
-    BSP_HydrgOutValvePwrOff();
-
-    BSP_DCConnectValvePwrOn();
-    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
-    BSP_DCConnectValvePwrOff();
-}
 
 /*
 ***************************************************************************************************

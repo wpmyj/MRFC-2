@@ -318,12 +318,14 @@ void StackAnaSigAlarmRunningMonitorHook(void)
 {
     float fStackTemp = 0;
     float fHydrgPress = 0;
-//    float fStackVoletage = 0;
     static uint8_t StackTempHighFlag = NO;
     static uint8_t StackHydrogenPressLowFlag = NO;
-//    static uint8_t StackVoletageLowFlag = NO;
-//    static uint16_t g_u16StackVoletageBelow40VHoldSeconds = 0;
-//    static uint16_t g_u16StackVoletageExceed40VHoldSeconds = 0;
+#if STACK_VOLETAGE_MONITOR_SWITCH 
+    float fStackVoletage = 0;
+    static uint8_t StackVoletageLowFlag = NO;
+    static uint16_t g_u16StackVoletageBelow40VHoldSeconds = 0;
+    static uint16_t g_u16StackVoletageExceed40VHoldSeconds = 0;
+#endif
     
     if(EN_SHUTTING_DOWN != GetSystemWorkStatu()){
 #if STACK_TEMP_MONITOR_SWITCH 
@@ -346,7 +348,7 @@ void StackAnaSigAlarmRunningMonitorHook(void)
 //            CmdShutDown();      //关机命令
             APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
         } else {
-            if((fStackTemp >= 20) && (fStackTemp <= 50)) {//系统恢复到正常温度,恢复输出
+            if((fStackTemp >= 20) && (fStackTemp <= 55)) {//系统恢复到正常温度,恢复输出
                 if(StackTempHighFlag == YES){ 
                     BSP_DCConnectValvePwrOn();
                     StackTempHighFlag = NO;
@@ -388,9 +390,9 @@ void StackAnaSigAlarmRunningMonitorHook(void)
         /*监测电压*/
         fStackVoletage = GetSrcAnaSig(STACK_VOLTAGE);
         if(EN_IN_WORK == GetStackWorkStatu()){
-            if(fStackVoletage >= 40) {
+            if(fStackVoletage >= 39) {
                 g_u16StackVoletageBelow40VHoldSeconds = 0;
-                AlarmCmd(HYDROGEN_PRESS_LOW_ALARM,GENERAL_GRADE,OFF);
+                AlarmCmd(STACK_VOLTAGE_LOW_ALARM,GENERAL_GRADE,OFF);
                 if(StackVoletageLowFlag != NO ){
                     g_u16StackVoletageExceed40VHoldSeconds ++;
                     if(g_u16StackVoletageExceed40VHoldSeconds >= 300){
@@ -401,7 +403,7 @@ void StackAnaSigAlarmRunningMonitorHook(void)
                 }
             }else {
                 g_u16StackVoletageBelow40VHoldSeconds ++;
-                if(g_u16StackVoletageBelow40VHoldSeconds > 300){
+                if(g_u16StackVoletageBelow40VHoldSeconds > 300){//电压低于39V超过3S停止输出
                     AlarmCmd(STACK_VOLTAGE_LOW_ALARM,GENERAL_GRADE,ON);
                     StackVoletageLowFlag = YES;
                     BSP_DCConnectValvePwrOff();

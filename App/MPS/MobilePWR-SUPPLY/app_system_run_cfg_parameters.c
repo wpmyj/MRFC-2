@@ -502,7 +502,7 @@ static void GetDefaultStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PARA_Typedef *i_St
 {
     i_StartHydrgFanSpdPara->FanSpdIgniterFirstTime   = 1000;
     i_StartHydrgFanSpdPara->FanSpdAfterIgniterFirstSuccessd = 2000;
-    i_StartHydrgFanSpdPara->FanSpdIgniterSecondTime   = 1500;
+    i_StartHydrgFanSpdPara->FanSpdIgniterSecondTime   = 1300;
     i_StartHydrgFanSpdPara->FanSpdAfterIgniterSecondSuccessd = 2000;
 }
 

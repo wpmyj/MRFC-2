@@ -166,6 +166,8 @@
 #define  BSP_GPIOD_PIN5_UART2_TX_PORT_NMB                                       DEF_BIT_05
 #define  BSP_GPIOD_PIN6_UART2_RX_PORT_NMB                                       DEF_BIT_06
 #define  BSP_GPIOD_PIN7_RSVD8_OUTPUT_PWR_CTRL_PORT_NMB                          DEF_BIT_07
+#define  BSP_GPIOD_PIN8_USART3_TX_PORT_NMB                                      DEF_BIT_08
+#define  BSP_GPIOD_PIN9_USART3_RX_PORT_NMB                                      DEF_BIT_09
 #define  BSP_GPIOD_PIN10_MAX6675_CHIPS_SELECT_PORT_NMB                          DEF_BIT_10
 #define  BSP_GPIOD_PIN11_MAX6675_CHIPS_SCLK_PORT_NMB                            DEF_BIT_11
 #define  BSP_GPIOD_PIN12_MAX6675_CHIP_ONE_DIG_SIGNAL_PORT_NMB                   DEF_BIT_12

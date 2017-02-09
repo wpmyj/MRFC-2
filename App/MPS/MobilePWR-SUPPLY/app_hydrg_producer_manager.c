@@ -29,6 +29,7 @@
 #include "app_hydrg_producer_manager.h"
 #include "app_analog_signal_monitor_task.h"
 #include "app_auto_make_vacuum.h"
+#include "bsp_speed_adjust_device.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -99,10 +100,8 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
 
     if(EN_START_PRGM_ONE_FRONT == GetSystemWorkStatu()) {
         
-//        OSTaskResume(&Make_Vaccuum_FunctionTaskTCB,&err);//开始抽真空
         APP_TRACE_INFO(("Start program one front,fast heat 3 minutes...\n\r"));
         BSP_FastHeaterPwrOn();
-        
         if(GetReformerTemp() <= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt){
             
             OSTimeDlyHMSM(0, 3, 0, 0,   OS_OPT_TIME_HMSM_STRICT,&err);//快速加热三分钟
@@ -115,7 +114,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
             APP_TRACE_INFO(("Ignite first time behind...\n\r"));
             BSP_LqdValve1_PwrOn();
             SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime);
-            SetHydrgFanCtlSpdSmoothly(g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime,90,8,g_stStartHydrgFanSpdPara.FanSpdAfterIgniterFirstSuccessd);
+            SetHydrgFanCtlSpdSmoothly(g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime,90,10,g_stStartHydrgFanSpdPara.FanSpdAfterIgniterFirstSuccessd);
             IgniterWorkForSeconds(240);
 
             SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(DEF_ENABLED);//重整温度监测
@@ -186,7 +185,7 @@ IGNITE_CHECK_STATU_Typedef IgniteSecondTime(float m_IgniteCheckTable2, float m_G
     BSP_FastHeaterPwrOff();
     BSP_LqdValve2_PwrOn();
     SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime);
-    SetHydrgFanCtlSpdSmoothly(g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime,90,5,g_stStartHydrgFanSpdPara.FanSpdAfterIgniterSecondSuccessd);
+    SetHydrgFanCtlSpdSmoothly(g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime,90,10,g_stStartHydrgFanSpdPara.FanSpdAfterIgniterSecondSuccessd);
     
     IgniterWorkForSeconds(180);
 
@@ -355,10 +354,8 @@ void HydrgProducerManagerDlyStopTask(void)
         g_eHydrgProducerManagerStopDlyStatu = ON;
         APP_TRACE_INFO(("The Hydrogen producer manager start to delay stop...\n\r"));
         IgniterWorkForSeconds(0);//防止关机时，点火器因未到定时时间而继续运行，故将其关闭
-        SetPumpCtlSpd(0);
-        SetPumpExpectSpdSmoothly(0,10);
+        SetPumpExpectSpdSmoothly(0,10);//关机泵控平滑处理
         BSP_LqdValve2_PwrOff();
-//        SetHydrgFanCtlSpd(2000);
         SetHydrgFanCtlSpdSmoothly(2000,0,0,2000);
         
         while(DEF_TRUE) {

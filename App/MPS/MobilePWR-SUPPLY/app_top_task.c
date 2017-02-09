@@ -538,10 +538,10 @@ void ShutDown()
                 break;
 
             case EN_DELAY_STOP_PART_TWO:
-                if(EN_IN_WORK == GetStackWorkStatu()) { //电堆有在工作才恢复延时关闭任务
+//                if(EN_IN_WORK == GetStackWorkStatu()) { //电堆有在工作才恢复延时关闭任务
                     OSTaskResume(&StackManagerDlyStopTaskTCB,
                                  &err);
-                }
+//                }
 
                 break;
 

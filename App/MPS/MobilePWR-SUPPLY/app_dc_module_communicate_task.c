@@ -55,6 +55,7 @@ static      CPU_STK     DC_MODULE_ADJUST_TASK_STK[DC_MODULE_ADJUST_TASK_SIZE];
 static  uint8_t             g_u8DCModuleCurrentLimitingPointImproveFlag = DEF_CLR;
 static  uint8_t             g_u8DCModuleCurrentLimitingPointReduceFlag = DEF_CLR;
 static  uint8_t             g_u8DCModuleDynamicAdjustTaskSw = DEF_DISABLED;
+static  uint8_t             g_u8DCModuleLimitCurrentSmoothlyTaskSw = DEF_DISABLED;
 
 /*
 ***************************************************************************************************
@@ -165,14 +166,20 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
         Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
         Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
         
-        while(DEF_TRUE) { 
+        while(DEF_TRUE) {
+                
+            if(g_u8DCModuleLimitCurrentSmoothlyTaskSw == DEF_DISABLED){
+                
+                APP_TRACE_INFO(("Limit Current Smoothly Task break ...\n\r"));
+                break;
+            }
             
             OSTimeDlyHMSM(0, 0, 1, 0,OS_OPT_TIME_HMSM_STRICT,&err);
             
             fStackVoltage = GetSrcAnaSig(STACK_VOLTAGE);
             u8CurrentLimitDelayCount ++;
             if(u8CurrentLimitDelayCount >= CURRENT_LIMIT_DELAY){
-                if(fIvalueNow < CURRENT_LIMIT_MAX && fStackVoltage >= 41.0){
+                if(fIvalueNow <= CURRENT_LIMIT_MAX && fStackVoltage >= 41.0){
                     fIvalueNow += 5.0;
                     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
                     Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
@@ -309,4 +316,20 @@ uint8_t GetDcModuleCurrentLimitingPointReduceFlagStatus(void)
 void SetDCModuleAutoAdjustTaskSwitch(uint8_t i_NewStatu)
 {
     g_u8DCModuleDynamicAdjustTaskSw = i_NewStatu;
+}
+
+/*
+***************************************************************************************************
+*                            SetDCModuleLimitCurrentSmoothlyTaskSwitch()
+*
+* Description:  Enable or Disable the dc module limit current task switch.
+*
+* Arguments  :  none
+*
+* Returns    :  none
+***************************************************************************************************
+*/
+void SetDCModuleLimitCurrentSmoothlyTaskSwitch(uint8_t i_NewStatu)
+{
+    g_u8DCModuleLimitCurrentSmoothlyTaskSw = i_NewStatu;
 }
