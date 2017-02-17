@@ -258,7 +258,7 @@ void  BSP_Init(void)
     BSP_SwTypePwrDeviceStatuInit(); // 开关型输出设备
     BSP_CmdButtonInit();            // 硬件按钮
     BSP_ImpulseInputPortInit();     //外部脉冲输入引脚初始化
-    CAN1_Init(50);                    //CAN总线配置，波特率50K
+    CAN1_Init();                    //CAN总线配置，波特率50K
 //    AT25256B_Init();              //外部EEPROM初始化
     
     BSP_VentingIntervalRecordTimerInit();//电堆排气时间参数定时器初始化

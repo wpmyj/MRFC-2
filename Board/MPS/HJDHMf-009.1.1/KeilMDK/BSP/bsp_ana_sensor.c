@@ -76,7 +76,7 @@ static      uint8_t     g_u8AnaSensorTypeNmb[BSP_ANA_SENSORS_NMB] = {0};
 static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorParameter[BSP_ANA_SENSORS_NMB];
 static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorDefaultParameter[BSP_ANA_SENSORS_NMB] = {
     {0, 0xFFFF},       //电堆温度
-    {827, 32.052},     //电压，采用电压传感器，比率还会做适当调整
+    {627, 53.313},     //电压
     {2007.35, 16.059}, //电流
     {794.2, 127.06},   //液压
     {359.86, 33.504},  //气压1:0.58 / 2 * 3.3 * 4095 ~ 4.9/2 *3.3 * 4095   359.86 - 3040.23 LSB,对应0.58 - 4.9输入,经2个5.1K电阻降压至0.29-2.45V（满量程0.29V-3.3V对应0-135Kpa），对应0-80KPa，比例为33.504LSB/KPa
@@ -400,7 +400,7 @@ float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
                 g_fAnaSigAnaValue[STACK_VOLTAGE] = (g_fDigFilteredValue[STACK_VOLTAGE] - g_stAnaSigSensorParameter[STACK_VOLTAGE].BaseDigValue) / g_stAnaSigSensorParameter[STACK_VOLTAGE].AnaToDigRatio;
             }
 
-//            APP_TRACE_INFO(("--> g_fDigFilteredValue[STACK_VOLTAGE]: %f \r\n", g_fDigFilteredValue[STACK_CURRENT]));
+//            APP_TRACE_INFO(("--> g_fDigFilteredValue[STACK_VOLTAGE]: %f \r\n", g_fDigFilteredValue[STACK_VOLTAGE]));
 //            APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[STACK_VOLTAGE].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[STACK_VOLTAGE].BaseDigValue));
 //            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[STACK_VOLTAGE]: %f \r\n\r\n", g_fAnaSigAnaValue[STACK_VOLTAGE]));
 

@@ -25,7 +25,7 @@
 #include "app_screen_display_task.h"
 #include "app_system_real_time_parameters.h"
 #include "app_top_task.h"
-
+#include <string.h>
 /*
 *********************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -191,7 +191,11 @@ static void   SerToScreenDisplayTask(void *p_arg)
 void UpdateScreen(void)
 {
     u16 StartRemainSecond = 0;
-    
+    uint16_t u16AlarmCode = 0;
+    uint8_t u8AlarmBit = 0;
+    const char AlarmInfoBuf[][10] = {"电堆低温","、电堆高温","、低电压","","","","","","、气压过低","、气压过高","、气体泄漏","","","","",""};
+    char  AlarmInfoDisplayBuf[200];
+        
     switch((u8)GetSystemWorkStatu())
     {
         case(u8)EN_WAITTING_COMMAND:
@@ -199,35 +203,12 @@ void UpdateScreen(void)
             {
                 sprintf(CmdStrBuff, "page WelcomePage");
                 HMISendCmd(CmdStrBuff);//发送串口指令
-//                sprintf(CmdStrBuff, "t0.txt=\"主人，素电宝宝状态良好，随时为您服务\"");
-//                HMISendCmd(CmdStrBuff);//发送串口指令
-//                sprintf(CmdStrBuff, "UpdateTime.tim=400");
-//                HMISendCmd(CmdStrBuff);//发送串口指令
 //                SetExternalScreenUpdateStatu(NO);
             }
             break;
         case(u8)EN_START_PRGM_ONE_FRONT:
         case(u8)EN_START_PRGM_ONE_BEHIND:
         case(u8)EN_START_PRGM_TWO:
-            if(YES == GetExternalScreenUpdateStatu() )
-            {
-                sprintf(CmdStrBuff, "page WelcomePage");
-                HMISendCmd(CmdStrBuff);//发送串口指令
-                sprintf(CmdStrBuff, "UpdateTime.tim=200");
-                HMISendCmd(CmdStrBuff);//发送串口指令
-                //获取启动剩余时间
-                StartRemainSecond = GetStartRemainSencond();
-                sprintf(CmdStrBuff, "t0.txt=\"素电宝宝正在拼命为您启动中，请耐心等候，还有%d分%d秒\"", StartRemainSecond / 60, StartRemainSecond % 60);
-                HMISendCmd(CmdStrBuff);
-                SetExternalScreenUpdateStatu(NO);
-            }
-            else
-            {
-                StartRemainSecond = GetStartRemainSencond();
-                sprintf(CmdStrBuff, "t0.txt=\"素电宝宝正在拼命为您启动中，请耐心等候，还有%d分%d秒\"", StartRemainSecond / 60, StartRemainSecond % 60);
-                HMISendCmd(CmdStrBuff);//发送串口指令
-            }
-
             break;
 
         case(u8)EN_RUNNING:
@@ -237,8 +218,22 @@ void UpdateScreen(void)
                 HMISendCmd(CmdStrBuff);//发送串口指令
                 SetExternalScreenUpdateStatu(NO);
             }
-
-            sprintf(CmdStrBuff, "WSValue.txt=\"运行\"");
+            
+            //报警信息显示
+            u16AlarmCode = (uint16_t)(GetRunAlarmCode() & 0xFFFF);
+            for(u8AlarmBit = 0;u8AlarmBit < 16;u8AlarmBit++){
+                if(((u16AlarmCode < u8AlarmBit) & 1) != 0){
+                    strcat(AlarmInfoDisplayBuf,AlarmInfoBuf[u8AlarmBit]);
+                }
+            }
+            APP_TRACE_INFO(("%s...\n\r",AlarmInfoDisplayBuf));   
+            sprintf(CmdStrBuff, "AlarmInfo.txt=\"%s\"",AlarmInfoDisplayBuf);
+            HMISendCmd(CmdStrBuff);//发送串口指令
+            
+//            sprintf(CmdStrBuff, "WSValue.txt=\"运行\"");
+//            HMISendCmd(CmdStrBuff);//发送串口指令
+            
+            sprintf(CmdStrBuff, "FTValue.txt=\"%.d℃\"",(uint8_t)GetSrcAnaSig(STACK_TEMP) );
             HMISendCmd(CmdStrBuff);//发送串口指令
             sprintf(CmdStrBuff, "VValue.txt=\"%.1fV\"",GetSrcAnaSig(STACK_VOLTAGE) );
             HMISendCmd(CmdStrBuff);//发送串口指令

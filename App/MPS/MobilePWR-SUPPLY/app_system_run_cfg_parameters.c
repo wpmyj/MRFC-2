@@ -53,14 +53,15 @@
 /*以下宏定义表示参数存储基地址*/
 #define PARAMETERS_SELECT_FLAG_OFFSET_ADDR                              0   //参数选择标志
 #define SYSTEM_RUN_TIME_STORE_OFFSET_ADDR                               2   //系统运行次数
-#define SYSTEM_TOTAL_WORK_TIME_STORE_OFFSET_ADDR                        4   //系统时间时间4个，各4个字节
-#define RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR                          20  //12个数
-#define RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR                       40  // 液压4个数
-#define RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR                     50  //液位参数4个
-#define RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR                  60  //泵参数3个
-#define RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR                   70  //制氢风机参数4个
-#define RUN_PURIFY_AMP_INTEGRAL_VALUE                                   80  //电堆提纯膜间电荷量1个
-#define DRIVER_LAYER_CALIBRATED_LINEAR_ANA_SENSOR_PARAMETERS_OFFSET_ADDR  82  //驱动层线性传感器校准参数,28个数
+#define GLOBAL_NET_WORK_ID_ADDR                                         4   //本地组网ID
+#define SYSTEM_TOTAL_WORK_TIME_STORE_OFFSET_ADDR                        6   //系统时间时间4个，各4个字节
+#define RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR                          30  //12个数
+#define RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR                       50  // 液压4个数
+#define RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR                     60  //液位参数4个
+#define RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR                  70  //泵参数3个
+#define RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR                   80  //制氢风机参数4个
+#define RUN_PURIFY_AMP_INTEGRAL_VALUE                                   90  //电堆提纯膜间电荷量1个
+#define DRIVER_LAYER_CALIBRATED_LINEAR_ANA_SENSOR_PARAMETERS_OFFSET_ADDR  92  //驱动层线性传感器校准参数,28个数
 
 
 /*
@@ -75,6 +76,9 @@ HYDROGEN_PUMP_SPEED_PARA_Typedef            g_stStartHydrgPumpSpdPara;
 HYDROGEN_FAN_SPEED_PARA_Typedef             g_stStartHydrgFanSpdPara;
 
 uint16_t                                    g_u16RunPurifyAmpIntegralValue;
+
+//在CAN总线中的节点ID/本地组网ID,默认为255号,独立运行的机器设置为0
+uint16_t 		                            g_u16GlobalNetWorkId = 0xFF;
 /*
 ***************************************************************************************************
 *                                     LOCAL VARIABLES
@@ -121,6 +125,8 @@ static          void        GetDefaultStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PA
 static          void        GetRunPurifyAmpIntegralValueFromFlash(u16 *);
 static          void        GetDefaultRunPurifyAmpIntegralValue(u16 *);
 static          void        StoreRunPurifyAmpIntegralValue(u16 *);
+
+static          void        GetGlobalNetWorkIDFromFlash(u16* i_GlobalNetWorkID);
 
 
 
@@ -205,6 +211,8 @@ void LoadApplicationLayerParameters()
         GetTotalWorkTimeFromFlash(&stTotalWorkTime);
         LoadTotalWorkTimeToPrgm(stTotalWorkTime);   //传到实时运行参数所在文件对应的程序中去
         
+        GetGlobalNetWorkIDFromFlash(&g_u16GlobalNetWorkId);
+        APP_TRACE_INFO(("GLOBAL_NET_WORK_ID:%d...\n\r",g_u16GlobalNetWorkId));
         GetReformerTempCmpTblFromFlash(&g_stReformerTempCmpTbl);
         GetLqdPressCmpTblFromFlash(&g_stLqdPressCmpTbl);
         GetLqdHeightCmpTblFromFlash(&g_stLqdHeightCmpTbl);
@@ -236,6 +244,9 @@ void LoadApplicationLayerParameters()
         APP_TRACE_INFO(("This is the first time for the system to boot,capturing the parameters...\r\n"));
 
         /*获取默认参数并且存到Flash中*/
+        StoreGlobalNetWorkID(&g_u16GlobalNetWorkId);
+        APP_TRACE_INFO(("Default GLOBAL_NET_WORK_ID:%d...\n\r",g_u16GlobalNetWorkId));
+        
         GetDefaultReformerTempCmpTbl(&g_stReformerTempCmpTbl);
         StoreReformerTempCmpTbl(&g_stReformerTempCmpTbl);
         
@@ -277,6 +288,29 @@ static void GetParametersSelectFlag(uint16_t *o_pParametersSelectFlagAddr)
 static void SetParametersSelectFlag(uint16_t *i_pParametersSelectFlagAddr)
 {
     STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + PARAMETERS_SELECT_FLAG_OFFSET_ADDR, i_pParametersSelectFlagAddr, 1);
+}
+
+/*
+*********************************************************************************************************
+*                                      StoreGlobalNetWorkID()
+*
+* Description:  save the paramters that related to the network ID.
+*
+* Arguments  :  the buff that store the parameters.
+*
+* Returns    :  none.
+*
+* Note(s)	 :	none.
+*********************************************************************************************************
+*/
+static void GetGlobalNetWorkIDFromFlash(u16* i_GlobalNetWorkID)
+{
+	STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + GLOBAL_NET_WORK_ID_ADDR, i_GlobalNetWorkID, 1);
+}
+
+void StoreGlobalNetWorkID(u16* i_GlobalNetWorkID)
+{	
+	STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + GLOBAL_NET_WORK_ID_ADDR, i_GlobalNetWorkID, 1);
 }
 /*
 ***************************************************************************************************

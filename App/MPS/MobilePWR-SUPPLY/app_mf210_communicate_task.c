@@ -80,13 +80,20 @@ static void LoadHydrogenProducerRealTimeInfo(void)
 {
     uint32_t  u32IsolatedGenratedEnergyThisTime = 0;
     SYSTEM_TIME_Typedef     stStackWorkTimeThisTime = {0};
-        
+    uint16_t  u16StackCurrent = 0;
+    uint16_t  u16StackVoltage = 0;
+    
     Full_TxBuf[0] = 0XF1;  //报头
     Full_TxBuf[1] = 0xF2;
-    Full_TxBuf[2] = (u8)((uint16_t)(GetSrcAnaSig(STACK_CURRENT) * 10)%100);                                             //(u8)((uint16_t)(GetSrcAnaSig(STACK_CURRENT))%10);           
-    Full_TxBuf[3] = (u8)((uint16_t)(GetSrcAnaSig(STACK_CURRENT) * 10)/100);                                             //* 100))/100;//Ivalue / 100;
-    Full_TxBuf[4] = (u8)((uint16_t)(GetSrcAnaSig(STACK_VOLTAGE) * 10)%100);                                             //Vvalue % 100;
-    Full_TxBuf[5] = (u8)((uint16_t)(GetSrcAnaSig(STACK_VOLTAGE) * 10)/100);                                             //Vvalue / 100;
+    
+    u16StackCurrent = (uint16_t)(GetSrcAnaSig(STACK_CURRENT) * 10);
+    Full_TxBuf[2] = (u8)(u16StackCurrent % 100);        //(u8)((uint16_t)(GetSrcAnaSig(STACK_CURRENT))%10);           
+    Full_TxBuf[3] = (u8)(u16StackCurrent/100);          //* 100))/100;//Ivalue / 100;
+                                     
+    u16StackVoltage = (uint16_t)(GetSrcAnaSig(STACK_VOLTAGE) * 10);
+    Full_TxBuf[4] = (u8)(u16StackVoltage % 100);                                             //Vvalue % 100;
+    Full_TxBuf[5] = (u8)(u16StackVoltage / 100);                                             //Vvalue / 100;
+    
     Full_TxBuf[6] = (u8)((uint16_t)((GetSrcAnaSig(STACK_CURRENT) )* (GetSrcAnaSig(STACK_VOLTAGE))) % 100);      //Power / 10000;
     Full_TxBuf[7] = (u8)((uint16_t)((GetSrcAnaSig(STACK_CURRENT) )* (GetSrcAnaSig(STACK_VOLTAGE)))  / 100);      //Power ;    
     Full_TxBuf[8] =  ((uint16_t)GetSrcAnaSig(STACK_TEMP)& 0xFF);                    //Temperature1;
@@ -135,6 +142,7 @@ static void LoadFuelCellRealTimeInfo(void)
 {
     SYSTEM_TIME_Typedef     stHydrgProduceTimeThisTime = {0,0,0}, stHydrgProduceTimeTotal = {0,0,0};
     u8 u8DecompressCountPerMin = 0;
+    uint8_t  u8LiquifPress = 0;
     uint16_t u16PumpFeedbackSpeed = 0;
     uint16_t flqdHeight = 0;
     uint16_t u16ReformerTemp  = 0;
@@ -174,7 +182,9 @@ static void LoadFuelCellRealTimeInfo(void)
     
     flqdHeight = GetSrcAnaSig(LIQUID_LEVEL);
     Uatr_TxBuf[23] = flqdHeight / 2;                                                    //Get_WaterValue1 / 2;  //液位高度: 0-500MM
-    Uatr_TxBuf[24] = (uint8_t)((uint16_t)(GetSrcAnaSig(LIQUID_PRESS)*10));
+    
+    u8LiquifPress = (uint8_t)((uint16_t)(GetSrcAnaSig(LIQUID_PRESS)*10));
+    Uatr_TxBuf[24] = u8LiquifPress;
     Uatr_TxBuf[25] = 0;                                                                 //Pump_Blower_Number[0]; //制氢机启动状态反馈信号0x01有效，其他数据无效
     Uatr_TxBuf[26] = 0;                                                                 //Pump_Blower_Number[1]; //制氢机待机状态反馈信号0x02有效，其他数据无效
     Uatr_TxBuf[27] = 0;                                                                 //Pump_Blower_Number[2]; //制氢机运行状态反馈信号0x03有效，其他数据无效

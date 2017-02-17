@@ -181,7 +181,7 @@ static  void  AppTaskStart(void *p_arg)
 
     Make_Vacuum_FunctionTaskCreate(); //自动抽真空任务
 
-//    SpeedControlDevManageTaskCreate();
+    SpeedControlDevManageTaskCreate();//调速设备管理任务
     
     IgniterWorkTaskCreate();           
 
@@ -189,9 +189,9 @@ static  void  AppTaskStart(void *p_arg)
 
     StackManagerTaskCreate();
     
-    StackShortCircuitTaskCreate();//电堆短路活化任务
+//    StackShortCircuitTaskCreate();//电堆短路活化任务
     
-    DcModuleDynamicAdjustTaskCreate();    //DC动态限流调节任务,平滑限流任务 
+    DcModuleDynamicAdjustTaskCreate();//DC动态限流调节任务,平滑限流任务 
 
     HydrgProducerDlyStopTaskCreate();  
 

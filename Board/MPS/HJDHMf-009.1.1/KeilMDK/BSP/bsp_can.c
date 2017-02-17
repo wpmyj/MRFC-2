@@ -23,13 +23,12 @@
 *********************************************************************************************************
 */
 #include "bsp_can.h"
-
+#include "app_system_run_cfg_parameters.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define CAN_BAUD_NUM    20
 
 //CAN总线数据发送状态
 #define NOT_STARTED     0
@@ -40,38 +39,12 @@
 *                                         FUNCTION PROTOTYPES
 ***************************************************************************************************
 */
-static void     CAN_Baud_Process(unsigned int Baud, CAN_InitTypeDef *CAN_InitStructure);
-
-static void     CAN1_RX1_IRQHandler(void);
+static void CAN1_RX0_IRQHandler(void);
 /*
 ***************************************************************************************************
 *                                           LOCAL VARIABLES
 ***************************************************************************************************
 */
-
-//CAN总线的波特率 = PCLK1/((CAN_SJW +CAN_BS1 +  CAN_BS2) * CAN_Prescaler)
-const unsigned int CAN_baud_table[20][5] = {
-    /*波特率， CAN_SJW，    CAN_BS1，       CAN_BS2，  CAN_Prescaler */
-    {5,     CAN_SJW_1tq,    CAN_BS1_13tq,   CAN_BS2_2tq,    450  },     //未通
-    {10,    CAN_SJW_1tq,    CAN_BS1_6tq,    CAN_BS2_2tq,    400  },     //未通
-    {15,    CAN_SJW_1tq,    CAN_BS1_13tq,   CAN_BS2_2tq,    150  },     //15K
-    {20,    CAN_SJW_1tq,    CAN_BS1_6tq,    CAN_BS2_2tq,    200  },     //20k
-    {25,    CAN_SJW_1tq,    CAN_BS1_13tq,   CAN_BS2_2tq,    90   },     //25k
-    {40,    CAN_SJW_1tq,    CAN_BS1_6tq,    CAN_BS2_2tq,    100  },     //40k
-    {50,    CAN_SJW_1tq,    CAN_BS1_3tq,    CAN_BS2_2tq,    120  },    //50k
-    {62,    CAN_SJW_1tq,    CAN_BS1_13tq,   CAN_BS2_2tq,    36   },     //62.5k
-    {80,    CAN_SJW_1tq,    CAN_BS1_6tq,    CAN_BS2_2tq,    50   },     //80k
-    {100,   CAN_SJW_1tq,    CAN_BS1_5tq,    CAN_BS2_2tq,    45   },     //100K
-    {125,   CAN_SJW_1tq,    CAN_BS1_13tq,   CAN_BS2_2tq,    18   },     //125K
-    {200,   CAN_SJW_1tq,    CAN_BS1_6tq,    CAN_BS2_2tq,    20   },     //200K
-    {250,   CAN_SJW_1tq,    CAN_BS1_13tq,   CAN_BS2_2tq,    9    },     //250k
-    {400,   CAN_SJW_1tq,    CAN_BS1_6tq,    CAN_BS2_2tq,    10   },     //400K
-    {500,   CAN_SJW_1tq,    CAN_BS1_5tq,    CAN_BS2_2tq,    9    },     //500K
-    {666,   CAN_SJW_1tq,    CAN_BS1_5tq,    CAN_BS2_2tq,    8    },     //未通
-    {800,   CAN_SJW_1tq,    CAN_BS1_6tq,    CAN_BS2_2tq,    5    },     //800K
-    {1000,  CAN_SJW_1tq,    CAN_BS1_6tq,    CAN_BS2_2tq,    4    },     //1000K
-};
-
 static uint8_t  g_u8CanMsgRxBuff[PRGM_RX_BUFF_SIZE];//从CAN接口接收到的待汇总的数据的缓冲区
 static uint8_t  CanMsgRxStatu = NOT_STARTED;       //CAN总线接收状态
 /*
@@ -86,30 +59,30 @@ uint8_t     g_u8CanRxMsg[PRGM_RX_BUFF_SIZE];//汇总后CAN接收数据
 
 /*
 ***************************************************************************************************
-*                                          CAN_Configuration()
+*                                          CAN1_Init()
 *
 * Description : The use of this funciton is to check the authorization of the system.
 *
-* Arguments   : i_u16BaudRate: xxK.
+* Arguments   : none.
 *
-* Returns     : none
+* Returns     : none.
 *
 * Notes       : none.
 ***************************************************************************************************
 */
-void CAN1_Init(uint16_t i_u16BaudRate)
+void CAN1_Init(void)
 {
     GPIO_InitTypeDef       GPIO_InitStructure;
     CAN_InitTypeDef        CAN_InitStructure;
     CAN_FilterInitTypeDef  CAN_FilterInitStructure;
-#if CAN1_RX1_INT_ENABLE
-    NVIC_InitTypeDef  NVIC_InitStructure;
+#if CAN1_RX0_INT_ENABLE
+    NVIC_InitTypeDef       NVIC_InitStructure;
 #endif
     //时钟使能
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_CAN1, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOD, ENABLE);
 
-    GPIO_PinRemapConfig(GPIO_Remap2_CAN1, ENABLE);  //PD0、PD1上需重映射
+    GPIO_PinRemapConfig(GPIO_Remap2_CAN1, ENABLE);  //开重映射
     
     //CAN1 TX
     GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN1_CAN1_TX_PORT_NMB;
@@ -119,12 +92,8 @@ void CAN1_Init(uint16_t i_u16BaudRate)
 
     //CAN1 RX
     GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN0_CAN1_RX_PORT_NMB;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;//浮空输入
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;//上拉输入
     GPIO_Init(GPIOD, &GPIO_InitStructure);
-
-    /*CAN 1 初始化*/
-    CAN_DeInit(CAN1);  //将寄存器重设为缺省值
-    CAN_StructInit(&CAN_InitStructure);
 
     /* CAN1 单元设置 */
     CAN_InitStructure.CAN_TTCM = DISABLE; /* 时间触发禁止, 时间触发：CAN硬件的内部定时器被激活，并且被用于产生时间戳 */
@@ -133,37 +102,41 @@ void CAN1_Init(uint16_t i_u16BaudRate)
     CAN_InitStructure.CAN_NART = DISABLE; /* 报文重传, 如果错误一直传到成功止，否则只传一次 */
     CAN_InitStructure.CAN_RFLM = DISABLE; /* 接收FIFO锁定, 1--锁定后接收到新的报文摘不要，0--接收到新的报文则覆盖前一报文   */
     CAN_InitStructure.CAN_TXFP = ENABLE;  /* 发送优先级  0---由标识符决定  1---由发送请求顺序决定   */
-    CAN_InitStructure.CAN_Mode = CAN_Mode_Normal; /*工作模式*/
-
-    CAN_Baud_Process(i_u16BaudRate, &CAN_InitStructure); //波特率设置
+    CAN_InitStructure.CAN_Mode = CAN_Mode_Normal; /*工作模式*/ //CAN_Mode_LoopBack、CAN_Mode_Normal
+    CAN_InitStructure.CAN_SJW = CAN_SJW_1tq;		//BTR-SJW 重新同步跳跃宽度 1个时间单元
+    CAN_InitStructure.CAN_BS1 = CAN_BS1_3tq;		//BTR-TS1 时间段1 占用了12个时间单元
+    CAN_InitStructure.CAN_BS2 = CAN_BS2_2tq;		//BTR-TS1 时间段2 占用了3个时间单元
+    CAN_InitStructure.CAN_Prescaler = 120;		   	//BTR-BRP 波特率分频器  定义了时间单元的时间长度 36MHz/(1 + 3 + 2) / 120 = 50KHZ
+    CAN_Init(CAN1, &CAN_InitStructure);	
 
     CAN_FilterInitStructure.CAN_FilterNumber = 0;     //过滤器组编号
     CAN_FilterInitStructure.CAN_FilterMode = CAN_FilterMode_IdMask; //工作在屏蔽位模式
-    CAN_FilterInitStructure.CAN_FilterScale = CAN_FilterScale_32bit; 
+    CAN_FilterInitStructure.CAN_FilterScale = CAN_FilterScale_32bit;                 
     
-//    CAN_FilterInitStructure.CAN_FilterIdHigh =  ((uint32_t)GLOBAL_NET_WORK_ID << 5) & 0xFFFF; //要过滤的ID高位，过滤掉不是发送给本机的数据帧
-//    CAN_FilterInitStructure.CAN_FilterIdLow = (( CAN_ID_STD | CAN_RTR_DATA) & 0xFFFF); //确保收到的是标准数据帧
-//    CAN_FilterInitStructure.CAN_FilterMaskIdHigh = 0xFFFF;//所有的位全部必须匹配(或只判定nodeID位)
-//    CAN_FilterInitStructure.CAN_FilterMaskIdLow = 0xFFFF;                 
+    CAN_FilterInitStructure.CAN_FilterIdHigh =  (g_u16GlobalNetWorkId & 0xFFFF); //要过滤的ID高位，过滤掉不是发送给本机的数据帧
+    CAN_FilterInitStructure.CAN_FilterIdLow = (( CAN_ID_STD | CAN_RTR_DATA) & 0xFFFF); //确保收到的是标准数据帧
+    CAN_FilterInitStructure.CAN_FilterMaskIdHigh = 0xFFFF;//所有的位全部必须匹配
+    CAN_FilterInitStructure.CAN_FilterMaskIdLow = 0xFFFF; 
 
-    CAN_FilterInitStructure.CAN_FilterIdHigh = 0x0000;     //优先级
-    CAN_FilterInitStructure.CAN_FilterIdLow = 0x0000;
-    CAN_FilterInitStructure.CAN_FilterMaskIdHigh = 0x0000;       //32位标示符高位
-    CAN_FilterInitStructure.CAN_FilterMaskIdLow = 0x0000;
+//    CAN_FilterInitStructure.CAN_FilterIdHigh = 0x0000;     //优先级
+//    CAN_FilterInitStructure.CAN_FilterIdLow = 0x0000;
+//    CAN_FilterInitStructure.CAN_FilterMaskIdHigh = 0x0000; //32位标示符高位
+//    CAN_FilterInitStructure.CAN_FilterMaskIdLow = 0x0000;
+
     CAN_FilterInitStructure.CAN_FilterFIFOAssignment = CAN_FIFO0;  //过滤器0关联到FIFO0
     CAN_FilterInitStructure.CAN_FilterActivation = ENABLE;//激活过滤器0，激活后会自动退出初始化模式
     CAN_FilterInit(&CAN_FilterInitStructure);
 
-#if CAN1_RX1_INT_ENABLE
-//    NVIC_InitStructure.NVIC_IRQChannel = CAN1_RX1_IRQn;
-//    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;     // 主优先级为1
-//    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;            // 次优先级为0
-//    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-//    NVIC_Init(&NVIC_InitStructure);
+#if CAN1_RX0_INT_ENABLE
+    NVIC_InitStructure.NVIC_IRQChannel = CAN1_RX0_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;     // 主优先级为1
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;            // 次优先级为0
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
 
     CAN_ITConfig(CAN1, CAN_IT_FMP0, ENABLE);/* 挂号中断, 进入中断后读FIFO的报文函数释放报文清中断标志 */
-    BSP_IntVectSet(BSP_INT_ID_CAN1_RX1, CAN1_RX1_IRQHandler);
-    BSP_IntEn(BSP_INT_ID_CAN1_RX1);
+    BSP_IntVectSet(BSP_INT_ID_CAN1_RX0, CAN1_RX0_IRQHandler);
+    BSP_IntEn(BSP_INT_ID_CAN1_RX0);
 #endif
 }
 
@@ -179,55 +152,6 @@ void CAN1_Init(uint16_t i_u16BaudRate)
 *
 * Caller(s)   : Application.
 *
-***************************************************************************************************
-*/
-#if 1
-uint8_t CANx_Send_Msg(CAN_TypeDef *CANx, u16 ID, uint8_t *i_u8TxMsg, uint8_t i_u8LenOfFrame)
-{
-    uint8_t u8Mbox = 0;
-    uint8_t u8SendStatus = 0;
-    u16 i = 0;
-    CanTxMsg TxMessage;
-    
-    TxMessage.StdId = ID;                   // 标准标识符11位,即发送优先级
-    TxMessage.ExtId = 0x00;                 // 设置扩展标示符
-    TxMessage.IDE = CAN_ID_STD;             // 使用标准标识符
-    TxMessage.RTR = CAN_RTR_DATA;           //消息类型为数据帧，一帧8位
-    TxMessage.DLC = i_u8LenOfFrame;         // 要发送的数据长度
-    
-    for(i = 0; i < i_u8LenOfFrame; i++) {
-        TxMessage.Data[i] = i_u8TxMsg[i];
-    }
-    
-    u8Mbox = CAN_Transmit(CANx, &TxMessage);
-    if(u8Mbox != CAN_TxStatus_NoMailBox) 
-	{
-		APP_TRACE_INFO(("MailBox Num: %d\r\n", u8Mbox));
-		u8SendStatus = 0;
-	}
-	else
-	{		
-		APP_TRACE_INFO(("MailBox has no empty space!\r\n"));
-		u8SendStatus = 1;
-	}
-
-    return u8SendStatus;
-}
-
-#endif
-
-#if 0
-/*
-***************************************************************************************************
-*                                          CANx_Send_Msg()
-*
-* Description : The use of this funciton is to check the authorization of the system.
-*
-* Arguments   : none.
-*
-* Returns     : none
-*
-* Notes       : none.
 ***************************************************************************************************
 */
 uint8_t CANx_Send_Msg(CAN_TypeDef * CANx, Message *m)
@@ -251,10 +175,10 @@ uint8_t CANx_Send_Msg(CAN_TypeDef * CANx, Message *m)
 
     if(ret != CAN_TxStatus_NoMailBox) {
         u8SendStatu = 0;
-		APP_TRACE_INFO(("MailBox Num: %d\r\n", ret));
+//		APP_TRACE_INFO(("MailBox Num: %d\r\n", ret));
     } else {
         u8SendStatu = 1;
-		APP_TRACE_INFO(("MailBox has no empty space!\r\n"));
+//		APP_TRACE_INFO(("MailBox has no empty space!\r\n"));
     }
 
     return u8SendStatu;
@@ -264,7 +188,7 @@ uint8_t CANx_Send_Msg(CAN_TypeDef * CANx, Message *m)
 ***************************************************************************************************
 *                                 SendCanMsgContainNodeId()
 *
-* Description : The use of this funciton is to check the authorization of the system.
+* Description : The use of this funciton is concordance the node id inf to the can message.
 *
 * Arguments   : none.
 *
@@ -282,8 +206,7 @@ uint8_t SendCanMsgContainNodeId(uint32_t i_Msglen, uint8_t *msg, uint8_t i_NodeI
     uint8_t  LastTimeSendErrFlag = NO;
     Message ProcessedData;   
 
-//    ProcessedData.cob_id = i_NodeId | CAN_MSG_TX_FLAG;
-    ProcessedData.cob_id = i_NodeId ;
+    ProcessedData.cob_id = i_NodeId ;//合并后的ID
     ProcessedData.rtr = CAN_RTR_DATA;
 
     for(i = 0; i < (i_Msglen / 8 + ((i_Msglen % 8) ? 1 : 0)); i++) { //长消息拆包的分包数,8为CAN消息的标准包长度
@@ -313,15 +236,11 @@ uint8_t SendCanMsgContainNodeId(uint32_t i_Msglen, uint8_t *msg, uint8_t i_NodeI
             }
         } else {
             LastTimeSendErrFlag = NO;//发送成功，清零该标志，进入下一次循环，发送该数据
-        }
-        
-        
-        
+        }   
     }
     return ret;
 }
 
-#endif
 /*
 ***************************************************************************************************
 *                                   Can_Receive_Msg()
@@ -356,38 +275,6 @@ uint8_t CANx_Receive_Msg(CAN_TypeDef *CANx, uint8_t *i_u8RxBuf)
 
 /*
 ***************************************************************************************************
-*                                          CAN_Baud_Process()
-*
-* Description : 计算CAN的波特率.
-*
-* Arguments   : CAN_SJW : CAN_SJW_1tq - CAN_SJW_4tq   不能比任何一相位缓冲段长
-*               CAN_BS1 : CAN_BS1_1tq - CAN_BS1_16tq
-*               CAN_BS2 : CAN_BS2_1tq - CAN_BS2_8tq
-*               CAN_Prescaler : 1 - 1024.
-*
-* Returns     : none
-*
-* Notes       : baud = 36 / (CAN_SJW + CAN_BS1 + CAN_BS2) / CAN_Prescaler.
-***************************************************************************************************
-*/
-
-static void CAN_Baud_Process(unsigned int Baud, CAN_InitTypeDef *CAN_InitStructure)
-{
-    unsigned int i = 0;
-
-    for(i = 0; i < CAN_BAUD_NUM; i ++) {
-        if(Baud == CAN_baud_table[i][0]) {
-            CAN_InitStructure->CAN_SJW = CAN_baud_table[i][1];
-            CAN_InitStructure->CAN_BS1 = CAN_baud_table[i][2];
-            CAN_InitStructure->CAN_BS2 = CAN_baud_table[i][3];
-            CAN_InitStructure->CAN_Prescaler = CAN_baud_table[i][4];
-            break;
-        }
-    }
-}
-
-/*
-***************************************************************************************************
 *                                          CAN1_RX1_IRQHandler()
 *
 * Description : The use of this funciton is to check the authorization of the system.
@@ -399,19 +286,18 @@ static void CAN_Baud_Process(unsigned int Baud, CAN_InitTypeDef *CAN_InitStructu
 * Notes       : none.
 ***************************************************************************************************
 */
-#if CAN1_RX1_INT_ENABLE
+#if CAN1_RX0_INT_ENABLE
 
-void CAN1_RX1_IRQHandler(void)
+static void CAN1_RX0_IRQHandler(void)
 {
     static   uint8_t i = 0;
     uint8_t  j = 0;
     CanRxMsg CAN1_Rx_Msg; //数据链路层的数据包定义
     OS_ERR err;
-    
     CPU_SR_ALLOC();
     
     CAN_Receive(CAN1, CAN_FIFO0, &(CAN1_Rx_Msg));//从CAN1 FIFO0接收数据链路层的CAN数据,注意此处提取报文后会自动清除中断
-
+    
     if((CAN1_Rx_Msg.DLC == 8) 
         && (CAN1_Rx_Msg.Data[0] == 0xFC) 
         && (CAN1_Rx_Msg.Data[1] == 0xFD) 
@@ -461,4 +347,4 @@ void CAN1_RX1_IRQHandler(void)
 
 #endif
 
-/******************* (C) COPYRIGHT 2015 Personal Electronics *****END OF FILE****/
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO *****END OF FILE****/

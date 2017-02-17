@@ -101,7 +101,7 @@ void StackShortCircuitTaskCreate(void)
 *
 * Returns     : none.
 *
-* Notes       : 半小时一次.
+* Notes       : 5分钟一次.
 ***************************************************************************************************
 */
 static void  StackShortCircuitTask(void *p_arg)                   
@@ -117,7 +117,7 @@ static void  StackShortCircuitTask(void *p_arg)
              
         while(DEF_TRUE)
         {
-            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 30, 
+            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 5, 
                           OS_OPT_PEND_BLOCKING, 
                           NULL,
                           &err);

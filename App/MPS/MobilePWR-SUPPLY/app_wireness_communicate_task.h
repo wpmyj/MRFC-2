@@ -30,7 +30,7 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define PRODUCT_MODEL_CODE      0x1100              //PS3:0x1100,MRFC-2:0x1101
+#define PRODUCT_MODEL_CODE      0x1100              //PS3:0x1100,MRFC-2:0x1101,发电模块0100
 #define LOCAL_NETWORK_ID        0
 #define PRGM_TX_BUFF_SIZE       60
 #define PRGM_RX_BUFF_SIZE       16
@@ -111,14 +111,17 @@ typedef enum {
     PRODUCTS_TYPE_ID_HIGH = 3,
     PRODUCTS_TYPE_ID_LOW,
     LOCAL_NETWORK_ID_CODE,              //本地组网ID
-    INFORMATION_TYPE_CONTROL_CODE,      //信息类型控制码
+    
+    INFORMATION_TYPE_CONTROL_CODE = 6,      //信息类型控制码
+//    VALID_INFORMATION_LENGTH_CONTROL_CODE,
 
-//      DATA_IDENTIFY_TAG_INF_CODE_1 =7,            //数据身份标签码
-//      DATA_IDENTIFY_TAG_INF_CODE_2,
-//      DATA_IDENTIFY_TAG_INF_CODE_3,
-//      DATA_IDENTIFY_TAG_INF_CODE_4,
+    DATA_IDENTIFY_TAG_INF_CODE_1 = 7,    //数据身份标签码
+    DATA_IDENTIFY_TAG_INF_CODE_2,
+    DATA_IDENTIFY_TAG_INF_CODE_3,
+    DATA_IDENTIFY_TAG_INF_CODE_4,
+    
     VALID_INFORMATION_LENGTH_CONTROL_CODE = 11,
-
+  
     /*实时请求信息数据*/
     REQUEST_INFORMATION_TYPE = 12,
     LENGTH_OF_REQUEST_PARAMETERS,
@@ -325,9 +328,10 @@ typedef enum {
 #define REAL_TIME_RUNNING_INFORMATION_B_2       0x06
 #define EN_SEND_DATA_TYPE_MAX                   0x07
 
+
 /*All kinds of sending message length macro definition*/
-#define REAL_TIME_RUNNING_INFO_A_LENGTH                       38
-#define REAL_TIME_RUNNING_INFO_B_1_LENGTH                     45
+#define REAL_TIME_RUNNING_INFO_A_LENGTH                       38//对接协议为34
+#define REAL_TIME_RUNNING_INFO_B_1_LENGTH                     45//对接协议为43
 #define REAL_TIME_RUNNING_INFO_B_2_LENGTH                     8
 #define REAL_TIME_REQUEST_INFO_LENGTH                       6
 #define REAL_TIME_ASSIST_INFO_LENGTH                        12
@@ -444,6 +448,6 @@ void    CmdShutDown(void);
 void    SendShutDownRequest(void);
 void    SendChooseWorkModeRequest(void);
 void    SendRealTimeAssistInfo(void);
-
+void    SendInquireOrConfigurationInfo(void);
 #endif
 

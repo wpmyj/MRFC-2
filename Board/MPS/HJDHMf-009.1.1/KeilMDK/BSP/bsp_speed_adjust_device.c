@@ -135,6 +135,7 @@ static void SpeedControlDevManageTask(void)
     OS_ERR      err;
 
     OSTaskSuspend(NULL, &err);
+    
     while(DEF_TRUE) {
         OSTimeDlyHMSM(0, 0, 0, 500,
                       OS_OPT_TIME_HMSM_STRICT,

@@ -63,7 +63,7 @@ static      CPU_STK_8BYTE_ALIGNED     AnaSigMonitorTaskStk[ANA_SIGNAL_MONITOR_TA
 */
 static      uint8_t      g_u8HydrgProducerAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;//制氢机运行模拟信号警报监测开关
 static      uint8_t      g_u8HydrgProducerPumpRunningStartAutoAdjHookSw = DEF_DISABLED;   //制氢机泵速自动调节开关
-static      uint8_t      g_u8StackHydrgPressHighEnoughHookSw = DEF_DISABLED; //等待电堆压力满足开关
+static      uint8_t      g_u8StackHydrgPressArriveWaitSw = DO_NOT_WAIT; //等待电堆压力满足开关
 static      uint8_t      g_u8StackAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;//电堆运行模拟信号警报监测开关
 static      uint8_t      g_u8StackIsPulledStoppedMonitorHookSw = DEF_DISABLED;//电堆是否被拉停监测开关
 static      uint8_t      g_u8StackNeedRestartLimitCurrentFlag = DEF_CLR;//电堆被拉停后重新限流标志
@@ -77,11 +77,12 @@ static      uint16_t     g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;       //
 static      void        AnaSigMonitorTask(void *p_arg);
 
 static      void        HydrgProducerAnaSigAlarmRunningMonitorHook(void);
-static      void        StackHydrgPressHighEnoughWaitHook(void);
 static      void        StackAnaSigAlarmRunningMonitorHook(void);
 static      void        JudgeWhetherTheStackIsPulledStoppedMonitorHook(void);
 //static      void        HydrgProducerPumpAutoAdjByDecompressCountHook(void);
 static      void        HydrgProducerPumpRunningStartAutoAdjHook(void);
+
+static      void        StackHydrgPressHighEnoughWaitHook(uint8_t i_WaitStatus);
 /*
 ***************************************************************************************************
 *                                 AnaSigMonitorTaskCreate()
@@ -153,8 +154,9 @@ void  AnaSigMonitorTask(void *p_arg)
             StackAnaSigAlarmRunningMonitorHook();
         }
 
-        if(g_u8StackHydrgPressHighEnoughHookSw == DEF_ENABLED) {
-            StackHydrgPressHighEnoughWaitHook();
+        //等待氢气压力达到
+        if(DO_NOT_WAIT != g_u8StackHydrgPressArriveWaitSw) {
+            StackHydrgPressHighEnoughWaitHook(g_u8StackHydrgPressArriveWaitSw);
         }
 
         //监测电堆是否被拉停
@@ -279,7 +281,7 @@ void SetHydrgProducerPumpRunningStartAutoAdjHookSwitch(uint8_t i_NewStatu)
 
 /*
 ***************************************************************************************************
-*                               StackHydrgPressHighEnoughWaitHook
+*                               StackHydrgPressHighEnoughWaitHook()
 *
 * Description : The use of the the funciton is to wait for the hydrogen press up to 45KPa, then start
 *                   the work of the stack.
@@ -291,13 +293,29 @@ void SetHydrgProducerPumpRunningStartAutoAdjHookSwitch(uint8_t i_NewStatu)
 * Notes       : none.
 ***************************************************************************************************
 */
-void StackHydrgPressHighEnoughWaitHook(void)
+static void StackHydrgPressHighEnoughWaitHook(uint8_t i_u8WaitStatus)
 {
     OS_ERR err;
+    float fHydrgPress = 0;
 
-    if(GetSrcAnaSig(HYDROGEN_PRESS_1) >= 45.0) {
-        OSTaskSemPost(&StackManagerTaskTCB, OS_OPT_POST_NO_SCHED, &err);
-        SetStackHydrgPressHighEnoughHookSwitch(DEF_DISABLED);
+    fHydrgPress = GetSrcAnaSig(HYDROGEN_PRESS_1);
+
+    //等待气压达到电堆进入排杂状态
+    if((fHydrgPress >= 36.0) && (WAIT_FOR_36KPA == i_u8WaitStatus)) {
+        OSTaskSemPost(&StackManagerTaskTCB,
+                      OS_OPT_POST_NO_SCHED,
+                      &err);
+        g_u8StackHydrgPressArriveWaitSw = DO_NOT_WAIT;
+    } else {
+    }
+
+    //等待气压达到电堆进入工作状态
+    if((fHydrgPress >= 45.0) && (WAIT_FOR_45KPA == i_u8WaitStatus)) {
+        OSTaskSemPost(&StackManagerTaskTCB,
+                      OS_OPT_POST_NO_SCHED,
+                      &err);
+        g_u8StackHydrgPressArriveWaitSw = DO_NOT_WAIT;
+    } else {
     }
 }
 
@@ -435,7 +453,7 @@ void SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
 
 /*
 ***************************************************************************************************
-*                               SetStackHydrgPressHighEnoughHookSwitch
+*                               SetHydrogenPressArrivedWaitSwitch
 *
 * Description : open the switch of the hydrogen press monitor to start the stack.
 *
@@ -446,9 +464,9 @@ void SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
 * Notes       : none.
 ***************************************************************************************************
 */
-void SetStackHydrgPressHighEnoughHookSwitch(uint8_t i_NewStatu)
+void SetHydrogenPressArrivedWaitSwitch(uint8_t i_WaitStatus)
 {
-    g_u8StackHydrgPressHighEnoughHookSw = i_NewStatu;
+    g_u8StackHydrgPressArriveWaitSw = i_WaitStatus;
 }
 
 /*

@@ -24,6 +24,7 @@
 
 #include <includes.h>
 #include "app_system_real_time_parameters.h"
+#include "app_system_run_cfg_parameters.h"
 #include "app_wireness_communicate_task.h"
 #include "app_top_task.h"
 #include "bsp_speed_adjust_device.h"
@@ -68,7 +69,7 @@ static      CPU_STK     CommunicateRequsetSendTaskStk[COMMUNICATE_REQUEST_SEND_T
 ***************************************************************************************************
 */
 uint8_t             g_u8SerRxMsgBuff[PRGM_RX_BUFF_SIZE];
-//static    uint32_t    g_u32TxMsgDataTagNumber[EN_SEND_DATA_TYPE_MAX] = {0};   //数据身份标签码
+static    uint32_t    g_u32TxMsgDataTagNumber[EN_SEND_DATA_TYPE_MAX] = {0};   //数据身份标签码
 
 static      TX_MSG_SEND_BUFF_Typedef        g_stTxMsgDataSendBuff = {0};
 
@@ -77,8 +78,6 @@ static      TX_MSG_SEND_BUFF_Typedef        g_stTxMsgDataSendBuff = {0};
 *                                         FUNCTION PROTOTYPES
 ***************************************************************************************************
 */
-//          void        SetWaitShutDownRequestResponseFlag(SWITCH_TYPE_VARIABLE_Typedef i_eNewStatu);
-
 static      void        CommunicateTask(void *p_arg);
 static      void        CommunicateDataSendTask(void *p_arg);
 static      void        CommunicateRequsetInfSendTask(void *p_arg);
@@ -89,7 +88,6 @@ static      void        AddRealTimeWorkInfoDataToSendBuff(uint8_t , uint8_t);
 static      void        LoadHydrogenProducerRealTimeWorkInfo(uint8_t, uint8_t *);
 static      void        LoadFuelCellRealTimeWorkInfoPartA(uint8_t, uint8_t *);
 static      void        LoadFuelCellRealTimeWorkInfoPartB(uint8_t ,uint8_t *);
-//static      void        SendReferenceAndConfigrationInfo(void);
 static      void        InsertNonRealTimeWorkInfoDataToSendBuff(uint8_t, uint8_t , uint8_t , uint8_t *);
 static      void        SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg);
 
@@ -186,8 +184,6 @@ void  CommunicateTask(void *p_arg)
 {
     OS_ERR      err;
     uint8_t     i = 0;
-    uint8_t     status = 0;
-    uint8_t canbuf[4] = {0xF1,0xF2,0xF3,0xF4};
     SYSTEM_WORK_MODE_Typedef    eWorkMode;
 
     while(DEF_TRUE) {
@@ -195,29 +191,17 @@ void  CommunicateTask(void *p_arg)
         OSTimeDlyHMSM(0, 0, 1, 000,
                       OS_OPT_TIME_HMSM_STRICT,
                       &err);
-
-        status = CANx_Send_Msg(CAN1,GLOBAL_NET_WORK_ID,canbuf,4);
-        if(status == 0){
-            APP_TRACE_INFO(("can sending ... \r\n"));
-        }else{
-            APP_TRACE_INFO(("send error \r\n"));
-        }
-        
+       
         if(g_u8WifiCommandReceived == YES) { //收到串口指令而提前结束延时，响应上位机指令
             ResponsePrgmCommand(g_u8SerRxMsgBuff);
             g_u8WifiCommandReceived = NO;
-            APP_TRACE_INFO(("Wifi Rx data:"));
-            for(i = 0;i<16;i++){
-                APP_TRACE_INFO(("%X ",g_u8SerRxMsgBuff[i]));
-            }
-            APP_TRACE_INFO(("...\n\r"));
         }         
         else if(g_eCanMsgRxStatu == YES)//是否因收到CAN接口指令而提前结束延时
 		{
 			ResponsePrgmCommand(g_u8CanRxMsg);
 			g_eCanMsgRxStatu = NO;
             APP_TRACE_INFO(("Can Rx data:"));
-            for(i = 0;i<16;i++){
+            for(i = 0;i<8;i++){
                 APP_TRACE_INFO(("%X ",g_u8CanRxMsg[i]));
             }
             APP_TRACE_INFO(("...\n\r"));
@@ -490,16 +474,18 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
         *(i_pRealTimeWorkInfo + HEAD_BYTE_THREE) = 0xF3;
         *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)((PRODUCT_MODEL_CODE & 0xFF00) >>  8);
         *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(PRODUCT_MODEL_CODE & 0xFF);
-        *(i_pRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = LOCAL_NETWORK_ID;
+        *(i_pRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = g_u16GlobalNetWorkId;
+        
         *(i_pRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)REAL_TIME_RUNNING_INFORMATION_A;
-
-//      //数据标签码码值增加
-//      g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION]++;
-//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] >> 24);
-//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF0000) >> 16);
-//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF00) >> 8);
-//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF);
         *(i_pRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_RUNNING_INFO_A_LENGTH;
+        
+        //数据标签码码值增加
+        g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_A]++;
+        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_A] >> 24);
+        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_A] & 0xFF0000) >> 16);
+        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_A] & 0xFF00) >> 8);
+        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_A] & 0xFF);
+          
         //运行警报码
         u32AlarmCode = GetRunAlarmCode();
         *(i_pRealTimeWorkInfo + RUN_ALARM_CODE_BYTE_4) = (uint8_t)(u32AlarmCode >> 24);
@@ -522,6 +508,7 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
         *(i_pRealTimeWorkInfo + FIRE_OR_ROD_TEMP_LOW) = (uint8_t)((u16CurrentTemp & 0xFF));
         //液压
         m_u16LiquidPress = (uint16_t)(GetSrcAnaSig(LIQUID_PRESS) * 100);
+//        m_u16LiquidPress = 1680;
         *(i_pRealTimeWorkInfo + LIQUID_PRESS_INTEGER_PART) = (uint8_t)(m_u16LiquidPress / 100);
         *(i_pRealTimeWorkInfo + LIQUID_PRESS_DECIMAL_PART) = (uint8_t)(m_u16LiquidPress % 100);
         //风机控制速度
@@ -530,6 +517,7 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
         *(i_pRealTimeWorkInfo + HYDROGEN_FAN_SPD_CONTROL_LOW) = (uint8_t)((u16HydrgFanCtlSpd & 0xFF));
         //风机反馈速度
         u16HydrgFeedbackFanSpd = GetHydrgFanFeedBackSpd();
+//        u16HydrgFeedbackFanSpd = 655;
         *(i_pRealTimeWorkInfo + HYDROGEN_FAN_SPD_FEEDBACK_HIGH) = (uint8_t)((u16HydrgFeedbackFanSpd & 0xFF00) >> 8);
         *(i_pRealTimeWorkInfo + HYDROGEN_FAN_SPD_FEEDBACK_LOW) = (uint8_t)((u16HydrgFeedbackFanSpd & 0xFF));
         //水泵控制速度
@@ -538,6 +526,7 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
         *(i_pRealTimeWorkInfo + PUMP_SPD_CONTROL_LOW) = (uint8_t)(u16PumpCtlSpeed & 0xFF);
         //水泵反馈速度
         u16PumpFeedbackSpeed = GetPumpFeedBackSpd();
+//        u16PumpFeedbackSpeed = 878;
         *(i_pRealTimeWorkInfo + PUMP_SPD_FEEDBACK_HIGH) = (uint8_t)((u16PumpFeedbackSpeed & 0xFF00) >> 8);
         *(i_pRealTimeWorkInfo + PUMP_SPD_FEEDBACK_LOW) = (uint8_t)(u16PumpFeedbackSpeed & 0xFF);
         
@@ -561,6 +550,7 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
         
         //液位数据
         u16LiquidLevel = (uint16_t)GetSrcAnaSig(LIQUID_LEVEL);
+//        u16LiquidLevel = 235;
         *(i_pRealTimeWorkInfo + LIQUID_LEVEL_INTEGER_PART) = (uint8_t)((u16LiquidLevel & 0xFF00) >> 8);
         *(i_pRealTimeWorkInfo + LIQUID_LEVEL_DECIMAL_PART) =(uint8_t)(u16LiquidLevel & 0xFF);
         //每分钟进液量
@@ -606,6 +596,7 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
 {
     uint16_t  u16StackTemp = 0;
     uint16_t  u16StackFanSpdFeedBack = 0;
+//    uint16_t  u16StackFanSpdFeedBackB = 0;
     uint16_t  u16StackFanCtlSpd = 0;
     uint32_t  u32StackPower = 0;
     uint32_t  u32AlarmCode = 0;
@@ -613,6 +604,7 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
     uint16_t  m_u16StackVoltageMul100 = 0;
     uint16_t  m_u16StackPressMul100 = 0;
     uint32_t  u32IsolatedGenratedEnergyThisTime = 0;
+//    uint32_t  u32IsolatedGenratedEnergyCount = 0;
     int16_t   i16HydrogYieldMatchOffsetValue = 0;
     uint32_t  u32SystemWorkStatuCode = 0;
     SYSTEM_TIME_Typedef     stStackWorkTimeThisTime = {0}, stStackWorkTimeTotal = {0};
@@ -625,16 +617,17 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
         *(i_pRealTimeWorkInfo + HEAD_BYTE_THREE) = 0xF3;
         *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)(PRODUCT_MODEL_CODE >> 8);
         *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(PRODUCT_MODEL_CODE & 0xFF);
-        *(i_pRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = LOCAL_NETWORK_ID;
+        *(i_pRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = g_u16GlobalNetWorkId;
+        
         *(i_pRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)REAL_TIME_RUNNING_INFORMATION_B_1;
-
-//      //数据标签码码值增加
-//      g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION]++;
-//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] >> 24);
-//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF0000) >> 16);
-//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF00) >> 8);
-//      *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION] & 0xFF);
         *(i_pRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_RUNNING_INFO_B_1_LENGTH;
+        
+        //数据标签码码值增加
+        g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1]++;
+        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] >> 24);
+        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] & 0xFF0000) >> 16);
+        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] & 0xFF00) >> 8);
+        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] & 0xFF);
 
         //运行警报码
         u32AlarmCode = GetRunAlarmCode();
@@ -677,10 +670,15 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
         *(i_pRealTimeWorkInfo + STACK_FAN_SPD_CONTROL_LOW) = (uint8_t)(u16StackFanCtlSpd & 0xFF);
 
         //电堆风扇反馈速度
-        u16StackFanSpdFeedBack = GetStackFanSpdFeedBack();
+//        u16StackFanSpdFeedBack = GetStackFanSpdFeedBack();
+//        u16StackFanSpdFeedBack = 1500;
         *(i_pRealTimeWorkInfo + STACK_FAN_PART_A_SPD_FEEDBACK_HIGH) = (uint8_t)((u16StackFanSpdFeedBack & 0xFF00) >> 8);
         *(i_pRealTimeWorkInfo + STACK_FAN_PART_A_SPD_FEEDBACK_LOW) = (uint8_t)(u16StackFanSpdFeedBack & 0xFF);
 
+//        u16StackFanSpdFeedBackB = 1000;
+//        *(i_pRealTimeWorkInfo + STACK_FAN_PART_B_SPD_FEEDBACK_HIGH) = (uint8_t)((u16StackFanSpdFeedBackB & 0xFF00) >> 8);
+//        *(i_pRealTimeWorkInfo + STACK_FAN_PART_B_SPD_FEEDBACK_LOW) = (uint8_t)(u16StackFanSpdFeedBackB & 0xFF);
+        
         //本次发电时间,APP上发电界面显示的是这个值
         stStackWorkTimeThisTime = GetStackProductTimeThisTime();
         *(i_pRealTimeWorkInfo + STACK_WORK_TIME_THIS_TIME_HOUR_HIGH) = (uint8_t)((stStackWorkTimeThisTime.hour & 0xFF00) >> 8);
@@ -703,11 +701,18 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
 
         //本次单机发电量
         u32IsolatedGenratedEnergyThisTime = (uint32_t)(GetIsolatedGenratedEnergyThisTime() * 1000);
+//        u32IsolatedGenratedEnergyThisTime = 635423;
         *(i_pRealTimeWorkInfo + ISOLATED_GENERATED_ENERGY_THIE_TIME_INTEGER_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyThisTime / 1000) & 0xFF00) >> 8);
         *(i_pRealTimeWorkInfo + ISOLATED_GENERATED_ENERGY_THIE_TIME_INTEGER_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyThisTime / 1000) & 0xFF);
         *(i_pRealTimeWorkInfo + ISOLATED_GENERATED_ENERGY_THIE_TIME_DECIMAL_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyThisTime % 1000) & 0xFF00) >> 8);
         *(i_pRealTimeWorkInfo + ISOLATED_GENERATED_ENERGY_THIE_TIME_DECIMAL_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyThisTime % 1000) & 0xFF);
 
+//        u32IsolatedGenratedEnergyCount = 552341;
+//        *(i_pRealTimeWorkInfo + GENERATED_ENERGY_TOTAL_INTEGER_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyCount / 1000) & 0xFF00) >> 8);
+//        *(i_pRealTimeWorkInfo + GENERATED_ENERGY_TOTAL_INTEGER_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyCount / 1000) & 0xFF);
+//        *(i_pRealTimeWorkInfo + GENERATED_ENERGY_TOTAL_DECIMAL_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyCount % 1000) & 0xFF00) >> 8);
+//        *(i_pRealTimeWorkInfo + GENERATED_ENERGY_TOTAL_DECIMAL_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyCount % 1000) & 0xFF);
+        
         //匹氢偏移值
         i16HydrogYieldMatchOffsetValue = (int16_t)(GetStackHydrogenYieldMatchOffsetValue() * 100);
         if(i16HydrogYieldMatchOffsetValue > 0 || i16HydrogYieldMatchOffsetValue < -100) { //整数位带符号位
@@ -756,10 +761,17 @@ static void LoadFuelCellRealTimeWorkInfoPartB(uint8_t i_uint8_tIsHistoryData, ui
         *(i_pRealTimeWorkInfo + HEAD_BYTE_THREE) = 0xF3;
         *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)(PRODUCT_MODEL_CODE >> 8);
         *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(PRODUCT_MODEL_CODE & 0xFF);
-        *(i_pRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = LOCAL_NETWORK_ID;
+        *(i_pRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = g_u16GlobalNetWorkId;
         *(i_pRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)REAL_TIME_RUNNING_INFORMATION_B_2;
         *(i_pRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_RUNNING_INFO_B_2_LENGTH;
 
+        //数据标签码码值增加
+//        g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1]++;
+//        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] >> 24);
+//        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] & 0xFF0000) >> 16);
+//        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] & 0xFF00) >> 8);
+//        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] & 0xFF);
+        
         //电堆一分钟内实时的泄压排气次数
         u8DecompressCountPerMin = GetPassiveDecompressCountPerMinutes();
         *(i_pRealTimeWorkInfo + STACK_DECOMPRESS_COUNT_PER_MINUTES_HIGH) = 0;
@@ -891,14 +903,13 @@ void LoadNonRealTimeWorkInfo(uint8_t i_eSendDataType, uint8_t i_uint8_tCmdCode, 
         *(i_pNonRealTimeWorkInfo + HEAD_BYTE_THREE) = 0xF3;
         *(i_pNonRealTimeWorkInfo + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)((PRODUCT_MODEL_CODE & 0xFF00) >> 8);
         *(i_pNonRealTimeWorkInfo + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(PRODUCT_MODEL_CODE & 0xFF);
-        *(i_pNonRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = LOCAL_NETWORK_ID;
+        *(i_pNonRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = g_u16GlobalNetWorkId;
 
-
-//      g_u32TxMsgDataTagNumber[i_eSendDataType]++;
-//      *(i_pNonRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[i_eSendDataType] >> 24);
-//      *(i_pNonRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[i_eSendDataType] & 0xFF0000) >> 16);
-//      *(i_pNonRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[i_eSendDataType] & 0xFF00) >> 8);
-//      *(i_pNonRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[i_eSendDataType] & 0xFF);
+        g_u32TxMsgDataTagNumber[i_eSendDataType]++;
+        *(i_pNonRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[i_eSendDataType] >> 24);
+        *(i_pNonRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[i_eSendDataType] & 0xFF0000) >> 16);
+        *(i_pNonRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[i_eSendDataType] & 0xFF00) >> 8);
+        *(i_pNonRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[i_eSendDataType] & 0xFF);
 
         //数据类型控制码的高4位尚未定义，在此清零
         *(i_pNonRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)(i_eSendDataType & 0x0F);
@@ -919,7 +930,9 @@ void LoadNonRealTimeWorkInfo(uint8_t i_eSendDataType, uint8_t i_uint8_tCmdCode, 
 
             case REAL_TIME_ASSIST_INFORMATION:
                 *(i_pNonRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_ASSIST_INFO_LENGTH;
-                *(i_pNonRealTimeWorkInfo + LEGAL_AUTHORIZATION_CODE) = 0;//暂未设权限检验码
+                
+                *(i_pNonRealTimeWorkInfo + LEGAL_AUTHORIZATION_CODE) = EN_LEGAL_AUTHORIZATION;//暂未检验权限检验码
+            
                 stSelfCheckCode = GetSysSelfCheckCode();
                 *(i_pNonRealTimeWorkInfo + SELF_CHECK_SENSOR_STATUS_CODE) = stSelfCheckCode.DevSelfCheckSensorStatusCode;
 
@@ -1007,16 +1020,17 @@ static void SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg)
     uint8_t i =0;
     
     BSP_PrgmDataDMASend(i_uint8_tTxMsgLen, i_pTxMsg);
-//    APP_TRACE_INFO(("Wifi Tx data:"));
-//    for(i = 0;i<60;i++){
-//        APP_TRACE_INFO(("%X ",i_pTxMsg[i]));
-//    }
-//    APP_TRACE_INFO(("...\n\r"));
+
     if(g_eCAN_BusOnLineFlag == YES)//CAN总线在线
 	{
-        CANx_Send_Msg(CAN1,GLOBAL_NET_WORK_ID,i_pTxMsg,PRGM_TX_BUFF_SIZE);
-//		SendCanMsgContainNodeId(PRGM_TX_BUFF_SIZE, i_pTxMsg, GLOBAL_NET_WORK_ID);
+		SendCanMsgContainNodeId(PRGM_TX_BUFF_SIZE, i_pTxMsg, g_u16GlobalNetWorkId);
 	}
+    
+    APP_TRACE_INFO(("Can Tx data:"));
+    for(i = 0;i<i_uint8_tTxMsgLen;i++){
+        APP_TRACE_INFO(("%X ",i_pTxMsg[i]));
+    }
+    APP_TRACE_INFO(("...\n\r"));
 }
 
 /*
@@ -1040,7 +1054,8 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
             && (*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_HEAD_TWO)     == 0xFD)
             && (*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_HEAD_THREE)   == 0xFE)
             && (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_END_OF_DATA)   == 0xAA)//报尾
-//            && (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CHILD_MODULE_ID)   == 0x01)//暂不判定子模块ID            
+//            && (*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_HEAD_TARGET_LOCAL_NET_ID)   == g_u16GlobalNetWorkId)//组网ID
+//            && (*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_HEAD_TARGET_LOCAL_NET_ID)   == 0x01)//暂不判定子模块ID            
 //            && (i_PrgmRxMsg[RECEIVE_DATA_BYTE_HEAD_TARGET_LOCAL_NET_ID]     == 0xFF)//暂不判定接收ID
       ) {
         switch(*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_CMD_TYPE) & 0x0F) { //指令类型码的高4位尚未定义——将其清零
@@ -1242,9 +1257,19 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                 break;
 
             case COMMAND_TYPE_RESPONSE_CONFIRM://应答、确认指令
-                switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CODE_VALUE)) {
-                    case RESPONSE_ALLOCATE_ID_NMB_WITH_PARAMETERS:
-                        break;
+                switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CODE_VALUE)){
+					case RESPONSE_ALLOCATE_ID_NMB_WITH_PARAMETERS:
+						if((EN_WAITTING_COMMAND == GetSystemWorkStatu() || EN_ALARMING == GetSystemWorkStatu()) && (1 == *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETERS_LENGTH))){//限制参数长度为1
+							OSSchedLock(&err);
+							if((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETERS_LENGTH) <= 255)){
+								g_u16GlobalNetWorkId = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1);
+								StoreGlobalNetWorkID(&g_u16GlobalNetWorkId);
+								SendInquireOrConfigurationInfo();//返回设置参数
+							}										
+							OSSchedUnlock(&err);
+                            APP_TRACE_INFO(("Id set,ID:%d...\n\r",(u8)g_u16GlobalNetWorkId));	
+						}
+						break;
 
                     case RESPONSE_SLAVE_SHUT_DOWN_CMD:
                         u32ErrCode = ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1) << 24)
@@ -1476,6 +1501,11 @@ void SendRealTimeAssistInfo()
 //{
 //    InsertNonRealTimeWorkInfoDataToSendBuff(FOR_QUERY_AND_CONFIG_INFORMATION, NULL, NULL, NULL);
 //}
+
+void SendInquireOrConfigurationInfo()
+{
+	InsertNonRealTimeWorkInfoDataToSendBuff(FOR_QUERY_AND_CONFIG_INFORMATION, NULL, NULL, NULL);
+}
 /*
 ***************************************************************************************************
 *                                      GetPramTxBuffLen()

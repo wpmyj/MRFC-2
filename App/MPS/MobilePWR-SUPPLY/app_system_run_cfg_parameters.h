@@ -117,6 +117,7 @@ extern LIQUID_PRESSURE_CMP_LINES_Typedef           g_stLqdPressCmpTbl;
 extern LIQUID_HEIGHT_CMP_LINES_Typedef             g_stLqdHeightCmpTbl;
 
 extern uint16_t                                    g_u16RunPurifyAmpIntegralValue;
+extern uint16_t                                    g_u16GlobalNetWorkId;
 /*
 ***************************************************************************************************
 *                                           EXPORTED MACRO
@@ -124,6 +125,7 @@ extern uint16_t                                    g_u16RunPurifyAmpIntegralValu
 */
 #define LOCAL_NETWORK_ID        0       //本地组网ID，独立运行的机器默认为0
 #define PRODUCTS_TYPE_ID        0x1100  //产品型号ID：小型发电机
+
 /*
 ***************************************************************************************************
 *                                           EXPORTED FUNCTION
@@ -147,7 +149,7 @@ void        StoreStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PARA_Typedef *);
 void        SetRunningParaCfgSwitch(uint8_t);
 uint8_t     GetRunningParaCfgSwitchStatus(void);
 
-
+void        StoreGlobalNetWorkID(u16* i_GlobalNetWorkID);
 
 /*
 ***************************************************************************************************

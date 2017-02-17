@@ -280,7 +280,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
         if(EN_THROUGH == DeviceSelfCheck()) {
             APP_TRACE_INFO(("Self-check success...\n\r"));
 
-            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 1, //每分钟自检一次
+            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 30 * 1, //每30s自检一次
                           OS_OPT_PEND_BLOCKING,
                           NULL,
                           &err);
@@ -297,6 +297,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
                 WaitCmdStatu = EN_NOT_THROUGH;
                 break;
             }
+            SendRealTimeAssistInfo();   //每30s向上位机发送一次自检信息
         } else {
             APP_TRACE_INFO(("Self-check failed...\n\r"));
             WaitCmdStatu = EN_NOT_THROUGH;

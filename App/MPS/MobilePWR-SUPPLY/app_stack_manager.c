@@ -156,38 +156,45 @@ void StackManagerTask(void)
         IncrementType_PID_Init();   //PID参数初始化
 
         BSP_HydrgInValvePwrOn();
-
-        APP_TRACE_INFO(("Stack manager start, waitting the hydrogen press up to 45KPa ...\n\r"));
-        SetStackHydrgPressHighEnoughHookSwitch(DEF_ENABLED);
-
-        OSTaskSemPend(0, OS_OPT_PEND_BLOCKING, NULL, &err); //接收模拟信号监测任务中气压监测任务信号量
-        APP_TRACE_INFO(("Start the stack start purify...\n\r"));
-        BSP_HydrgOutValvePwrOn();
+        //优化排杂程序
+        APP_TRACE_INFO(("Stack manager start, waitting the hydrogen press up to 36KPa ...\r\n"));
+        SetHydrogenPressArrivedWaitSwitch(WAIT_FOR_36KPA);
+        OSTaskSemPend(0, OS_OPT_PEND_BLOCKING, NULL, &err);//接收模拟信号监测任务中气压监测任务信号量 
+        APP_TRACE_INFO(("Start the stack start purify...\r\n"));
         SetStackFanCtlSpd(1000);
+        BSP_HydrgOutValvePwrOn();
         OSTimeDlyHMSM(0, 0, 3, 0, OS_OPT_TIME_HMSM_STRICT, &err);
         SetStackFanCtlSpd(300);
         OSTimeDlyHMSM(0, 0, 2, 0, OS_OPT_TIME_HMSM_STRICT, &err);
         BSP_HydrgOutValvePwrOff();
-        APP_TRACE_INFO(("Finish the stack start purify...\n\r"));
-        SetStackWorkStatu(EN_IN_WORK);
-        SetExternalScreenUpdateStatu(YES);//串口显示屏界面更新
+        APP_TRACE_INFO(("Finish the stack start purify...\r\n"));
+          
+        APP_TRACE_INFO(("Stack manager start, waitting the hydrogen press up to 45KPa ...\n\r"));
+        SetHydrogenPressArrivedWaitSwitch(WAIT_FOR_45KPA);
 
+        OSTaskSemPend(0, OS_OPT_PEND_BLOCKING, NULL, &err); //接收模拟信号监测任务中气压监测任务信号量
         fVoltage = GetSrcAnaSig(STACK_VOLTAGE);
 
 //        if(fVoltage >= 48){//只有当气压达到45KPA的时候，电压大于48v电堆才进入工作状态  
             BSP_DCConnectValvePwrOn();
 //        }
 
+        SetStackWorkStatu(EN_IN_WORK);
+        SetExternalScreenUpdateStatu(YES);//串口显示屏界面更新
+        
         StackHydrogenYieldMatchingOffsetValueMonitorTaskCreate();//电堆匹氢偏移量监测任务创建
         
         SetStackIsPulledStoppedMonitorHookSwitch(DEF_ENABLED);//监测电堆是否被拉停
         SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(DEF_ENABLED);
+        SetDCModuleLimitCurrentSmoothlyTaskSwitch(DEF_ENABLED);//平滑限流
         SetDCModuleAutoAdjustTaskSwitch(DEF_ENABLED);//DC动态限流任务开关
         SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);
 
         OSTaskResume(&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,  //恢复匹氢偏移监测任务
                      &err);
         
+//        OSTaskResume(&StackShortCircuitTaskTCB,  //恢复短路活化任务
+//                     &err);
         OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB,  //恢复平滑限流任务
                      &err);
 
@@ -215,9 +222,9 @@ void StackManagerTask(void)
             }
             
             //一开始处于电堆升温阶段，不进行控制，3分钟后才开始风机PID控制
-            if((g_u8StackFanPidControlSw == DEF_DISABLED) && (u8PidControlStartTimeCount <= 60)){
+            if((g_u8StackFanPidControlSw == DEF_DISABLED) && (u8PidControlStartTimeCount <= 180)){
                 u8PidControlStartTimeCount ++ ;
-                if(u8PidControlStartTimeCount >= 60){
+                if(u8PidControlStartTimeCount >= 180){
                     SetStackFanSpdPidControlSwitch(DEF_ENABLED);
                     u8PidControlStartTimeCount = 0;
                     APP_TRACE_INFO(("Stack fans pid control start...\n\r"));

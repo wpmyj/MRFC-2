@@ -57,9 +57,7 @@ typedef struct {
 ***************************************************************************************************
 */
 
-#define CAN1_RX1_INT_ENABLE  0      //CAN1接收RX1中断使能:0,不使能;1,使能.
-
-#define GLOBAL_NET_WORK_ID	2//在CAN总线中的节点ID
+#define CAN1_RX0_INT_ENABLE  1      //CAN1接收RX1中断使能:0,不使能;1,使能.
 
 //#define CAN_MSG_TX_FLAG		(0x0 << 7)
 //#define	CAN_MSG_RX_FLAG		(0x1 << 7)
@@ -69,13 +67,12 @@ typedef struct {
 *                                           EXPORTED FUNCTION
 ***************************************************************************************************
 */
-void CAN1_Init(uint16_t i_u16BaudRate);
+void CAN1_Init(void);
 
-u8 CANx_Send_Msg(CAN_TypeDef *CANx, u16 ID, u8 *i_u8TxMsg, u8 i_u8LenOfFrame); //CAN发送数据
+uint8_t CANx_Send_Msg(CAN_TypeDef * CANx, Message *m);
+uint8_t SendCanMsgContainNodeId(uint32_t i_Msglen, uint8_t *msg, uint8_t i_NodeId);
+
 u8 CANx_Receive_Msg(CAN_TypeDef *CANx, u8 *i_u8RxBuf);         //CAN接收数据
-
-//uint8_t CANx_Send_Msg(CAN_TypeDef * CANx, Message *m);
-//uint8_t SendCanMsgContainNodeId(uint32_t i_Msglen, uint8_t *msg, uint8_t i_NodeId);
 #endif
 
 

@@ -116,16 +116,17 @@ uint16_t IncrementType_PID_Process(uint8_t i_OptimumTemperature)
         fDout = 0;
     }
 
-//    IncrementSpeed = IPID.Kp * (IPID.Err - IPID.Err_Last) + IPID.Ki * IPID.Err + IPID.Kd * (IPID.Err - 2 * IPID.Err_Last + IPID.Err_Next);
-
     IncrementSpeed = fPout + fIout + fDout; //本次得到的增量
-    IPID.OutValue += (int16_t)IncrementSpeed;//本次应该输出的实际控制量
 
-    if(IPID.OutValue < IPID.OutValueMin) {
+    if((IPID.OutValue <= IPID.OutValueMin) && (fIout < 0)){//防止累计误差积累导致减溢出
+        IncrementSpeed = 0.0;
+    }
+    IPID.OutValue += (int16_t)IncrementSpeed;//本次应该输出的实际控制量
+    
+    if(IPID.OutValue <= IPID.OutValueMin) {
         IPID.OutValue = IPID.OutValueMin;
     }
-
-    if(IPID.OutValue > IPID.OutValueMax) {
+    if(IPID.OutValue >= IPID.OutValueMax) {
         IPID.OutValue = IPID.OutValueMax;
     }
 
