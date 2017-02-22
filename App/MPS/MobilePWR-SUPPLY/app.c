@@ -35,7 +35,7 @@
 #include "bsp_speed_adjust_device.h"
 #include "app_stack_short_circuit_task.h"
 #include "app_mf210_communicate_task.h"
-#include "app_screen_display_task.h"
+#include "bsp_can.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -167,6 +167,8 @@ static  void  AppTaskStart(void *p_arg)
 
     App_OS_SetAllHooks();             //钩子函数设置
 
+    CAN1_Init();                      //需先载入组网ID后再进行CAN总线配置，波特率50K
+    
     SystemTimeStatTaskCreate();       // 系统时钟统计任务创建
 
     AnaSigMonitorTaskCreate();         
@@ -174,8 +176,6 @@ static  void  AppTaskStart(void *p_arg)
     DigSigMonitorTaskCreate();          
 
     CommunicateTaskCreate();           
-    
-    ScreenDisplayTaskCreate();  //串口显示屏任务创建
     
     MF210_CommunicateTaskCreate();//3G模块数据发送任务
 

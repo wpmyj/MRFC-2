@@ -444,11 +444,6 @@
               <FileType>1</FileType>
               <FilePath>.\app_mf210_communicate_task.c</FilePath>
             </File>
-            <File>
-              <FileName>app_screen_display_task.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\app_screen_display_task.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>

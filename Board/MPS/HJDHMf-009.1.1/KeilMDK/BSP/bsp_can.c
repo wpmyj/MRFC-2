@@ -29,6 +29,10 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
+//CANWorkFlag 标志位掩码定义
+#define       CAN_INIT_COMPLETE            0x80   //CAN1初始化完成标志
+//#define       CAN_BUS_ERROR                0x40   //CAN总线错误标志
+#define       CAN_RESET_COMPLETE           0x40   //CAN1控制器复位完成标志
 
 //CAN总线数据发送状态
 #define NOT_STARTED     0
@@ -40,6 +44,9 @@
 ***************************************************************************************************
 */
 static void CAN1_RX0_IRQHandler(void);
+static void CAN1_SCE_IRQHandler(void);
+
+static void CanErrorProcess(void);
 /*
 ***************************************************************************************************
 *                                           LOCAL VARIABLES
@@ -47,6 +54,7 @@ static void CAN1_RX0_IRQHandler(void);
 */
 static uint8_t  g_u8CanMsgRxBuff[PRGM_RX_BUFF_SIZE];//从CAN接口接收到的待汇总的数据的缓冲区
 static uint8_t  CanMsgRxStatu = NOT_STARTED;       //CAN总线接收状态
+static uint8_t  CANWorkFlag = 0;//CAN工作状态标志的定义
 /*
 ***************************************************************************************************
 *                                           GLOBAL VARIABLES
@@ -56,7 +64,7 @@ WHETHER_TYPE_VARIABLE_Typedef       g_eCAN_BusOnLineFlag = YES;
 WHETHER_TYPE_VARIABLE_Typedef       g_eCanMsgRxStatu = NO;//是否接收到信息
 
 uint8_t     g_u8CanRxMsg[PRGM_RX_BUFF_SIZE];//汇总后CAN接收数据
-
+uint8_t     g_u8CanErrorCode = 0;//CAN总线错误码
 /*
 ***************************************************************************************************
 *                                          CAN1_Init()
@@ -113,15 +121,10 @@ void CAN1_Init(void)
     CAN_FilterInitStructure.CAN_FilterMode = CAN_FilterMode_IdMask; //工作在屏蔽位模式
     CAN_FilterInitStructure.CAN_FilterScale = CAN_FilterScale_32bit;                 
     
-    CAN_FilterInitStructure.CAN_FilterIdHigh =  (g_u16GlobalNetWorkId & 0xFFFF); //要过滤的ID高位，过滤掉不是发送给本机的数据帧
-    CAN_FilterInitStructure.CAN_FilterIdLow = (( CAN_ID_STD | CAN_RTR_DATA) & 0xFFFF); //确保收到的是标准数据帧
+    CAN_FilterInitStructure.CAN_FilterIdHigh =((((u32)g_u16GlobalNetWorkId << 21) & 0xFFFF0000) >>16); //过滤掉不是发送给本机的数据帧
+    CAN_FilterInitStructure.CAN_FilterIdLow = ((((u32)g_u16GlobalNetWorkId << 21) | CAN_ID_STD | CAN_RTR_DATA) & 0xFFFF); //确保收到的是标准数据帧
     CAN_FilterInitStructure.CAN_FilterMaskIdHigh = 0xFFFF;//所有的位全部必须匹配
-    CAN_FilterInitStructure.CAN_FilterMaskIdLow = 0xFFFF; 
-
-//    CAN_FilterInitStructure.CAN_FilterIdHigh = 0x0000;     //优先级
-//    CAN_FilterInitStructure.CAN_FilterIdLow = 0x0000;
-//    CAN_FilterInitStructure.CAN_FilterMaskIdHigh = 0x0000; //32位标示符高位
-//    CAN_FilterInitStructure.CAN_FilterMaskIdLow = 0x0000;
+    CAN_FilterInitStructure.CAN_FilterMaskIdLow = 0xFFFF;
 
     CAN_FilterInitStructure.CAN_FilterFIFOAssignment = CAN_FIFO0;  //过滤器0关联到FIFO0
     CAN_FilterInitStructure.CAN_FilterActivation = ENABLE;//激活过滤器0，激活后会自动退出初始化模式
@@ -137,6 +140,12 @@ void CAN1_Init(void)
     CAN_ITConfig(CAN1, CAN_IT_FMP0, ENABLE);/* 挂号中断, 进入中断后读FIFO的报文函数释放报文清中断标志 */
     BSP_IntVectSet(BSP_INT_ID_CAN1_RX0, CAN1_RX0_IRQHandler);
     BSP_IntEn(BSP_INT_ID_CAN1_RX0);
+#endif
+
+#if CAN1_ERR_INT_ENABLE
+    CAN_ITConfig(CAN1, CAN_IT_EWG | CAN_IT_EPV | CAN_IT_BOF | CAN_IT_BOF | CAN_IT_LEC | CAN_IT_ERR, ENABLE);//开启错误中断
+    BSP_IntVectSet(BSP_INT_ID_CAN1_SCE, CAN1_SCE_IRQHandler);
+    BSP_IntEn(BSP_INT_ID_CAN1_SCE);
 #endif
 }
 
@@ -347,4 +356,40 @@ static void CAN1_RX0_IRQHandler(void)
 
 #endif
 
+
+#if CAN1_ERR_INT_ENABLE
+/*CAN错误中断服务函数*/
+static void CAN1_SCE_IRQHandler(void)
+{ 
+    CANWorkFlag &= ~CAN_RESET_COMPLETE;//清零复位完成标志
+    
+    if(CAN_GetFlagStatus(CAN1,CAN_FLAG_BOF) == SET){
+        CAN_ClearITPendingBit(CAN1,CAN_IT_BOF);
+    }else if(CAN_GetITStatus(CAN1,CAN_IT_ERR)){
+        CAN_ClearITPendingBit(CAN1,CAN_IT_ERR);
+    }else if(CAN_GetFlagStatus(CAN1,CAN_FLAG_EPV) == SET){
+        CAN_ClearITPendingBit(CAN1,CAN_IT_EPV);
+    }else if(CAN_GetFlagStatus(CAN1,CAN_FLAG_EWG) == SET){
+        CAN_ClearITPendingBit(CAN1,CAN_IT_EWG);
+    }else{
+        CAN_ClearITPendingBit(CAN1,CAN_IT_EWG);
+        CAN_ClearITPendingBit(CAN1,CAN_IT_EPV);
+        CAN_ClearITPendingBit(CAN1,CAN_IT_BOF);
+        CAN_ClearITPendingBit(CAN1,CAN_IT_ERR);
+    }
+    g_u8CanErrorCode = CAN_GetLastErrorCode(CAN1);
+    CanErrorProcess();
+}
+
+/*CAN错误处理函数*/
+static void CanErrorProcess(void)
+{
+    if ((CANWorkFlag & CAN_RESET_COMPLETE) == 0)
+    {
+        CAN1_Init();
+        CANWorkFlag |= CAN_RESET_COMPLETE;//置位复位完成标志
+    }
+}
+
+#endif 
 /******************* (C) COPYRIGHT 2016 Guangdong ENECO *****END OF FILE****/

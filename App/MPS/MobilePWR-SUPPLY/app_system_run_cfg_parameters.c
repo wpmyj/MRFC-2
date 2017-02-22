@@ -212,7 +212,7 @@ void LoadApplicationLayerParameters()
         LoadTotalWorkTimeToPrgm(stTotalWorkTime);   //传到实时运行参数所在文件对应的程序中去
         
         GetGlobalNetWorkIDFromFlash(&g_u16GlobalNetWorkId);
-        APP_TRACE_INFO(("GLOBAL_NET_WORK_ID:%d...\n\r",g_u16GlobalNetWorkId));
+        APP_TRACE_INFO(("Load GLOBAL_NET_WORK_ID:%d...\n\r",g_u16GlobalNetWorkId));
         GetReformerTempCmpTblFromFlash(&g_stReformerTempCmpTbl);
         GetLqdPressCmpTblFromFlash(&g_stLqdPressCmpTbl);
         GetLqdHeightCmpTblFromFlash(&g_stLqdHeightCmpTbl);

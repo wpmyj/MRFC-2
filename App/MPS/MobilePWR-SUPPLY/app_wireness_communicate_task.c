@@ -208,6 +208,10 @@ void  CommunicateTask(void *p_arg)
 		}else {
             //正常延时
         }
+        
+        if(g_u8CanErrorCode != 0){
+            APP_TRACE_INFO(("CanErrorCode:%d ",g_u8CanErrorCode));
+        }
 
         if(DEF_DISABLED == GetWorkModeWaittingForSelectFlag()) {
             eWorkMode = GetWorkMode();      //根据工作模式选择性发送实时信息
@@ -1016,21 +1020,13 @@ void LoadNonRealTimeWorkInfo(uint8_t i_eSendDataType, uint8_t i_uint8_tCmdCode, 
 ***************************************************************************************************
 */
 static void SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg)
-{
-    uint8_t i =0;
-    
+{   
     BSP_PrgmDataDMASend(i_uint8_tTxMsgLen, i_pTxMsg);
 
     if(g_eCAN_BusOnLineFlag == YES)//CAN总线在线
 	{
 		SendCanMsgContainNodeId(PRGM_TX_BUFF_SIZE, i_pTxMsg, g_u16GlobalNetWorkId);
 	}
-    
-    APP_TRACE_INFO(("Can Tx data:"));
-    for(i = 0;i<i_uint8_tTxMsgLen;i++){
-        APP_TRACE_INFO(("%X ",i_pTxMsg[i]));
-    }
-    APP_TRACE_INFO(("...\n\r"));
 }
 
 /*
@@ -1125,7 +1121,7 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                         break;
 
                     case DBG_HYDRG_SPEED_SET_WHTI_PARAMETERS:
-//                        SetHydrgFanCtlSpd((uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_2)));
+                        SetHydrgFanCtlSpd((uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_2)));
                         break;
 
                     case DBG_STACK_FAN_SPEED_INC:
@@ -1265,6 +1261,7 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
 								g_u16GlobalNetWorkId = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1);
 								StoreGlobalNetWorkID(&g_u16GlobalNetWorkId);
 								SendInquireOrConfigurationInfo();//返回设置参数
+                                CAN1_Init();//帧ID变化后需重新初始化CAN过滤器,以接收新的帧ID数据
 							}										
 							OSSchedUnlock(&err);
                             APP_TRACE_INFO(("Id set,ID:%d...\n\r",(u8)g_u16GlobalNetWorkId));	
