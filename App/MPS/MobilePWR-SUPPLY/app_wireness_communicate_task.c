@@ -62,7 +62,6 @@ OS_MUTEX        TxMsgSendBuffWriteMutex;
 __attribute__((aligned(8)))  //任务堆栈8字节对齐，确保浮点数显示正常
 static      CPU_STK     CommunicateTaskStk[COMMUNICATE_TASK_STK_SIZE];
 static      CPU_STK     CommunicateDataSendTaskStk[COMMUNICATA_DATA_SEND_TASK_STK_SIZE];
-static      CPU_STK     CommunicateRequsetSendTaskStk[COMMUNICATE_REQUEST_SEND_TASK_STK_SIZE];
 /*
 ***************************************************************************************************
 *                                           LOCAL VARIABLES
@@ -985,7 +984,7 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
             case COMMAND_TYPE_DBG://调试指令
                 switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CODE_VALUE)) {
                     case DBG_SELECT_WORK_MODE:
-                        SetWorkMode((SYSTEM_WORK_MODE_Typedef) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1));
+                        SetWorkMode((SYSTEM_WORK_MODE_Typedef) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_1));
                         APP_TRACE_INFO(("Select the work mode ...\r\n"));
                         OSSemPost(&WaitSelcetWorkModeSem,
                                   OS_OPT_POST_1,
@@ -1036,7 +1035,7 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                         break;
 
                     case DBG_PUMP_SPEED_SET_WITH_PARAMETERS:
-                        SetPumpCtlSpd((uint16_t)(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_2));
+                        SetPumpCtlSpd((uint16_t)(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_1) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_2));
                         break;
 
                     case DBG_HYDRG_SPEED_INC:
@@ -1048,7 +1047,7 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                         break;
 
                     case DBG_HYDRG_SPEED_SET_WHTI_PARAMETERS:
-                        SetHydrgFanCtlSpd((uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_2)));
+                        SetHydrgFanCtlSpd((uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_1) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_2)));
                         break;
 
                     case DBG_STACK_FAN_SPEED_INC:
@@ -1072,100 +1071,130 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                 }
 
                 break;
-#if RUNNING_CONFIG_INTERFACE
 
             case COMMAND_TYPE_CONFIGURATION: //配置类指令
-                if(EN_WAITTING_COMMAND == GetSystemWorkStatu()) { //待机状态下才能修改参数
-                    SetRunningParaCfgSwitch(ON);  //打开运行配置参数配置开关
-
-                    switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CODE_VALUE)) {
-                        case CONFIG_HYDROGEN_GROUP_RUNNING_PARA:
-                            switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1)) {
-                                case CONFIG_IGNITE_FIRST_STEP_PARA:
-                                    switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_2)) {
-                                        case CONFIG_IGNITE_FIRST_STEP_PUMP_SPD:
-                                            g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime = (uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_3) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_4));
-                                            OS_FlagPost(&ConfigParametersChangeState, CFG_IGNITE_FIRST_STEP_PUMP_SPD, OS_OPT_POST_FLAG_SET, 0, &err);
-                                            break;
-
-                                        case CONFIG_IGNITE_FIRST_STEP_FAN_SPD:
-                                            g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime = (uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_3) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_4));
-                                            OS_FlagPost(&ConfigParametersChangeState, CFG_IGNITE_FIRST_STEP_FAN_SPD, OS_OPT_POST_FLAG_SET, 0, &err);
-                                            break;
-
-                                        case CONFIG_IGNITE_FIRST_SUCCESSED_FAN_SPD:
-                                            g_stStartHydrgFanSpdPara.FanSpdAfterIgniterFirstSuccessd = (uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_3) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_4));
-                                            OS_FlagPost(&ConfigParametersChangeState, CFG_IGNITE_FIRST_SUCCESSED_FAN_SPD, OS_OPT_POST_FLAG_SET, 0, &err);
-                                            break;
-
-                                        default:
-                                            break;
-                                    }
-
-                                    break;
-
-                                case CONFIG_IGNITE_SECOND_STEP_PARA:
-                                    switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_2)) {
-                                        case CONFIG_IGNITE_SECOND_STEP_PUMP_SPD:
-                                            g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime = (uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_3) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_4));
-                                            OS_FlagPost(&ConfigParametersChangeState, CFG_IGNITE_SECOND_STEP_PUMP_SPD, OS_OPT_POST_FLAG_SET, 0, &err);
-                                            break;
-
-                                        case CONFIG_IGNITE_SECOND_STEP_FAN_SPD:
-                                            g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime = (uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_3) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_4));
-                                            OS_FlagPost(&ConfigParametersChangeState, CFG_IGNITE_SECOND_STEP_FAN_SPD, OS_OPT_POST_FLAG_SET, 0, &err);
-                                            break;
-
-                                        case CONFIG_IGNITE_SECOND_SUCCESSED_FAN_SPD:
-                                            g_stStartHydrgFanSpdPara.FanSpdAfterIgniterSecondSuccessd = (uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_3) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_4));
-                                            OS_FlagPost(&ConfigParametersChangeState, CFG_IGNITE_SECOND_SUCCESSED_FAN_SPD, OS_OPT_POST_FLAG_SET, 0, &err);
-                                            break;
-
-                                        default:
-                                            break;
-                                    }
-
-                                    break;
-
-                                case CONFIG_RUNNING_STATUS_PARA:
-                                    switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_2)) {
-                                        case CONFIG_RUNNING_STATUS_LIQUID_PRESS_EXCEED_4KG_PUMP_SPD:
-                                            g_stStartHydrgPumpSpdPara.PumpSpdAfterLiquidPressExceed4Kg = (uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_3) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_4));
-                                            OS_FlagPost(&ConfigParametersChangeState, CFG_LIQUID_PRESS_EXCEED_4KG_PUMP_SPD, OS_OPT_POST_FLAG_SET, 0, &err);
-                                            break;
-
-                                        default:
-                                            break;
-                                    }
-
-                                    break;
-
-                                case CONFIG_SHUTING_DOWN_STEP_PARA:
-                                    break;
-
-                                default:
-                                    break;
-                            }
-
-                            break;
-
-                        case CONFIG_FUEL_CELL_GROUP_RUNNING_PARA:
-                            break;
-
-                        default:
-                            break;
-                    }
-
-                    //保存参数到flash
-                    StoreStartHydrgPumpSpdPara(&g_stStartHydrgPumpSpdPara);
-                    StoreStartHydrgFanSpdPara(&g_stStartHydrgFanSpdPara);
-                } else {
-                    /*机器处于非待机状态*/
-                    APP_TRACE_INFO(("Machine not in waiting command status...\r\n"));
-                }
-
-                break;
-#endif
+                switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CODE_VALUE)){
+                    
+					case CONFIG_HYDROGEN_GROUP_RUNNING_PARA:
+                        if((EN_WAITTING_COMMAND == GetSystemWorkStatu() || EN_ALARMING == GetSystemWorkStatu())){
+                            if(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETERS_LENGTH) == 6u){
+                                
+                                switch((uint8_t)(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_1))){
+                                    case CONFIG_IGNITE_FIRST_STEP_PARA:
+                                        switch((uint8_t)(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_2))){
+                                            case CONFIG_IGNITE_FIRST_STEP_PUMP_SPD:
+                                                OSSchedLock(&err);
+                                                g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime  = (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3) << 8)|*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
+                                                StoreStartHydrgPumpSpdParaBySingle(&g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime,0);
+//                                                SendInquireOrConfigurationInfo();//返回设置参数
+                                                OSSchedUnlock(&err);
+                                                APP_TRACE_INFO(("PumpSpdIgniterFirstTime:%d...\n\r",g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime));	
+                                                break;
+                                            case CONFIG_IGNITE_FIRST_STEP_FAN_SPD:
+                                                OSSchedLock(&err);
+                                                g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime	= (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3) << 8)|*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
+                                                StoreStartHydrgFanSpdParaBySingle(&g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime,0);
+//                                                SendInquireOrConfigurationInfo();
+                                                OSSchedUnlock(&err);
+                                                APP_TRACE_INFO(("FanSpdIgniterFirstTime:%d...\n\r",g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime));	
+                                                break;
+                                            case CONFIG_FIRST_TIME_HEAT_HOLD_TIME_BY_SEC:
+                                                OSSchedLock(&err);
+                                                g_u8FirstTimeHeatHoldSeconds =  (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3) << 8)|*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
+                                                StoreFirstTimeHeatHoldSeconds(&g_u8FirstTimeHeatHoldSeconds);
+//                                                SendInquireOrConfigurationInfo();
+                                                OSSchedUnlock(&err);
+                                                APP_TRACE_INFO(("g_u8FirstTimeHeatHoldSeconds:%d...\n\r",g_u8FirstTimeHeatHoldSeconds));	
+                                                break;
+                                            default:
+                                                break;
+                                        }
+                                        break;
+                                        
+                                        case CONFIG_RUNNING_STATUS_PARA:
+                                            switch((uint8_t)(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_2))){
+                                                case CONFIG_IGNITE_SECOND_STEP_PUMP_SPD:
+                                                    OSSchedLock(&err);
+                                                    g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime = (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3) << 8)|*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
+                                                    StoreStartHydrgPumpSpdParaBySingle(&g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime,1);
+//                                                    SendInquireOrConfigurationInfo();
+                                                    OSSchedUnlock(&err);
+                                                    APP_TRACE_INFO(("PumpSpdIgniterSecondTime:%d...\n\r",g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime));
+                                                    break;
+                                                case CONFIG_IGNITE_SECOND_STEP_FAN_SPD:
+                                                    OSSchedLock(&err);
+                                                    g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime = (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3) << 8)|*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
+                                                    StoreStartHydrgFanSpdParaBySingle(&g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime,2);
+//                                                    SendInquireOrConfigurationInfo();
+                                                    OSSchedUnlock(&err);
+                                                    APP_TRACE_INFO(("FanSpdIgniterSecondTime:%d...\n\r",g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime));
+                                                    break;
+                                                case CONFIG_FIRST_TIME_DELAY_ADJUST_TIME_BY_MINUTE:
+                                                    OSSchedLock(&err);
+                                                    g_stRunningStatusDelayAdjustSpdPara.FirstDelayTimeByMin = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
+                                                    StoreRunningStatusDelayAdjustSpdParaBySingle(&g_stRunningStatusDelayAdjustSpdPara.FirstDelayTimeByMin,0);
+//                                                    SendInquireOrConfigurationInfo();
+                                                    OSSchedUnlock(&err);
+                                                    APP_TRACE_INFO(("FirstDelayTimeByMin:%d...\n\r",g_stRunningStatusDelayAdjustSpdPara.FirstDelayTimeByMin));
+                                                    break;
+                                                case CONFIG_FIRST_TIME_DELAY_ADJUST_PUMP_SPEED_VALUE:
+                                                    OSSchedLock(&err);
+                                                    g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustPumpFlag = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3);
+                                                    g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustPumpValue = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
+                                                    StoreRunningStatusDelayAdjustSpdParaBySingle((u16*)&g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustPumpValue,1);
+//                                                    SendInquireOrConfigurationInfo();
+                                                    APP_TRACE_INFO(("FirstTimeAdjustPumpValue:%d...\n\r",g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustPumpValue));
+                                                    OSSchedUnlock(&err);
+                                                    break;
+                                                case CONFIG_FIRST_TIME_DELAY_ADJUST_FANS_SPEED_VALUE:
+                                                    OSSchedLock(&err);
+                                                    g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustFanFlag = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3);
+                                                    g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustFanValue = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
+                                                    StoreRunningStatusDelayAdjustSpdParaBySingle((u16*)&g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustFanValue,2);
+//                                                    SendInquireOrConfigurationInfo();
+                                                    OSSchedUnlock(&err);
+                                                    APP_TRACE_INFO(("FirstTimeAdjustFanValue:%d...\n\r",g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustFanValue));
+                                                    break;
+                                                case CONFIG_SECOND_TIME_DELAY_ADJUST_TIME_BY_MINUTE:
+                                                    OSSchedLock(&err);
+                                                    g_stRunningStatusDelayAdjustSpdPara.SecondDelayTimeByMin = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
+                                                    StoreRunningStatusDelayAdjustSpdParaBySingle(&g_stRunningStatusDelayAdjustSpdPara.SecondDelayTimeByMin,3);
+//                                                    SendInquireOrConfigurationInfo();
+                                                    OSSchedUnlock(&err);
+                                                    APP_TRACE_INFO(("SecondDelayTimeByMin:%d...\n\r",g_stRunningStatusDelayAdjustSpdPara.SecondDelayTimeByMin));
+                                                    break;
+                                                case CONFIG_SECOND_TIME_DELAY_ADJUST_PUMP_SPEED_VALUE:
+                                                    OSSchedLock(&err);
+                                                    g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustPumpFlag = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3);
+                                                    g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustPumpValue = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
+                                                    StoreRunningStatusDelayAdjustSpdParaBySingle((u16*)&g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustPumpValue,4);
+//                                                    SendInquireOrConfigurationInfo();
+                                                    OSSchedUnlock(&err);
+                                                    APP_TRACE_INFO(("SecondTimeAdjustPumpValue:%d...\n\r",g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustPumpValue));
+                                                    break;
+                                                case CONFIG_SECOND_TIME_DELAY_ADJUST_FANS_SPEED_VALUE:
+                                                    OSSchedLock(&err);
+                                                    g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustFanFlag = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3);
+                                                    g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustFanValue = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
+                                                    StoreRunningStatusDelayAdjustSpdParaBySingle((u16*)&g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustFanValue,5);
+//                                                    SendInquireOrConfigurationInfo();
+                                                    OSSchedUnlock(&err);
+                                                    APP_TRACE_INFO(("SecondTimeAdjustFanValue:%d...\n\r",g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustFanValue));
+                                                    break;
+                                                default:
+                                                    break;
+                                                }
+                                                break;
+                                    default:
+                                        break;
+                                }
+							}
+						}
+						break;
+					default:
+						break;
+				}
+				break;
 
             case COMMAND_TYPE_INQUIRE_REQUEST://查询、请求指令
                 switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CODE_VALUE)) {
@@ -1185,7 +1214,7 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
 						if((EN_WAITTING_COMMAND == GetSystemWorkStatu() || EN_ALARMING == GetSystemWorkStatu()) && (1 == *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETERS_LENGTH))){//限制参数长度为1
 							OSSchedLock(&err);
 							if((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETERS_LENGTH) <= 255)){
-								g_u16GlobalNetWorkId = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1);
+								g_u16GlobalNetWorkId = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_1);
 								StoreGlobalNetWorkID(&g_u16GlobalNetWorkId);
 								SendInquireOrConfigurationInfo();//返回设置参数
                                 CAN1_Init();//帧ID变化后需重新初始化CAN过滤器,以接收新的帧ID数据
@@ -1196,12 +1225,12 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
 						break;
 
                     case RESPONSE_SLAVE_SHUT_DOWN_CMD:
-                        u32ErrCode = ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_1) << 24)
-                                     | ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_2) << 16)
-                                     | ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_3) << 8)
-                                     | ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_4));
+                        u32ErrCode = ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_1) << 24)
+                                     | ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_2) << 16)
+                                     | ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3) << 8)
+                                     | ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4));
 
-                        switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_5)) {
+                        switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_5)) {
                             case RESPONSE_SLAVE_SHUT_DOWN_CMD_RIGHT_NOW:
                                 i = 0;
 
@@ -1223,14 +1252,14 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
 
                                 while(u32ErrCode) {
                                     if((u32ErrCode % 2) == 1) {
-                                        SetShutDownRequestMaskStatu((SYSTEM_ALARM_ADDR_Typedef)i, EN_DELAY, (uint16_t)(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_6) * 60));//对应的错误屏蔽位清零
+                                        SetShutDownRequestMaskStatu((SYSTEM_ALARM_ADDR_Typedef)i, EN_DELAY, (uint16_t)(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_6) * 60));//对应的错误屏蔽位清零
                                     }
 
                                     i++;
                                     u32ErrCode >>= 1;
                                 }
 
-//                              APP_TRACE_INFO(("Err bit %d, %d...\r\n",i, *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_ONE_6)));
+//                              APP_TRACE_INFO(("Err bit %d, %d...\r\n",i, *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_6)));
 //                              BSP_BuzzerOn();
                                 break;
 
