@@ -80,7 +80,6 @@ static      TX_MSG_SEND_BUFF_Typedef        g_stTxMsgDataSendBuff = {0};
 */
 static      void        CommunicateTask(void *p_arg);
 static      void        CommunicateDataSendTask(void *p_arg);
-static      void        CommunicateRequsetInfSendTask(void *p_arg);
 static      void        ResponsePrgmCommand(uint8_t *);
 
 static      void        LoadNonRealTimeWorkInfo(uint8_t , uint8_t , uint8_t , uint8_t *p_uint8_tParas, uint8_t *);
@@ -150,21 +149,6 @@ void  CommunicateTaskCreate(void)
                  (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                  (OS_ERR *)&err);
     APP_TRACE_INFO(("Created communicate Data Send Task, and err code is %d...\r\n", err));
-
-    OSTaskCreate((OS_TCB *)&CommunicateRequsetInfSendTaskTCB,
-                 (CPU_CHAR *)"Requset information send Task Start",
-                 (OS_TASK_PTR) CommunicateRequsetInfSendTask,
-                 (void *) 0,
-                 (OS_PRIO) COMMUNICATE_REQUEST_SEND_TASK_PRIO,
-                 (CPU_STK *)&CommunicateRequsetSendTaskStk[0],
-                 (CPU_STK_SIZE) COMMUNICATE_REQUEST_SEND_TASK_STK_SIZE / 10,
-                 (CPU_STK_SIZE) COMMUNICATE_REQUEST_SEND_TASK_STK_SIZE,
-                 (OS_MSG_QTY) 5u,
-                 (OS_TICK) 0u,
-                 (void *) 0,
-                 (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
-                 (OS_ERR *)&err);
-    APP_TRACE_INFO(("Created real time requset information send Task, and err code is %d...\r\n", err));
 }
 
 /*
@@ -201,7 +185,7 @@ void  CommunicateTask(void *p_arg)
 			ResponsePrgmCommand(g_u8CanRxMsg);
 			g_eCanMsgRxStatu = NO;
             APP_TRACE_INFO(("Can Rx data:"));
-            for(i = 0;i<8;i++){
+            for(i = 0;i<16;i++){
                 APP_TRACE_INFO(("%X ",g_u8CanRxMsg[i]));
             }
             APP_TRACE_INFO(("...\n\r"));
@@ -237,73 +221,10 @@ void  CommunicateTask(void *p_arg)
                     break;
             }
         }
-
-#if RUNNING_CONFIG_INTERFACE
-
-        if(ON == GetRunningParaCfgSwitchStatus()) {
-            OSFlagPend(&ConfigParametersChangeState,
-                       CFG_IGNITE_FIRST_STEP_PUMP_SPD + CFG_IGNITE_FIRST_STEP_FAN_SPD + CFG_IGNITE_FIRST_SUCCESSED_FAN_SPD + \
-                       CFG_IGNITE_SECOND_STEP_PUMP_SPD + CFG_IGNITE_SECOND_STEP_FAN_SPD + CFG_IGNITE_SECOND_SUCCESSED_FAN_SPD + \
-                       CFG_LIQUID_PRESS_EXCEED_4KG_PUMP_SPD,
-                       0,
-                       OS_OPT_PEND_FLAG_SET_ALL + OS_OPT_PEND_NON_BLOCKING,
-                       (CPU_TS *)0,  //时间戳
-                       &err);
-
-            if(OS_ERR_NONE == err) {
-                /*所有配置参数修改完成后发送确认参数给上位机*/
-                SendReferenceAndConfigrationInfo();
-                OSFlagDel(&ConfigParametersChangeState,
-                          OS_OPT_DEL_ALWAYS,
-                          &err);
-                SetRunningParaCfgSwitch(OFF);  //配置完成关闭
-            }
-        }
-
-#endif
         //发送信号量，启动一次数据传输
         OSSemPost(&g_stCommunicateDataSendSem,
                   OS_OPT_POST_1,
                   &err);
-    }
-}
-/*
-***************************************************************************************************
-*                               CommunicateRequsetInfSendTask()
-*
-* Description :This is a task that manage the communication with other device.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Note(s)     : none.
-***************************************************************************************************
-*/
-void  CommunicateRequsetInfSendTask(void *p_arg)
-{
-    OS_ERR      err;
-
-    while(DEF_TRUE) {
-        
-        OSTaskSuspend(NULL,&err);
-
-        while(DEF_TRUE) {
-            OSTimeDlyHMSM(0, 0, 0, 300,
-                          OS_OPT_TIME_HMSM_STRICT,
-                          &err);
-
-            if(DEF_ENABLED == GetWorkModeWaittingForSelectFlag()) { //发送选择工作模式请求，直到上位机选定工作模式   
-                SendChooseWorkModeRequest();  
-                //启动一次数据传输
-                OSSemPost(&g_stCommunicateDataSendSem,
-                          OS_OPT_POST_NO_SCHED,
-                          &err);
-            } else { //停止发送请求
-//                SendRealTimeAssistInfo();   //向上位机发送一次自检信息,防止上位机没收到主任务中第一次发送的信息。
-                break;
-            }
-        }
     }
 }
 
@@ -351,7 +272,7 @@ void CommunicateDataSendTask(void *p_arg)
             if(err == OS_ERR_NONE) { //正常发送
 //              APP_TRACE_INFO(("Send statu normal...\r\n"));
             } else { //存储到历史记录存储区中
-//              APP_TRACE_INFO(("Send statu err...\r\n"));
+              APP_TRACE_INFO(("Send statu err...\r\n"));
             }
 
             OSMutexPend(&TxMsgSendBuffWriteMutex,
@@ -1020,13 +941,19 @@ void LoadNonRealTimeWorkInfo(uint8_t i_eSendDataType, uint8_t i_uint8_tCmdCode, 
 ***************************************************************************************************
 */
 static void SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg)
-{   
+{
+//    static uint8_t i;
     BSP_PrgmDataDMASend(i_uint8_tTxMsgLen, i_pTxMsg);
 
     if(g_eCAN_BusOnLineFlag == YES)//CAN总线在线
 	{
 		SendCanMsgContainNodeId(PRGM_TX_BUFF_SIZE, i_pTxMsg, g_u16GlobalNetWorkId);
 	}
+//    APP_TRACE_INFO(("Can Rx data:"));
+//    for(i = 0;i<60;i++){
+//        APP_TRACE_INFO(("%X ",i_pTxMsg[i]));
+//    }
+//    APP_TRACE_INFO(("...\n\r"));
 }
 
 /*

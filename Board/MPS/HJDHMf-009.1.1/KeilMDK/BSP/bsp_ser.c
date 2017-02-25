@@ -667,6 +667,11 @@ void WIFI_DataTx_IRQHandler(void)
     OS_ERR      err;
 
     if(DMA_GetITStatus(DMA2_IT_TC5) != RESET) { //检查DMA1_IT_TC5中断发生与否
+        
+        OSSemPost(&g_stCommunicateDataSendResponseSem,
+						OS_OPT_POST_1,
+						&err);
+        
         OSMutexPost(&g_stWIFISerTxMutex,
                     OS_OPT_POST_NONE,
                     &err);

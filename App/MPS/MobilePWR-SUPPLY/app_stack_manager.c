@@ -164,7 +164,7 @@ void StackManagerTask(void)
         SetStackFanCtlSpd(1000);
         BSP_HydrgOutValvePwrOn();
         OSTimeDlyHMSM(0, 0, 3, 0, OS_OPT_TIME_HMSM_STRICT, &err);
-        SetStackFanCtlSpd(300);
+        SetStackFanCtlSpd(200);
         OSTimeDlyHMSM(0, 0, 2, 0, OS_OPT_TIME_HMSM_STRICT, &err);
         BSP_HydrgOutValvePwrOff();
         APP_TRACE_INFO(("Finish the stack start purify...\r\n"));
@@ -221,10 +221,10 @@ void StackManagerTask(void)
                 u16AmpIntegralSum = 0;
             }
             
-            //一开始处于电堆升温阶段，不进行控制，3分钟后才开始风机PID控制
+            //一开始处于电堆升温阶段，不进行控制，2分钟后才开始风机PID控制
             if((g_u8StackFanPidControlSw == DEF_DISABLED) && (u8PidControlStartTimeCount <= 180)){
                 u8PidControlStartTimeCount ++ ;
-                if(u8PidControlStartTimeCount >= 180){
+                if(u8PidControlStartTimeCount >= 120){
                     SetStackFanSpdPidControlSwitch(DEF_ENABLED);
                     u8PidControlStartTimeCount = 0;
                     APP_TRACE_INFO(("Stack fans pid control start...\n\r"));
