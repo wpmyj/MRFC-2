@@ -101,7 +101,7 @@ void SpeedControlDevManageTaskCreate(void)
 {
     OS_ERR  err;
 
-    OSTaskCreate((OS_TCB *)&SpeedControlDevManageTaskTCB,                    
+    OSTaskCreate((OS_TCB *)&SpeedControlDevManageTaskTCB,
                  (CPU_CHAR *)"Speed Monitor task",
                  (OS_TASK_PTR) SpeedControlDevManageTask,
                  (void *) 0,
@@ -135,7 +135,7 @@ static void SpeedControlDevManageTask(void)
     OS_ERR      err;
 
     OSTaskSuspend(NULL, &err);
-    
+
     while(DEF_TRUE) {
         OSTimeDlyHMSM(0, 0, 0, 500,
                       OS_OPT_TIME_HMSM_STRICT,
@@ -446,35 +446,35 @@ void SetHydrgFanCtlSpd(uint16_t i_u16NewSpd)
 * Arguments   : i_u8StartDlyAdjTime:start adjust delay time.
 *               i_u8DelayTime:Adjust the cycle time delay(s),if i_u8DelayTime =0,set immediately.
 *               i_u16ExpectSpdValue:the expected hydrogen fan speed.
-*               
+*
 * Returns     : none.
 *
 * Notes       : the actual speed grade whole number is 2000.
 ***************************************************************************************************
 */
-void SetHydrgFanCtlSpdSmoothly(uint16_t i_u16CurrentSpdValue,uint8_t i_u8StartDlyAdjTime, uint8_t i_u8CycleDlyAdjTime,uint16_t i_u16ExpSpdValue)
+void SetHydrgFanCtlSpdSmoothly(uint16_t i_u16CurrentSpdValue, uint8_t i_u8StartDlyAdjTime, uint8_t i_u8CycleDlyAdjTime, uint16_t i_u16ExpSpdValue)
 {
     OS_ERR err;
-    
+
     g_u16HydrgFanExpectCtlSpd = i_u16ExpSpdValue ;
 
-    if(i_u8CycleDlyAdjTime > 0) {//周期延时调节定时器   
-         OSTmrCreate((OS_TMR *)&HydrgFanSpdCycleDlyTimeAdjustTmr,
-                     (CPU_CHAR *)"Hydrg fan Speed cycle Delay Adjust Timer",
-                     (OS_TICK)0,
-                     (OS_TICK)i_u8CycleDlyAdjTime * OS_CFG_TMR_TASK_RATE_HZ,
-                     (OS_OPT)OS_OPT_TMR_PERIODIC,
-                     (OS_TMR_CALLBACK_PTR)HydrgFanSpdCycleDlyAdjCallBack,
-                     (void *)0,
-                     (OS_ERR *)&err);
+    if(i_u8CycleDlyAdjTime > 0) {//周期延时调节定时器
+        OSTmrCreate((OS_TMR *)&HydrgFanSpdCycleDlyTimeAdjustTmr,
+                    (CPU_CHAR *)"Hydrg fan Speed cycle Delay Adjust Timer",
+                    (OS_TICK)0,
+                    (OS_TICK)i_u8CycleDlyAdjTime * OS_CFG_TMR_TASK_RATE_HZ,
+                    (OS_OPT)OS_OPT_TMR_PERIODIC,
+                    (OS_TMR_CALLBACK_PTR)HydrgFanSpdCycleDlyAdjCallBack,
+                    (void *)0,
+                    (OS_ERR *)&err);
     }
-                    
-    if(i_u8StartDlyAdjTime > 0) {//单次延时调节定时器   
+
+    if(i_u8StartDlyAdjTime > 0) {//单次延时调节定时器
         OSTmrCreate((OS_TMR *)&HydrgFanSpdDlyAdjTmr,
                     (CPU_CHAR *)"Hydrg fan Speed Delay Adjust Timer",
                     (OS_TICK)i_u8StartDlyAdjTime * OS_CFG_TMR_TASK_RATE_HZ,//dly
                     (OS_TICK)0,                                            //period
-                    (OS_OPT)OS_OPT_TMR_ONE_SHOT,    
+                    (OS_OPT)OS_OPT_TMR_ONE_SHOT,
                     (OS_TMR_CALLBACK_PTR)HydrgFanSpdDlyAdjCallBack,
                     (void *)0,
                     (OS_ERR *)&err);
@@ -483,11 +483,12 @@ void SetHydrgFanCtlSpdSmoothly(uint16_t i_u16CurrentSpdValue,uint8_t i_u8StartDl
             OSTmrStart(&HydrgFanSpdDlyAdjTmr, &err);
         }
     } else {
-        if(i_u8CycleDlyAdjTime > 0){
+        if(i_u8CycleDlyAdjTime > 0) {
             OSTmrStart(&HydrgFanSpdCycleDlyTimeAdjustTmr, &err);
         }
     }
-    SetHydrgFanCtlSpd(i_u16CurrentSpdValue);    
+
+    SetHydrgFanCtlSpd(i_u16CurrentSpdValue);
 }
 /*
 ***************************************************************************************************
@@ -507,7 +508,7 @@ void SetHydrgFanCtlSpdSmoothly(uint16_t i_u16CurrentSpdValue,uint8_t i_u8StartDl
 static void HydrgFanSpdDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg)
 {
     OS_ERR err;
-    
+
     OSTmrStart(&HydrgFanSpdCycleDlyTimeAdjustTmr, &err);
     OSTmrDel(&HydrgFanSpdDlyAdjTmr, &err);//删除单次定时器
 }
@@ -653,7 +654,7 @@ void ResetSpdCaptureValue(uint8_t i_CaptureChannel)
     g_fSpdCaptureFrequency[i_CaptureChannel] = 0;
     g_u16SpdCaptureEdgeNum[i_CaptureChannel] = 0;
     g_u16SpeedCaptureValue[i_CaptureChannel][LAST_EDGE] = 0;
-    g_u16SpeedCaptureValue[i_CaptureChannel][FRONT_EDGE] = 0; 
+    g_u16SpeedCaptureValue[i_CaptureChannel][FRONT_EDGE] = 0;
 }
 
 /*
@@ -674,7 +675,7 @@ void ResetSpdCaptureValue(uint8_t i_CaptureChannel)
 void BSP_DevSpdCaptureFinishedHandler(void)
 {
     /*输入捕获状态:bit15-捕获使能位，bit14-捕获中状态位,,其余位做捕获边沿计数位*/
-    static uint16_t TIM1CHX_CAPTURE_STA[3] = {0, 0,0};
+    static uint16_t TIM1CHX_CAPTURE_STA[3] = {0, 0, 0};
     static uint8_t  stEnableChannelNum = 0;//通道切换计数,每0.5秒切换一次
 
     if(TIM_GetITStatus(TIM1, TIM_IT_CC1) != RESET) { //捕获到水泵转速脉冲
@@ -690,7 +691,7 @@ void BSP_DevSpdCaptureFinishedHandler(void)
                     g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] = TIM_GetCapture1(TIM1);//记录第一次的计数值
                 }
             }
-        }else{
+        } else {
             ResetSpdCaptureValue(PUMP_SPD_MONITOR);
         }
 
@@ -708,7 +709,7 @@ void BSP_DevSpdCaptureFinishedHandler(void)
                     g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][FRONT_EDGE] = TIM_GetCapture2(TIM1);
                 }
             }
-        }else{
+        } else {
             ResetSpdCaptureValue(HYDROGEN_FAN_SPD_MONITOR);
         }
 
@@ -726,7 +727,7 @@ void BSP_DevSpdCaptureFinishedHandler(void)
                     g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE] = TIM_GetCapture3(TIM1);
                 }
             }
-        }else{
+        } else {
             ResetSpdCaptureValue(STACK_FAN_SPD_MONITOR);
         }
 
@@ -737,36 +738,40 @@ void BSP_DevSpdCaptureFinishedHandler(void)
     /*更新中断中每0.5s切换一次捕获通道*/
     if(TIM_GetITStatus(TIM1, TIM_IT_Update) != RESET) {
         stEnableChannelNum++;
+
         if(stEnableChannelNum == 1) {
-            
+
             if((TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] & 0x3FFF) != 0) {
                 g_u16SpdCaptureEdgeNum[PUMP_SPD_MONITOR] = (TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] & 0x3FFF);//保存捕获边沿次数
                 g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] = g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE];//保存捕获前沿计数值
                 g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE] = g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE];//保存捕获后沿计数值
             }
+
             TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] = 0;  //关闭本捕获通道捕获并清空捕获边沿计数
             TIM_ITConfig(TIM1, TIM_IT_CC1, DISABLE);
             TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR] = 0x8000;   //开启下一通道捕获
             TIM_ITConfig(TIM1, TIM_IT_CC2, ENABLE);
         } else if(stEnableChannelNum == 2) {
-            
+
             if((TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR] & 0x3FFF) != 0) {
                 g_u16SpdCaptureEdgeNum[HYDROGEN_FAN_SPD_MONITOR] = (TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR] & 0x3FFF);//保存捕获边沿次数
                 g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][FRONT_EDGE] = g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][FRONT_EDGE];
                 g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][LAST_EDGE] = g_u16SpeedCaptureValue[HYDROGEN_FAN_SPD_MONITOR][LAST_EDGE];
             }
+
             TIM1CHX_CAPTURE_STA[HYDROGEN_FAN_SPD_MONITOR] = 0;  //关闭本捕获通道捕获并清空捕获边沿计数
             TIM_ITConfig(TIM1, TIM_IT_CC2, DISABLE);
             TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR] = 0x8000;   //开启下一通道捕获
             TIM_ITConfig(TIM1, TIM_IT_CC3, ENABLE);
-            
+
         } else if(stEnableChannelNum == 3) {
-            
+
             if((TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR] & 0x3FFF) != 0) {
                 g_u16SpdCaptureEdgeNum[STACK_FAN_SPD_MONITOR] = (TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR] & 0x3FFF);//保存捕获边沿次数
                 g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE] = g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE];
                 g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][LAST_EDGE] = g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][LAST_EDGE];
             }
+
             TIM1CHX_CAPTURE_STA[STACK_FAN_SPD_MONITOR] = 0;  //关闭本捕获通道捕获并清空捕获边沿计数
             TIM_ITConfig(TIM1, TIM_IT_CC3, DISABLE);
             TIM1CHX_CAPTURE_STA[PUMP_SPD_MONITOR] = 0x8000;   //开启下一通道捕获
@@ -842,7 +847,7 @@ uint16_t GetStackFanSpdFeedBack(void)
     g_fSpdCaptureFrequency[STACK_FAN_SPD_MONITOR] = 60 * (((5000.0 - g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE] \
             + g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][LAST_EDGE]) / 5000.0) + (g_u16SpdCaptureEdgeNum[STACK_FAN_SPD_MONITOR] - 1));
 
-    return (uint16_t)(g_fSpdCaptureFrequency[STACK_FAN_SPD_MONITOR] );//2000/6000
+    return (uint16_t)(g_fSpdCaptureFrequency[STACK_FAN_SPD_MONITOR]); //2000/6000
 }
 
 /*

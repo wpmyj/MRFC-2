@@ -261,21 +261,21 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
               NULL,
               &err);
     ResetWorkModeWaittingForSelectFlag(); //复位选择等待标志
-    OSTimeDlyResume(&CommunicateTaskTCB,&err);
-    
+    OSTimeDlyResume(&CommunicateTaskTCB, &err);
+
 #elif __HYDROGEN_GENERATOR_MODULE
     SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER);
-    OSTaskResume(&Make_Vaccuum_FunctionTaskTCB,&err);//开始抽真空
+    OSTaskResume(&Make_Vaccuum_FunctionTaskTCB, &err); //开始抽真空
 #elif __FUEL_CELL_MODULE
     SetWorkMode(EN_WORK_MODE_FUEL_CELL);//发电模式下不需要抽真空
 #else
     SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL);
-    OSTaskResume(&Make_Vaccuum_FunctionTaskTCB,&err);//开始抽真空
+    OSTaskResume(&Make_Vaccuum_FunctionTaskTCB, &err); //开始抽真空
 #endif
 
     eWorkMode = GetWorkMode();
     APP_TRACE_INFO(("The work mode is: %d...\r\n", eWorkMode));
-    
+
     while(DEF_TRUE) {
         if(EN_THROUGH == DeviceSelfCheck()) {
             APP_TRACE_INFO(("Self-check success...\n\r"));
@@ -297,6 +297,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
                 WaitCmdStatu = EN_NOT_THROUGH;
                 break;
             }
+
             SendRealTimeAssistInfo();   //每30s向上位机发送一次自检信息
         } else {
             APP_TRACE_INFO(("Self-check failed...\n\r"));
@@ -344,7 +345,7 @@ void Starting(void)
     BSP_BuzzerOff();
     OSTimeDlyHMSM(0, 0, 0, 200, OS_OPT_TIME_HMSM_STRICT, &err);
 
-    
+
     //一体机模式或者制氢模式
     if((eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL) || (eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER)) {
         if(EN_START_PRGM_ONE_FRONT == GetSystemWorkStatu()) {
@@ -540,8 +541,8 @@ void ShutDown()
 
             case EN_DELAY_STOP_PART_TWO:
 //                if(EN_IN_WORK == GetStackWorkStatu()) { //电堆有在工作才恢复延时关闭任务
-                    OSTaskResume(&StackManagerDlyStopTaskTCB,
-                                 &err);
+                OSTaskResume(&StackManagerDlyStopTaskTCB,
+                             &err);
 //                }
 
                 break;
@@ -617,10 +618,12 @@ void ShutDown()
                 } else {
                     APP_TRACE_INFO(("The hydrogen producer and stack delay stop over time...\r\n"));
                 }
+
             default:
                 break;
         }
-        OSTaskSemSet(&AppTaskStartTCB,0,&err);//清掉任务信号量，防止因任务信号量累计造成下一次启动异常
+
+        OSTaskSemSet(&AppTaskStartTCB, 0, &err); //清掉任务信号量，防止因任务信号量累计造成下一次启动异常
     } else {
         APP_TRACE_INFO(("The program don't need to start the shut down process...\r\n"));
     }

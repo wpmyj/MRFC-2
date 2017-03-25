@@ -10,24 +10,15 @@
 */
 
 /********************************************************************************************************
-* Filename      :  bsp_atmel_25256b_sshl.h
+* Filename      :  app_system_stk_check.h
 * Programmer(s) :  Fanjun
 * Version       :  V1.0
-* data          :  2016.12.27
+* data          :  2016.11.10
 * brief         :  This file contains all the functions prototypes for the system run
 *                  config parameters firmware library.
 *********************************************************************************************************/
-#ifndef __BSP_ATMEL_25256B_SSHL_H__
-#define __BSP_ATMEL_25256B_SSHL_H__
-/*
-***************************************************************************************************
-*                                                 MODULE
-*
-* Note(s) : (1) This header file is protected from multiple pre-processor inclusion through use of the
-*               BSP present pre-processor macro definition.
-***************************************************************************************************
-*/
-
+#ifndef _APP_SYSTEM_STK_USAGE_CHECK_H_
+#define _APP_SYSTEM_STK_USAGE_CHECK_H_
 /*
 ***************************************************************************************************
 *                                           INCLUDE FILES
@@ -39,16 +30,13 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define AT25256B_CS             (GPIO_ResetBits(GPIOA, BSP_GPIOA_PIN15_STM_SPI_NSS_PORT_NMB));//AT25256B的片选信号
-#define AT25256B_NCS            (GPIO_SetBits(GPIOA, BSP_GPIOA_PIN15_STM_SPI_NSS_PORT_NMB));
 
-//AT25256B指令表
-#define WREN                0x06 //WREN
-#define WRDI                0x04 //WRDI
-#define RDSR                0x05 //RDSR
-#define WRSR                0x01 //WRSR
-#define READ                0x03 //READ
-#define WRITE               0x02 //WRITE
+/*
+***************************************************************************************************
+*                                    EXTERNAL OS VARIABLE DECLARATIONS
+***************************************************************************************************
+*/
+
 /*
 ***************************************************************************************************
 *                                           EXPORTED DATA TYPE
@@ -57,34 +45,20 @@
 
 /*
 ***************************************************************************************************
-*                              EXPORTED GLOBAL VARIABLE DECLARATIONS
-***************************************************************************************************
-*/
-
-/*
-***************************************************************************************************
-*                                           EXPORTED MACRO
-***************************************************************************************************
-*/
-
-/*
-***************************************************************************************************
 *                                           EXPORTED FUNCTION
 ***************************************************************************************************
 */
-void AT25256B_Init(void);
-
-uint8_t AT25256B_ReadSR(void);
-void AT25256B_Write_SR(uint8_t sr);
-
-void AT25256B_Read(u8 *pBuffer, u16 ReadAddr, u16 NumByteToRead);
-void AT25256B_Write(u8 *pBuffer, u16 WriteAddr, u16 NumByteToWrite);
-
-/*
-***************************************************************************************************
-*                                             MODULE END
-***************************************************************************************************
-*/
+void  SystemStackUsageCheckTaskCreate(void);
 
 
-#endif                                                          /* End of module include */
+
+
+
+
+
+
+
+
+
+
+#endif

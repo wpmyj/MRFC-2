@@ -255,6 +255,7 @@ uint8_t GetSourceTemp(double Rt_Value)
         if(m_u32Rt_Value <= NTC_PARAMTET_TABLE[i].resistance) {
             break;
         }
+
         i --;
     }
 

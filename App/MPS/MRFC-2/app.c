@@ -33,9 +33,11 @@
 #include "app_dc_module_communicate_task.h"
 #include "bsp_dc_module_adjust.h"
 #include "bsp_speed_adjust_device.h"
+#include "app_system_stk_check.h"
 #include "app_stack_short_circuit_task.h"
 #include "app_mf210_communicate_task.h"
 #include "bsp_can.h"
+
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -160,7 +162,7 @@ static  void  AppTaskStart(void *p_arg)
     OSSemCreate(&IgniteFirstBehindWaitSem, "Fast heater finish sem", 0, &err);
     OSSemCreate(&IgniteSecondBehindWaitSem, "IgniteSecondBehindWaitSem...", 0, &err);
     OSSemCreate(&WaitSelcetWorkModeSem, "WaitSelcetWorkModeSem...", 0, &err);
-    
+
     LoadDriverLayerParameters();     //载入驱动层参数
 
     LoadApplicationLayerParameters();//载入应用层参数
@@ -168,34 +170,36 @@ static  void  AppTaskStart(void *p_arg)
     App_OS_SetAllHooks();             //钩子函数设置
 
     CAN1_Init();                      //需先载入组网ID后再进行CAN总线配置，波特率50K
-    
+
     SystemTimeStatTaskCreate();       // 系统时钟统计任务创建
 
-    AnaSigMonitorTaskCreate();         
+    AnaSigMonitorTaskCreate();
 
-    DigSigMonitorTaskCreate();          
+    DigSigMonitorTaskCreate();
 
-    CommunicateTaskCreate();           
-    
+    CommunicateTaskCreate();
+
     MF210_CommunicateTaskCreate();//3G模块数据发送任务
 
     Make_Vacuum_FunctionTaskCreate(); //自动抽真空任务
 
     SpeedControlDevManageTaskCreate();//调速设备管理任务
-    
-    IgniterWorkTaskCreate();           
 
-    HydrgProducerManagerTaskCreate();   
+    IgniterWorkTaskCreate();
+
+    HydrgProducerManagerTaskCreate();
 
     StackManagerTaskCreate();
-    
-//    StackShortCircuitTaskCreate();//电堆短路活化任务
-    
-    DcModuleDynamicAdjustTaskCreate();//DC动态限流调节任务,平滑限流任务 
 
-    HydrgProducerDlyStopTaskCreate();  
+    StackShortCircuitTaskCreate();//电堆短路活化任务
 
-    StackManagerDlyStopTaskCreate();   
+    DcModuleDynamicAdjustTaskCreate();//DC动态限流调节任务,平滑限流任务
+
+    HydrgProducerDlyStopTaskCreate();
+
+    StackManagerDlyStopTaskCreate();
+		
+//		SystemStackUsageCheckTaskCreate();//任务堆栈使用情况监测任务
 
     BSP_BuzzerOn();
     OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
@@ -206,7 +210,7 @@ static  void  AppTaskStart(void *p_arg)
 
     while(DEF_TRUE) {
         if(EN_THROUGH == CheckAuthorization()) {
-            
+
             eWaitCmdCheckStatu = WaittingCommand();
 
             if(EN_THROUGH == eWaitCmdCheckStatu) {

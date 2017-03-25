@@ -43,18 +43,16 @@
 #if(DEBUG_3G)
     #define DEBUG_PRINTF BSP_Ser_Printf
 #else
-#define DEBUG_PRINTF(...)
+    #define DEBUG_PRINTF(...)
 #endif
 
 
-typedef struct
-{
+typedef struct {
     char *cmd;
     char *ask;
 } cmd_ask_list_t;
 
-typedef enum
-{
+typedef enum {
     CLOSE_ECHO,
     CHECK_FUNCTIONALITY,
     CHECK_SIM_CARD,
@@ -70,8 +68,7 @@ typedef enum
 
 module_status current_status = CLOSE_ECHO;
 
-const cmd_ask_list_t init_list[] =
-{
+const cmd_ask_list_t init_list[] = {
     {"ATE0\r\n", "\r\nOK\r\n"},
     {"AT+CFUN?\r\n", "\r\n+CFUN: 1\r\n\r\nOK\r\n"},
     {"AT+CPIN?\r\n", "\r\n+CPIN: READY\r\n\r\nOK\r\n"},
@@ -106,38 +103,30 @@ bool module_control(const char *send, const char *ask, uint8_t *ret)
     CleanUsartRecvBuf(USART2);
     SendString(USART2, send);
 
-    do
-    {
+    do {
         OSTimeDlyHMSM(0, 0, 0, 10, OS_OPT_TIME_HMSM_STRICT, &err);
         find_ret = strstr((const char *)usart2_recv_buff, index_string);
 
-        if(find_ret != NULL)
-        {
-            if(strlen(ask) != strlen(index_string))
-            {
+        if(find_ret != NULL) {
+            if(strlen(ask) != strlen(index_string)) {
                 find_ret += strlen(index_string);
 
-                if(*find_ret >= '0' && *find_ret <= '9')
-                {
+                if(*find_ret >= '0' && *find_ret <= '9') {
                     *ret = *find_ret - '0';
                     return true;
                 }
-            }
-            else
-            {
+            } else {
                 return true;
             }
         }
 
         count++;
-    }
-    while(count < 10);
+    } while(count < 10);
 
     return false;
 }
 #if(DEBUG_3G)
-const char *status_str[] =
-{
+const char *status_str[] = {
     "CLOSE_ECHO",
     "CHECK_FUNCTIONALITY",
     "CHECK_SIM_CARD",
@@ -171,91 +160,71 @@ bool MF210v2_ctrl(void)
     DEBUG_PRINTF("current status : %s\r\n", status_str[current_status]);
     success = module_control(init_list[current_status].cmd, init_list[current_status].ask, &ret);
 
-    switch(current_status)
-    {
+    switch(current_status) {
         case CLOSE_ECHO:
         case CHECK_FUNCTIONALITY:
         case CHECK_SIM_CARD:
         case SET_NETWORK:
         case CHECK_NETWORK:
-        case SET_ACCESS_POINT:
-        {
+        case SET_ACCESS_POINT: {
 
-            if(success)
-            {
-                retry_time = 0;
-                current_status++;
-            }
-            else if(current_status != CLOSE_ECHO)
-            {
-                current_status--;
-            }
+                if(success) {
+                    retry_time = 0;
+                    current_status++;
+                } else if(current_status != CLOSE_ECHO) {
+                    current_status--;
+                }
 
-        }
-        break;
+            }
+            break;
 
         case CHECK_PSCALL:
-        case CHECK_SOCKET_STATUS:
-        {
+        case CHECK_SOCKET_STATUS: {
 
-            if(success)
-            {
-                if(ret == 1)
-                {
+                if(success) {
+                    if(ret == 1) {
+                        retry_time = 0;
+
+                        if(current_status == CHECK_PSCALL) {
+                            current_status = CHECK_SOCKET_STATUS;
+                            return false;
+                        } else {
+                            return true;
+                        }
+                    } else if(ret == 0) {
+                        current_status++;
+                    }
+                }
+
+                if(retry_time++ > 5) {
                     retry_time = 0;
-
-                    if(current_status == CHECK_PSCALL)
-                    {
-                        current_status = CHECK_SOCKET_STATUS;
-                        return false;
-                    }
-                    else
-                    {
-                        return true;
-                    }
-                }
-                else if(ret == 0)
-                {
-                    current_status++;
+                    /* do something */
+                    current_status = CLOSE_ECHO;
                 }
             }
-
-            if(retry_time++ > 5)
-            {
-                retry_time = 0;
-                /* do something */
-                current_status = CLOSE_ECHO;
-            }
-        }
-        break;
+            break;
 
         case START_PS_CALL:
-        case CONNECT_TO_SERVER:
-        {
+        case CONNECT_TO_SERVER: {
 
-            if(success)
-            {
-                current_status--;
+                if(success) {
+                    current_status--;
+                } else {
+                    current_status = SET_ACCESS_POINT;
+                }
             }
-            else
-            {
+            break;
+
+        case DISCONNECT_TO_SERVER: {
+                current_status = success ? CONNECT_TO_SERVER : SET_ACCESS_POINT;
+            }
+            break;
+
+        default: {
                 current_status = SET_ACCESS_POINT;
+                retry_time = 0;
             }
-        }
-        break;
-
-        case DISCONNECT_TO_SERVER:
-        {
-            current_status = success ? CONNECT_TO_SERVER : SET_ACCESS_POINT;
-        }
-        break;
-
-        default:
-        {
-            current_status = SET_ACCESS_POINT;
-            retry_time = 0;
-        }
-        break;
+            break;
     }
 
     return false;
@@ -266,18 +235,15 @@ bool SocketSend(uint8_t socket_id, uint8_t *send, uint16_t send_number)
 {
     char *p_send = send_str + 13;
 
-    if(reconnect_server_flag == 0)
-    {
+    if(reconnect_server_flag == 0) {
         current_status = DISCONNECT_TO_SERVER;
         reconnect_server_flag = 10;
     }
 
-    if(MF210v2_ctrl())
-    {
+    if(MF210v2_ctrl()) {
         sprintf(send_str, "AT+ZIPSEND=%d,", socket_id);
 
-        for(int i = 0; i < send_number; i++)
-        {
+        for(int i = 0; i < send_number; i++) {
             *p_send++ = index[*send / 16];
             *p_send++ = index[*send++ % 16];
         }
@@ -286,14 +252,11 @@ bool SocketSend(uint8_t socket_id, uint8_t *send, uint16_t send_number)
 
         strcat(send_str, "\r\n");
 
-        if(module_control(send_str, "\r\nOK\r\n", NULL))
-        {
+        if(module_control(send_str, "\r\nOK\r\n", NULL)) {
             reconnect_server_flag--;
             DEBUG_PRINTF("reconnect_server_flag = %d\r\n", reconnect_server_flag);
             return true;
-        }
-        else
-        {
+        } else {
             current_status = CLOSE_ECHO;
         }
     }
@@ -308,39 +271,32 @@ uint16_t SocketRecv(uint8_t socket_id, uint8_t *recv)
     u16 i = 0;
     char *tmp = strstr((const char *)usart2_recv_buff, "+ZIPRECV:");
 
-    if(tmp != NULL)
-    {
+    if(tmp != NULL) {
         int length = 0;
 
-        if(strchr(tmp, 0x0a))
-        {
+        if(strchr(tmp, 0x0a)) {
             sscanf(tmp, "+ZIPRECV: 1,"SERVER_IP_PORT",%d,%s", &length, recv_str);
 
-           DEBUG_PRINTF("recv_str(%d) = %s \r\n", recv_cursor, recv_str);
+            DEBUG_PRINTF("recv_str(%d) = %s \r\n", recv_cursor, recv_str);
 
-            for(int i = 0; i < length; i++)
-            {
+            for(int i = 0; i < length; i++) {
                 sscanf(recv_str + i * 2, "%2x", (uint32_t *)(recv + i));
             }
 
             recv[length] = 0;
             CleanUsartRecvBuf(USART2);
 
-            if(recv[0] == 'O' && recv[1] == 'K')
-            {
+            if(recv[0] == 'O' && recv[1] == 'K') {
 //                APP_TRACE_INFO(("receive server answer\r\n"));
-                
+
                 reconnect_server_flag = 10;
                 return 0;
 //                APP_TRACE_INFO(("receive server answer\r\n"));
 //                reconnect_server_flag = 10;
 //                return 0;
-            }
-            else
-            {
-                for( i = 0; i < length; i++)
-                {
-                    APP_TRACE_INFO(("recv: 0x%x\r\n",recv[i]));
+            } else {
+                for(i = 0; i < length; i++) {
+                    APP_TRACE_INFO(("recv: 0x%x\r\n", recv[i]));
                 }
 
                 return length;

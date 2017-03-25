@@ -55,7 +55,7 @@ typedef struct {
 ***************************************************************************************************
 */
 typedef enum {
-    
+
     STACK_TEMP = 0,//对应ADC规则组通道
     STACK_VOLTAGE,
     STACK_CURRENT,

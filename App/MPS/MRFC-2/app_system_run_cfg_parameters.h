@@ -77,7 +77,7 @@ typedef struct {
     uint16_t    PumpSpdIgniterFirstTime;
     uint16_t    PumpSpdIgniterSecondTime;
     uint16_t    PumpSpdAfterLiquidPressExceed4Kg;
-    
+
 } HYDROGEN_PUMP_SPEED_PARA_Typedef;
 
 
@@ -106,20 +106,19 @@ typedef struct {
 } LIQUID_HEIGHT_CMP_LINES_Typedef;
 
 
-typedef struct
-{
-	uint16_t FirstDelayTimeByMin;
-	uint8_t  FirstTimeAdjustPumpFlag;
-	uint8_t  FirstTimeAdjustPumpValue;
-	uint8_t  FirstTimeAdjustFanFlag;
-	uint8_t  FirstTimeAdjustFanValue;
-	uint16_t SecondDelayTimeByMin;
-	uint8_t  SecondTimeAdjustPumpFlag;
-	uint8_t  SecondTimeAdjustPumpValue;
-	uint8_t  SecondTimeAdjustFanFlag;
-	uint8_t  SecondTimeAdjustFanValue;
-    
-}RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef;
+typedef struct {
+    uint16_t FirstDelayTimeByMin;
+    uint8_t  FirstTimeAdjustPumpFlag;
+    uint8_t  FirstTimeAdjustPumpValue;
+    uint8_t  FirstTimeAdjustFanFlag;
+    uint8_t  FirstTimeAdjustFanValue;
+    uint16_t SecondDelayTimeByMin;
+    uint8_t  SecondTimeAdjustPumpFlag;
+    uint8_t  SecondTimeAdjustPumpValue;
+    uint8_t  SecondTimeAdjustFanFlag;
+    uint8_t  SecondTimeAdjustFanValue;
+
+} RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef;
 /*
 ***************************************************************************************************
 *                              EXPORTED GLOBAL VARIABLE DECLARATIONS
@@ -133,7 +132,7 @@ extern LIQUID_HEIGHT_CMP_LINES_Typedef                          g_stLqdHeightCmp
 extern RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef     g_stRunningStatusDelayAdjustSpdPara;
 extern uint16_t                                                 g_u16RunPurifyAmpIntegralValue;
 extern uint16_t                                                 g_u16GlobalNetWorkId;
-extern uint16_t                                                 g_u8FirstTimeHeatHoldSeconds;
+extern uint16_t                                                 g_u16FirstTimeHeatHoldSeconds;
 /*
 ***************************************************************************************************
 *                                           EXPORTED MACRO
@@ -158,15 +157,15 @@ void        StoreSystemWorkTimes(uint16_t);
 
 void        GetStartHydrgPumpSpdParaFromFlash(HYDROGEN_PUMP_SPEED_PARA_Typedef *);
 void        StoreStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *);
-void        StoreStartHydrgPumpSpdParaBySingle(uint16_t *i_StartPumpSpdPara,u8 DataAddr);
+void        StoreStartHydrgPumpSpdParaBySingle(uint16_t *i_StartPumpSpdPara, u8 DataAddr);
 
 void        GetStartHydrgFanSpdParaFromFlash(HYDROGEN_FAN_SPEED_PARA_Typedef *);
 void        StoreStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PARA_Typedef *);
-void        StoreStartHydrgFanSpdParaBySingle(uint16_t *i_StartHydrgFanSpdPara,u8 DataAddr);
+void        StoreStartHydrgFanSpdParaBySingle(uint16_t *i_StartHydrgFanSpdPara, u8 DataAddr);
 
-void        StoreGlobalNetWorkID(u16* i_GlobalNetWorkID);
-void        StoreFirstTimeHeatHoldSeconds(u16* i_FirstTimeHeatHoldSeconds);
-void        StoreRunningStatusDelayAdjustSpdParaBySingle(u16* i_DelayAndAdjustSpdPara,u8 DataAddr);
+void        StoreGlobalNetWorkID(u16 *i_GlobalNetWorkID);
+void        StoreFirstTimeHeatHoldSeconds(u16 *i_FirstTimeHeatHoldSeconds);
+void        StoreRunningStatusDelayAdjustSpdParaBySingle(u16 *i_DelayAndAdjustSpdPara, u8 DataAddr);
 
 /*
 ***************************************************************************************************

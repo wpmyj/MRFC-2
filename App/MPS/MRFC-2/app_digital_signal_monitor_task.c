@@ -23,7 +23,7 @@
 
 #include <includes.h>
 #include <bsp.h>
-#include <app_digital_signal_monitor_task.h>
+#include "app_digital_signal_monitor_task.h"
 #include "app_system_run_cfg_parameters.h"
 #include "app_top_task.h"
 #include "app_stack_manager.h"
@@ -53,8 +53,8 @@ static      CPU_STK_8BYTE_ALIGNED     AnaSigMonitorTaskStk[DIG_SIGNAL_MONITOR_TA
 */
 static  uint16_t g_u16OriginalTempFilter[2][NMB_OF_AVERAGE_TEMPERATURE_SAMPLE] = {0};   //原始温度滤波数组
 static  uint8_t  g_u8DigTempFilterOperationCursor = 0;
-static  float    g_fAnaTempSum[2] = {0.0,0.0};
-static  float    g_fAnaTemp[2] = {0.0,0.0};
+static  float    g_fAnaTempSum[2] = {0.0, 0.0};
+static  float    g_fAnaTemp[2] = {0.0, 0.0};
 
 static  uint8_t  g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw = DEF_DISABLED;   //制氢机第一次点火后的数字信号监测任务开关
 static  uint8_t  g_u8HydrgProducerDigSigRunningMonitorAlarmHookSw = DEF_DISABLED;            //制氢机运行数字信号监测警报开关
@@ -327,12 +327,12 @@ static void HydrgProducerDigSigAlarmRunningMonitorHook(void)
     fReformerTemp = GetReformerTemp();
 
     if(fReformerTemp > g_stReformerTempCmpTbl.AlarmUpperLimit) {
-        AlarmCmd(REFORMER_TEMP_HIGH_ALARM,GENERAL_GRADE, ON);
+        AlarmCmd(REFORMER_TEMP_HIGH_ALARM, GENERAL_GRADE, ON);
     } else    if(fReformerTemp < g_stReformerTempCmpTbl.AlarmLowerLimit) {
-        AlarmCmd(REFORMER_TEMP_LOW_ALARM,GENERAL_GRADE, ON);
+        AlarmCmd(REFORMER_TEMP_LOW_ALARM, GENERAL_GRADE, ON);
     } else {
-        AlarmCmd(REFORMER_TEMP_HIGH_ALARM,GENERAL_GRADE, OFF);
-        AlarmCmd(REFORMER_TEMP_LOW_ALARM,GENERAL_GRADE, OFF);
+        AlarmCmd(REFORMER_TEMP_HIGH_ALARM, GENERAL_GRADE, OFF);
+        AlarmCmd(REFORMER_TEMP_LOW_ALARM, GENERAL_GRADE, OFF);
     }
 }
 

@@ -416,7 +416,7 @@ float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
 //            APP_TRACE_INFO(("--> g_fDigFilteredValue[STACK_CURRENT]: %f \r\n", g_fDigFilteredValue[STACK_CURRENT]));
 //            APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[STACK_CURRENT].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[STACK_CURRENT].BaseDigValue));
 //            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[STACK_CURRENT]: %f \r\n\r\n", g_fAnaSigAnaValue[STACK_CURRENT]));
-        
+
         } else if(LIQUID_PRESS == i_eAnaSigKind) {
             if(g_fDigFilteredValue[LIQUID_PRESS] <= g_stAnaSigSensorParameter[LIQUID_PRESS].BaseDigValue) {
                 g_fAnaSigAnaValue[LIQUID_PRESS] = 0.0;
@@ -438,7 +438,7 @@ float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
 //            APP_TRACE_INFO(("--> g_fDigFilteredValue[HYDROGEN_PRESS_1]: %f \r\n", g_fDigFilteredValue[HYDROGEN_PRESS_1]));
 //            APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue));
 //            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[HYDROGEN_PRESS_1]: %f \r\n\r\n", g_fAnaSigAnaValue[HYDROGEN_PRESS_1]));
-        } else if(LIQUID_LEVEL == i_eAnaSigKind){
+        } else if(LIQUID_LEVEL == i_eAnaSigKind) {
             if(g_fDigFilteredValue[LIQUID_LEVEL] <= g_stAnaSigSensorParameter[LIQUID_LEVEL].BaseDigValue) {
                 g_fAnaSigAnaValue[LIQUID_LEVEL] = 0.0;
             } else {
@@ -447,7 +447,7 @@ float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
 //                APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[LIQUID_LEVEL].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[LIQUID_LEVEL].BaseDigValue));
 //                APP_TRACE_INFO(("--> g_fAnaSigAnaValue[LIQUID_LEVEL]: %f \r\n\r\n", g_fAnaSigAnaValue[LIQUID_LEVEL]));
             }
-            
+
         } else {}
     }
 

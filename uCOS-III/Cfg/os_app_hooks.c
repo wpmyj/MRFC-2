@@ -35,7 +35,7 @@
 *                                              SET ALL APPLICATION HOOKS
 *
 * Description: Set ALL application hooks.
-*              
+*
 * Arguments  : none.
 *
 * Note(s)    : none

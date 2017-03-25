@@ -206,7 +206,7 @@ void  BSP_Init(void)
 
     //HSE起振成功
     if(HSEStartUpStatus == SUCCESS) {
-        
+
         RCC_PREDIV2Config(RCC_PREDIV2_Div2);                        /* Fprediv2 = HSE      /  2 =  4MHz.                    */
         RCC_PLL2Config(RCC_PLL2Mul_10);                             /* PLL2     = Fprediv2 *  10 = 40MHz.                    */
         RCC_PLL2Cmd(ENABLE);
@@ -260,7 +260,7 @@ void  BSP_Init(void)
     BSP_ImpulseInputPortInit();     //外部脉冲输入引脚初始化
     CAN1_Init();                    //CAN总线配置，波特率50K
 //    AT25256B_Init();              //外部EEPROM初始化
-    
+
     BSP_VentingIntervalRecordTimerInit();//电堆排气时间参数定时器初始化
 
 #ifdef TRACE_EN                                                 /* See project / compiler preprocessor options.         */
@@ -819,7 +819,7 @@ static void BSP_SwTypePwrDeviceStatuInit(void)
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
     GPIO_ResetBits(GPIOB, BSP_GPIOB_BUZZER_CTRL_PORT_NMB);
-    
+
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_LIQUID_INPUT_VALVE_ONE_PWR_CTRL_PORT_NMB;  // 进液电磁阀1控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -896,13 +896,13 @@ static void BSP_SwTypePwrDeviceStatuInit(void)
     GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_PIN14_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出5
     GPIO_Init(GPIOE, &GPIO_InitStructure);
     GPIO_ResetBits(GPIOE, BSP_GPIOE_PIN14_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
-    
+
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出4
     GPIO_Init(GPIOE, &GPIO_InitStructure);
     GPIO_ResetBits(GPIOE, BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
-    
+
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Pin =  BSP_GPIOE_PIN8_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB;    //预留输出3
@@ -1001,7 +1001,7 @@ void  BSP_IgniterPwrOff(void)
 */
 void  BSP_FastHeaterPwrOn(void)
 {
-    
+
     SetSystemRunningStatuCodeBit(RuningStatuCodeGrpHydrgOut1_Bit);
     GPIO_SetBits(GPIOC, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
 }
@@ -1086,7 +1086,7 @@ void  BSP_DCConnectValvePwrOff(void)
 *                                            BSP_OutsidePumpPwrOn()
 *
 * Description : Open the power switch of the outside pump.
-*               
+*
 * Argument(s) : none.
 *
 * Return(s)   : none.
@@ -1098,13 +1098,13 @@ void  BSP_DCConnectValvePwrOff(void)
 */
 void  BSP_OutsidePumpPwrOn(void)
 {
-    
+
     GPIO_SetBits(GPIOC, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 
 void  BSP_OutsidePumpPwrOff(void)
 {
-    
+
     GPIO_ResetBits(GPIOC, BSP_GPIOC_RSVD_OUTPUT_PWR_CTRL_PORT_NMB);
 }
 
@@ -1395,7 +1395,7 @@ static  void  BSP_DeviceSpdCheckPortInit(u16 arr, u16 psc)
     TIM_Cmd(TIM1, ENABLE);
     BSP_IntVectSet(BSP_INT_ID_TIM1_CC, BSP_DevSpdCaptureFinishedHandler);//捕获完成中断产生进入中断
     BSP_IntEn(BSP_INT_ID_TIM1_CC);
-    
+
     BSP_IntVectSet(BSP_INT_ID_TIM1_UP, BSP_DevSpdCaptureFinishedHandler);//产生更新事件进入中断,都指向同一个中断服务函数
     BSP_IntEn(BSP_INT_ID_TIM1_UP);
 
@@ -1811,7 +1811,7 @@ void BSP_CmdButtonInit(void)
     EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
     EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-    EXTI_Init(&EXTI_InitStructure);     
+    EXTI_Init(&EXTI_InitStructure);
 
     BSP_IntVectSet(BSP_INT_ID_EXTI15_10, EXTI15_10_StatusCheck_IRQHandler);
     BSP_IntEn(BSP_INT_ID_EXTI15_10);
@@ -1836,7 +1836,7 @@ static void BSP_ImpulseInputPortInit(void)
     GPIO_InitTypeDef GPIO_InitStructure;
     EXTI_InitTypeDef EXTI_InitStructure;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOE , ENABLE);
-    
+
     //松下泄压阀脉冲输入引脚1
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;   //下拉输入
@@ -1898,7 +1898,7 @@ static void EXTI15_10_StatusCheck_IRQHandler()
             StackVentAirTimeParameter.fVentAirTimeIntervalValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录排气间隔时间
             StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num
             u8VentAirTimeIntervalRecordFlag = YES;
-            
+
         } else {
             StackVentAirTimeParameter.fDecompressVentTimeValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录泄压时间
             StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num
@@ -1913,15 +1913,16 @@ static void EXTI15_10_StatusCheck_IRQHandler()
             u8VentAirTimeIntervalRecordFlag = NO;
             u8DecompressVentTimeRecordFlag = NO;
         }
+
         EXTI_ClearITPendingBit(EXTI_Line12);
     }
-    
+
     if(EXTI_GetITStatus(EXTI_Line13) != RESET) {//开关按键
-    
-        CmdButtonFuncDisable();      
+
+        CmdButtonFuncDisable();
         StartCmdButtonActionCheckDly(); //定时器定时0.5后的中断中判断按钮按下，然后执行相应流程
         EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE10上的中断标志位
-        
+
     }
 }
 /*
@@ -2021,11 +2022,12 @@ void CmdButtonStatuCheck(void)
 {
     OS_ERR      err;
     SYSTEM_WORK_STATU_Typedef eSysRunningStatu;
-    
+
     if(GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13) == 0) {
         eSysRunningStatu = GetSystemWorkStatu();
+
         if((EN_WAITTING_COMMAND == eSysRunningStatu) || (eSysRunningStatu == EN_ALARMING)) {
-            
+
             if(DEF_ENABLED == GetWorkModeWaittingForSelectFlag()) {//内部调试模式下
                 //硬件启动暂时默认为一体机模式
                 g_u8SerRxMsgBuff[4] = EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL;
@@ -2035,16 +2037,17 @@ void CmdButtonStatuCheck(void)
                           &err);
                 ResetWorkModeWaittingForSelectFlag();   //复位等待选择标志
                 CmdStart();
-                
+
             } else {//已经设置好工作模式
-                
-                CmdStart();  
+
+                CmdStart();
             }
         } else {
             CmdShutDown();
-        }                
+        }
 
     }
+
     CmdButtonFuncEnable();
     TIM_ITConfig(TIM7, TIM_IT_Update, DISABLE);
     TIM_ClearITPendingBit(TIM7, TIM_IT_Update); //清除中断标志位
@@ -2291,55 +2294,61 @@ void DiagnosticFeedBack_9_5_IRQHandler(void)
 * Note(s)     : none.
 *********************************************************************************************************
 */
-static	void  BSP_CheckSwTypeWorkStatuInit(void)
+static  void  BSP_CheckSwTypeWorkStatuInit(void)
 {
-	GPIO_InitTypeDef  GPIO_InitStructure;
-	RCC_APB2PeriphClockCmd( RCC_APB2Periph_GPIOC, ENABLE);//使能所有GPIO口时钟
+    GPIO_InitTypeDef  GPIO_InitStructure;
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE); //使能所有GPIO口时钟
 
-	PWR_BackupAccessCmd(ENABLE);//允许修改RTC 和后备寄存器 
-	RCC_LSEConfig(RCC_LSE_OFF);//关闭外部低速外部时钟信号功能 后，PC13 PC14 PC15 才可以当普通IO用。
-	BKP_TamperPinCmd(DISABLE);//关闭入侵检测功能，也就是 PC13，也可以当普通IO 使用
-	PWR_BackupAccessCmd(DISABLE);//禁止修改后备寄存器
+    PWR_BackupAccessCmd(ENABLE);//允许修改RTC 和后备寄存器
+    RCC_LSEConfig(RCC_LSE_OFF);//关闭外部低速外部时钟信号功能 后，PC13 PC14 PC15 才可以当普通IO用。
+    BKP_TamperPinCmd(DISABLE);//关闭入侵检测功能，也就是 PC13，也可以当普通IO 使用
+    PWR_BackupAccessCmd(DISABLE);//禁止修改后备寄存器
 
-	GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_5;  //点火器火焰查询状态引脚 
-	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_5;  //点火器火焰查询状态引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-	GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_13;  // 进液阀1查询状态引脚 
-	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_13;  // 进液阀1查询状态引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_14;  // 进液阀2查询状态引脚 
-	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_14;  // 进液阀2查询状态引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-	GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_15;  // 风机查询状态引脚 
-	GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_15;  // 风机查询状态引脚
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
 }
 //开关设备工作状态查询函数
-WHETHER_TYPE_VARIABLE_Typedef 	Check_Swtype_Work_Status(SwType_WORK_STATUS_Typedef Is_Swtype_Work)
+WHETHER_TYPE_VARIABLE_Typedef   Check_Swtype_Work_Status(SwType_WORK_STATUS_Typedef Is_Swtype_Work)
 {
-	WHETHER_TYPE_VARIABLE_Typedef WHETHER_TYPE;
-	switch(Is_Swtype_Work){
-		case IS_FIRE_STATUS_WORK:
-			WHETHER_TYPE = GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_5)?YES:NO;
-			break;
-		case IS_PUMP_AND_VALUE1_WORK:
-			WHETHER_TYPE = GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_13)?YES:NO;
-			break; 
-		case IS_VALUE2_AND_IGNITER_WORK:
-			WHETHER_TYPE = GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_14)?YES:NO;
-			break;
-		case IS_FAN_WORK:
-			WHETHER_TYPE = GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_15)?YES:NO;
-			break;
-		default:
-			WHETHER_TYPE = NO;
-			break;
-		
-	}
-	return WHETHER_TYPE;
+    WHETHER_TYPE_VARIABLE_Typedef WHETHER_TYPE;
+
+    switch(Is_Swtype_Work) {
+        case IS_FIRE_STATUS_WORK:
+            WHETHER_TYPE = GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_5) ? YES : NO;
+            break;
+
+        case IS_PUMP_AND_VALUE1_WORK:
+            WHETHER_TYPE = GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_13) ? YES : NO;
+            break;
+
+        case IS_VALUE2_AND_IGNITER_WORK:
+            WHETHER_TYPE = GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_14) ? YES : NO;
+            break;
+
+        case IS_FAN_WORK:
+            WHETHER_TYPE = GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_15) ? YES : NO;
+            break;
+
+        default:
+            WHETHER_TYPE = NO;
+            break;
+
+    }
+
+    return WHETHER_TYPE;
 }
 
 /*

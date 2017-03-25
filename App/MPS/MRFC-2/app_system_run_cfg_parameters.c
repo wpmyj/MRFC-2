@@ -42,28 +42,28 @@
 //无符号16位数，擦除后为全0xFFFF
 //bit[0]表示应用层是采用默认值还是配置值--0:配置值  1:默认值
 //bit[1]表示驱动层参数采用默认值还是配置--0:配置值  1:默认值
-#define APP_PARAMETERS_SELECT_FLAG_CHECK                                0x0001
-#define APP_PARAMETERS_SELECT_CFG_VALUE                                 0x0000
-#define APP_PARAMETERS_SELECT_DEFAULT_VALUE                             0x0001
+#define APP_PARAMETERS_SELECT_FLAG_CHECK                                        0x0001
+#define APP_PARAMETERS_SELECT_CFG_VALUE                                         0x0000
+#define APP_PARAMETERS_SELECT_DEFAULT_VALUE                                     0x0001
 
-#define DRIVER_LAYER_PARAMETERS_SELECT_FLAG_CHECK                       0x0002
-#define DRIVER_LAYER_PARAMETERS_SELECT_CFG_VALUE                        0x0000  //使用配置过的参数
-#define DRIVER_LAYER_PARAMETERS_SELECT_DEFAULT_VALUE                    0x0002  //使用默认参数
+#define DRIVER_LAYER_PARAMETERS_SELECT_FLAG_CHECK                               0x0002
+#define DRIVER_LAYER_PARAMETERS_SELECT_CFG_VALUE                                0x0000  //使用配置过的参数
+#define DRIVER_LAYER_PARAMETERS_SELECT_DEFAULT_VALUE                            0x0002  //使用默认参数
 
 /*以下宏定义表示参数存储基地址*/
-#define PARAMETERS_SELECT_FLAG_OFFSET_ADDR                              0   //参数选择标志
-#define SYSTEM_RUN_TIME_STORE_OFFSET_ADDR                               2   //系统运行次数
-#define GLOBAL_NET_WORK_ID_ADDR                                         4   //本地组网ID
-#define SYSTEM_TOTAL_WORK_TIME_STORE_OFFSET_ADDR                        6   //系统时间时间4个，各4个字节
-#define RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR                          30  //12个数
-#define RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR                       50  // 液压4个数
-#define RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR                     60  //液位参数4个
-#define RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR                  70  //泵参数3个
-#define RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR                   80  //制氢风机参数4个
-#define RUN_PURIFY_AMP_INTEGRAL_VALUE                                   90  //电堆提纯膜间电荷量1个
-#define DRIVER_LAYER_CALIBRATED_LINEAR_ANA_SENSOR_PARAMETERS_OFFSET_ADDR  92  //驱动层线性传感器校准参数,28个数
-#define RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_ADDR                130 //运行调速设备延时调节参数 
-#define FIRST_TIME_HEAT_HOLD_SECONDS_PARA_ADDR                           140 //加热持续时间
+#define PARAMETERS_SELECT_FLAG_OFFSET_ADDR                                      0   //参数选择标志
+#define SYSTEM_RUN_TIME_STORE_OFFSET_ADDR                                       2   //系统运行次数
+#define GLOBAL_NET_WORK_ID_ADDR                                                 4   //本地组网ID
+#define SYSTEM_TOTAL_WORK_TIME_STORE_OFFSET_ADDR                                6   //系统时间时间4个，各4个字节
+#define RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR                                  30  //12个数
+#define RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR                               50  // 液压4个数
+#define RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR                             60  //液位参数4个
+#define RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR                          70  //泵参数3个
+#define RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR                           80  //制氢风机参数4个
+#define RUN_PURIFY_AMP_INTEGRAL_VALUE                                           90  //电堆提纯膜间电荷量1个
+#define DRIVER_LAYER_CALIBRATED_LINEAR_ANA_SENSOR_PARAMETERS_OFFSET_ADDR        92  //驱动层线性传感器校准参数,28个数
+#define RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_ADDR                       130 //运行调速设备延时调节参数 
+#define FIRST_TIME_HEAT_HOLD_SECONDS_PARA_ADDR                                  142 //加热持续时间
 
 /*
 ***************************************************************************************************
@@ -76,11 +76,11 @@ LIQUID_HEIGHT_CMP_LINES_Typedef                         g_stLqdHeightCmpTbl;
 HYDROGEN_PUMP_SPEED_PARA_Typedef                        g_stStartHydrgPumpSpdPara;
 HYDROGEN_FAN_SPEED_PARA_Typedef                         g_stStartHydrgFanSpdPara;
 RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef    g_stRunningStatusDelayAdjustSpdPara;
-uint16_t                                                g_u8FirstTimeHeatHoldSeconds;
+uint16_t                                                g_u16FirstTimeHeatHoldSeconds;
 uint16_t                                                g_u16RunPurifyAmpIntegralValue;
 
 //在CAN总线中的节点ID/本地组网ID,默认为255号,独立运行的机器设置为0
-uint16_t 		                            g_u16GlobalNetWorkId = 0xFF;
+uint16_t                                    g_u16GlobalNetWorkId = 0xFF;
 /*
 ***************************************************************************************************
 *                                     LOCAL VARIABLES
@@ -128,13 +128,13 @@ static          void        GetRunPurifyAmpIntegralValueFromFlash(u16 *);
 static          void        GetDefaultRunPurifyAmpIntegralValue(u16 *);
 static          void        StoreRunPurifyAmpIntegralValue(u16 *);
 
-static          void        GetDefaultRunningStatusDelayAdjustSpdPara(RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef* i_DelayAndAdjustSpd);
-static          void        StoreRunningStatusDelayAdjustSpdPara(RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef* i_DelayAndAdjustSpdPara);
-static          void        GetRunningStageDelayAndAdjustSpdFromFlash(RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef * i_DelayAndAdjustSpd);
+static          void        GetDefaultRunningStatusDelayAdjustSpdPara(RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef *i_DelayAndAdjustSpd);
+static          void        StoreRunningStatusDelayAdjustSpdPara(RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef *i_DelayAndAdjustSpdPara);
+static          void        GetRunningStageDelayAndAdjustSpdFromFlash(RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef *i_DelayAndAdjustSpd);
 
-static          void        GetGlobalNetWorkIDFromFlash(u16* i_GlobalNetWorkID);
+static          void        GetGlobalNetWorkIDFromFlash(u16 *i_GlobalNetWorkID);
 static          void        GetDefaultFirstTimeHeatHoldSeconds(u16 *i_FirstTimeHeatHoldSeconds);
-static          void        GetFirstTimeHeatHoldSecondsFromFlash(u16* i_FirstTimeHeatHoldSeconds);
+static          void        GetFirstTimeHeatHoldSecondsFromFlash(u16 *i_FirstTimeHeatHoldSeconds);
 
 #if 1
 /*
@@ -216,18 +216,18 @@ void LoadApplicationLayerParameters()
 
         GetTotalWorkTimeFromFlash(&stTotalWorkTime);
         LoadTotalWorkTimeToPrgm(stTotalWorkTime);   //传到实时运行参数所在文件对应的程序中去
-        
+
         GetGlobalNetWorkIDFromFlash(&g_u16GlobalNetWorkId);
-        APP_TRACE_INFO(("Load GLOBAL_NET_WORK_ID:%d...\n\r",g_u16GlobalNetWorkId));
+        APP_TRACE_INFO(("Load GLOBAL_NET_WORK_ID:%d...\n\r", g_u16GlobalNetWorkId));
         GetReformerTempCmpTblFromFlash(&g_stReformerTempCmpTbl);
         GetLqdPressCmpTblFromFlash(&g_stLqdPressCmpTbl);
         GetLqdHeightCmpTblFromFlash(&g_stLqdHeightCmpTbl);
-        GetStartHydrgPumpSpdParaFromFlash(&g_stStartHydrgPumpSpdPara);               
+        GetStartHydrgPumpSpdParaFromFlash(&g_stStartHydrgPumpSpdPara);
         GetStartHydrgFanSpdParaFromFlash(&g_stStartHydrgFanSpdPara);
         GetRunPurifyAmpIntegralValueFromFlash(&g_u16RunPurifyAmpIntegralValue);
         GetRunningStageDelayAndAdjustSpdFromFlash(&g_stRunningStatusDelayAdjustSpdPara);
-        GetFirstTimeHeatHoldSecondsFromFlash(&g_u8FirstTimeHeatHoldSeconds);
-        
+        GetFirstTimeHeatHoldSecondsFromFlash(&g_u16FirstTimeHeatHoldSeconds);
+
     } else { //载入默认参数
         APP_TRACE_INFO(("First time run,the machine will work with the default parameters!...\r\n"));
 
@@ -253,11 +253,11 @@ void LoadApplicationLayerParameters()
 
         /*获取默认参数并且存到Flash中*/
         StoreGlobalNetWorkID(&g_u16GlobalNetWorkId);
-        APP_TRACE_INFO(("Default GLOBAL_NET_WORK_ID:%d...\n\r",g_u16GlobalNetWorkId));
-        
+        APP_TRACE_INFO(("Default GLOBAL_NET_WORK_ID:%d...\n\r", g_u16GlobalNetWorkId));
+
         GetDefaultReformerTempCmpTbl(&g_stReformerTempCmpTbl);
         StoreReformerTempCmpTbl(&g_stReformerTempCmpTbl);
-        
+
         GetDefaultLqdPressCmpTbl(&g_stLqdPressCmpTbl);
         StoreLqdPressCmpTbl(&g_stLqdPressCmpTbl);
 
@@ -272,10 +272,10 @@ void LoadApplicationLayerParameters()
 
         GetDefaultRunPurifyAmpIntegralValue(&g_u16RunPurifyAmpIntegralValue);
         StoreRunPurifyAmpIntegralValue(&g_u16RunPurifyAmpIntegralValue);
-        
-        GetDefaultFirstTimeHeatHoldSeconds(&g_u8FirstTimeHeatHoldSeconds);
-        StoreFirstTimeHeatHoldSeconds(&g_u8FirstTimeHeatHoldSeconds);
-        
+
+        GetDefaultFirstTimeHeatHoldSeconds(&g_u16FirstTimeHeatHoldSeconds);
+        StoreFirstTimeHeatHoldSeconds(&g_u16FirstTimeHeatHoldSeconds);
+
         GetDefaultRunningStatusDelayAdjustSpdPara(&g_stRunningStatusDelayAdjustSpdPara);
         StoreRunningStatusDelayAdjustSpdPara(&g_stRunningStatusDelayAdjustSpdPara);
     }
@@ -314,17 +314,17 @@ static void SetParametersSelectFlag(uint16_t *i_pParametersSelectFlagAddr)
 *
 * Returns    :  none.
 *
-* Note(s)	 :	none.
+* Note(s)    :  none.
 *********************************************************************************************************
 */
-static void GetGlobalNetWorkIDFromFlash(u16* i_GlobalNetWorkID)
+static void GetGlobalNetWorkIDFromFlash(u16 *i_GlobalNetWorkID)
 {
-	STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + GLOBAL_NET_WORK_ID_ADDR, i_GlobalNetWorkID, 1);
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + GLOBAL_NET_WORK_ID_ADDR, i_GlobalNetWorkID, 1);
 }
 
-void StoreGlobalNetWorkID(u16* i_GlobalNetWorkID)
-{	
-	STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + GLOBAL_NET_WORK_ID_ADDR, i_GlobalNetWorkID, 1);
+void StoreGlobalNetWorkID(u16 *i_GlobalNetWorkID)
+{
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + GLOBAL_NET_WORK_ID_ADDR, i_GlobalNetWorkID, 1);
 }
 /*
 ***************************************************************************************************
@@ -412,8 +412,8 @@ void StoreTotalWorkTime(SYSTEM_TIME_Typedef *i_stTotalTime)
 ***************************************************************************************************
 */
 static void GetReformerTempCmpTblFromFlash(REFORMER_TEMP_CMP_LINES_Typedef *i_ReformerTemCmpTbl)
-{    
-    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_ReformerTemCmpTbl, 12);
+{
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t *)i_ReformerTemCmpTbl, 12);
 }
 
 static void GetDefaultReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *i_ReformerTemCmpTbl)
@@ -435,7 +435,7 @@ static void GetDefaultReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *i_Refo
 
 static void StoreReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *i_ReformerTemCmpTbl)
 {
-    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_ReformerTemCmpTbl, 12);
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_REFORMER_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t *)i_ReformerTemCmpTbl, 12);
 }
 
 /*
@@ -453,7 +453,7 @@ static void StoreReformerTempCmpTbl(REFORMER_TEMP_CMP_LINES_Typedef *i_ReformerT
 */
 static void GetLqdPressCmpTblFromFlash(LIQUID_PRESSURE_CMP_LINES_Typedef *i_LqdPressCmpTbl)
 {
-    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_LqdPressCmpTbl, 4);
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t *)i_LqdPressCmpTbl, 4);
 }
 
 static void GetDefaultLqdPressCmpTbl(LIQUID_PRESSURE_CMP_LINES_Typedef *i_LqdPressCmpTbl)
@@ -466,7 +466,7 @@ static void GetDefaultLqdPressCmpTbl(LIQUID_PRESSURE_CMP_LINES_Typedef *i_LqdPre
 
 static void StoreLqdPressCmpTbl(LIQUID_PRESSURE_CMP_LINES_Typedef *i_LqdPressCmpTbl)
 {
-    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_LqdPressCmpTbl, 4);
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUIDPRESS_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t *)i_LqdPressCmpTbl, 4);
 }
 /*
 ***************************************************************************************************
@@ -483,7 +483,7 @@ static void StoreLqdPressCmpTbl(LIQUID_PRESSURE_CMP_LINES_Typedef *i_LqdPressCmp
 */
 static void GetLqdHeightCmpTblFromFlash(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmpTbl)
 {
-    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_LqdHeightCmpTbl, 3);
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t *)i_LqdHeightCmpTbl, 3);
 }
 
 static void GetDefaultLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmpTbl)
@@ -495,7 +495,7 @@ static void GetDefaultLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeig
 
 static void StoreLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmpTbl)
 {
-    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t*)i_LqdHeightCmpTbl, 3);
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_LIQUID_HEIGHT_CMP_TBL_STORE_OFFSET_ADDR, (uint16_t *)i_LqdHeightCmpTbl, 3);
 }
 
 /*
@@ -513,7 +513,7 @@ static void StoreLqdHeightCmpTbl(LIQUID_HEIGHT_CMP_LINES_Typedef *i_LqdHeightCmp
 */
 void GetStartHydrgPumpSpdParaFromFlash(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
 {
-    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t*)i_StartPumpSpdPara, 3);
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t *)i_StartPumpSpdPara, 3);
 }
 
 static void GetDefaultStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
@@ -525,13 +525,13 @@ static void GetDefaultStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_
 
 void StoreStartHydrgPumpSpdPara(HYDROGEN_PUMP_SPEED_PARA_Typedef *i_StartPumpSpdPara)
 {
-    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t*)i_StartPumpSpdPara, 3);
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t *)i_StartPumpSpdPara, 3);
 }
 
 //单独一个水泵的参数保存
-void StoreStartHydrgPumpSpdParaBySingle(uint16_t *i_StartPumpSpdPara,u8 DataAddr)
-{	
-	STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR + 2*DataAddr,i_StartPumpSpdPara, 1);
+void StoreStartHydrgPumpSpdParaBySingle(uint16_t *i_StartPumpSpdPara, u8 DataAddr)
+{
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_PUMP_SPEED_PARA_STORE_OFFSET_ADDR + 2 * DataAddr, i_StartPumpSpdPara, 1);
 }
 /*
 ***************************************************************************************************
@@ -548,7 +548,7 @@ void StoreStartHydrgPumpSpdParaBySingle(uint16_t *i_StartPumpSpdPara,u8 DataAddr
 */
 void GetStartHydrgFanSpdParaFromFlash(HYDROGEN_FAN_SPEED_PARA_Typedef *i_StartHydrgFanSpdPara)
 {
-    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t*)i_StartHydrgFanSpdPara, 4);
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t *)i_StartHydrgFanSpdPara, 4);
 }
 
 static void GetDefaultStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PARA_Typedef *i_StartHydrgFanSpdPara)
@@ -561,13 +561,13 @@ static void GetDefaultStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PARA_Typedef *i_St
 
 void StoreStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PARA_Typedef *i_StartHydrgFanSpdPara)
 {
-    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t*)i_StartHydrgFanSpdPara, 4);
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR, (uint16_t *)i_StartHydrgFanSpdPara, 4);
 }
 
 //单独一个风机的参数保存
-void StoreStartHydrgFanSpdParaBySingle(uint16_t *i_StartHydrgFanSpdPara,u8 DataAddr)
-{	
-	STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR + 2*DataAddr,i_StartHydrgFanSpdPara, 1);
+void StoreStartHydrgFanSpdParaBySingle(uint16_t *i_StartHydrgFanSpdPara, u8 DataAddr)
+{
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_HYDROGEN_FAN_SPEED_PARA_STORE_OFFSET_ADDR + 2 * DataAddr, i_StartHydrgFanSpdPara, 1);
 }
 
 /*
@@ -580,38 +580,38 @@ void StoreStartHydrgFanSpdParaBySingle(uint16_t *i_StartHydrgFanSpdPara,u8 DataA
 *
 * Returns    :  none.
 *
-* Note(s)	 :	none.
+* Note(s)    :  none.
 *********************************************************************************************************
 */
-static void GetRunningStageDelayAndAdjustSpdFromFlash(RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef * i_DelayAndAdjustSpd)
+static void GetRunningStageDelayAndAdjustSpdFromFlash(RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef *i_DelayAndAdjustSpd)
 {
-	STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_ADDR, (uint16_t*)i_DelayAndAdjustSpd, 6);
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_ADDR, (uint16_t *)i_DelayAndAdjustSpd, 6);
 }
 
-static void GetDefaultRunningStatusDelayAdjustSpdPara(RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef* i_DelayAndAdjustSpd)
+static void GetDefaultRunningStatusDelayAdjustSpdPara(RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef *i_DelayAndAdjustSpd)
 {
-	i_DelayAndAdjustSpd->FirstDelayTimeByMin       = 2;
-	i_DelayAndAdjustSpd->FirstTimeAdjustPumpFlag   =  1;
-	i_DelayAndAdjustSpd->FirstTimeAdjustPumpValue  = 20;
-	i_DelayAndAdjustSpd->FirstTimeAdjustFanFlag    =  1;
-	i_DelayAndAdjustSpd->FirstTimeAdjustFanValue   = 20;
-    
-	i_DelayAndAdjustSpd->SecondDelayTimeByMin      = 2;
-	i_DelayAndAdjustSpd->SecondTimeAdjustPumpFlag  =  1;
-	i_DelayAndAdjustSpd->SecondTimeAdjustPumpValue = 20;
-	i_DelayAndAdjustSpd->SecondTimeAdjustFanFlag   =  1;
-	i_DelayAndAdjustSpd->SecondTimeAdjustFanValue  = 20;
+    i_DelayAndAdjustSpd->FirstDelayTimeByMin       = 2;
+    i_DelayAndAdjustSpd->FirstTimeAdjustPumpFlag   =  1;
+    i_DelayAndAdjustSpd->FirstTimeAdjustPumpValue  = 20;
+    i_DelayAndAdjustSpd->FirstTimeAdjustFanFlag    =  1;
+    i_DelayAndAdjustSpd->FirstTimeAdjustFanValue   = 20;
+
+    i_DelayAndAdjustSpd->SecondDelayTimeByMin      = 2;
+    i_DelayAndAdjustSpd->SecondTimeAdjustPumpFlag  =  1;
+    i_DelayAndAdjustSpd->SecondTimeAdjustPumpValue = 20;
+    i_DelayAndAdjustSpd->SecondTimeAdjustFanFlag   =  1;
+    i_DelayAndAdjustSpd->SecondTimeAdjustFanValue  = 20;
 }
 
-static void StoreRunningStatusDelayAdjustSpdPara(RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef* i_DelayAndAdjustSpdPara)
-{	
-	STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_ADDR, (u16 *)i_DelayAndAdjustSpdPara, 6);
+static void StoreRunningStatusDelayAdjustSpdPara(RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef *i_DelayAndAdjustSpdPara)
+{
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_ADDR, (u16 *)i_DelayAndAdjustSpdPara, 6);
 }
 
 //延时调速单独两个字节的数据保存
-void StoreRunningStatusDelayAdjustSpdParaBySingle(u16* i_DelayAndAdjustSpdPara,u8 DataAddr)
-{	
-	STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_ADDR + 2 * DataAddr, i_DelayAndAdjustSpdPara, 1);
+void StoreRunningStatusDelayAdjustSpdParaBySingle(u16 *i_DelayAndAdjustSpdPara, u8 DataAddr)
+{
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_ADDR + 2 * DataAddr, i_DelayAndAdjustSpdPara, 1);
 }
 
 /*
@@ -624,17 +624,17 @@ void StoreRunningStatusDelayAdjustSpdParaBySingle(u16* i_DelayAndAdjustSpdPara,u
 *
 * Returns    :  none.
 *
-* Note(s)	 :	none.
+* Note(s)    :  none.
 *********************************************************************************************************
 */
-void GetFirstTimeHeatHoldSecondsFromFlash(u16* i_FirstTimeHeatHoldSeconds)
+void GetFirstTimeHeatHoldSecondsFromFlash(u16 *i_FirstTimeHeatHoldSeconds)
 {
-	STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + FIRST_TIME_HEAT_HOLD_SECONDS_PARA_ADDR, i_FirstTimeHeatHoldSeconds, 1);
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + FIRST_TIME_HEAT_HOLD_SECONDS_PARA_ADDR, i_FirstTimeHeatHoldSeconds, 1);
 }
 
-void StoreFirstTimeHeatHoldSeconds(u16* i_FirstTimeHeatHoldSeconds)
-{	
-	STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + FIRST_TIME_HEAT_HOLD_SECONDS_PARA_ADDR, i_FirstTimeHeatHoldSeconds, 1);
+void StoreFirstTimeHeatHoldSeconds(u16 *i_FirstTimeHeatHoldSeconds)
+{
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + FIRST_TIME_HEAT_HOLD_SECONDS_PARA_ADDR, i_FirstTimeHeatHoldSeconds, 1);
 }
 
 static void GetDefaultFirstTimeHeatHoldSeconds(u16 *i_FirstTimeHeatHoldSeconds)
@@ -656,7 +656,7 @@ static void GetDefaultFirstTimeHeatHoldSeconds(u16 *i_FirstTimeHeatHoldSeconds)
 */
 static void GetRunPurifyAmpIntegralValueFromFlash(u16 *i_RunPurifyAmpIntegralValue)
 {
-    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_PURIFY_AMP_INTEGRAL_VALUE, (uint16_t*)i_RunPurifyAmpIntegralValue, 1);
+    STMFLASH_Read(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_PURIFY_AMP_INTEGRAL_VALUE, (uint16_t *)i_RunPurifyAmpIntegralValue, 1);
 }
 
 static void GetDefaultRunPurifyAmpIntegralValue(u16 *i_RunPurifyAmpIntegralValue)
@@ -666,7 +666,7 @@ static void GetDefaultRunPurifyAmpIntegralValue(u16 *i_RunPurifyAmpIntegralValue
 
 static void StoreRunPurifyAmpIntegralValue(u16 *i_RunPurifyAmpIntegralValue)
 {
-    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_PURIFY_AMP_INTEGRAL_VALUE, (uint16_t*)i_RunPurifyAmpIntegralValue, 1);
+    STMFLASH_Write(SYSTEM_PARAMETER_STORE_SEGMENT_ADDR + RUN_PURIFY_AMP_INTEGRAL_VALUE, (uint16_t *)i_RunPurifyAmpIntegralValue, 1);
 }
 /*
 ***************************************************************************************************

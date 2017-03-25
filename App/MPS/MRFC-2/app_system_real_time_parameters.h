@@ -139,17 +139,16 @@ typedef enum {
     YES = !NO,
 } WHETHER_TYPE_VARIABLE_Typedef;
 
-typedef enum
-{
-	IS_FIRE_STATUS_WORK = 0,
-	IS_PUMP_AND_VALUE1_WORK = 1,
-	IS_VALUE2_AND_IGNITER_WORK = 2,
-	IS_FAN_WORK = 3,
-    
-}SwType_WORK_STATUS_Typedef; //开关器件工作状态查询
+typedef enum {
+    IS_FIRE_STATUS_WORK = 0,
+    IS_PUMP_AND_VALUE1_WORK = 1,
+    IS_VALUE2_AND_IGNITER_WORK = 2,
+    IS_FAN_WORK = 3,
+
+} SwType_WORK_STATUS_Typedef; //开关器件工作状态查询
 
 typedef enum {
-    
+
     STACK_TEMP_LOW_ALARM = 0,           //电堆低温警报
     STACK_TEMP_HIGH_ALARM,              //电堆高温警报
 
@@ -168,7 +167,7 @@ typedef enum {
 } SYSTEM_ALARM_ADDR_Typedef;
 
 typedef enum {
-    
+
     SLIGHT_GRADE = 0,       //轻微级
     GENERAL_GRADE,           //一般级
     SERIOUS_GRADE,           //严重级
@@ -449,7 +448,7 @@ STACK_WORK_STATU_Typedef        GetStackWorkStatu(void);
 //系统警报管理相关函数
 void                    ResetAllAlarms(void);
 uint32_t                GetRunAlarmCode(void);
-void                    AlarmCmd(SYSTEM_ALARM_ADDR_Typedef,SYSTEM_ALARM_GRADE_Typedef, SWITCH_TYPE_VARIABLE_Typedef);
+void                    AlarmCmd(SYSTEM_ALARM_ADDR_Typedef, SYSTEM_ALARM_GRADE_Typedef, SWITCH_TYPE_VARIABLE_Typedef);
 SWITCH_TYPE_VARIABLE_Typedef    GetAlarmStatu(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind);
 SYSTEM_TIME_Typedef             GetAlarmHoldTime(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind);
 

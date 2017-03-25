@@ -394,7 +394,7 @@ void Bsp_SetDcModuleOutPutVIvalue(float i_fVvalue, float i_fIvalue)
 
     DCModuleTxBuf[10] = u8CheckSumValue & 0xFF;//Ð£ÑéºÍ
 
-    
+
     SetRS485TxDateType(TYPE_IS_TRANSPOND_CMD);
     Bsp_RS485_Send_Data(&DCModuleTxBuf[0], 11);
 }

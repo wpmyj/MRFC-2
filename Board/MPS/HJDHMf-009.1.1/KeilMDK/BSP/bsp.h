@@ -525,7 +525,7 @@ void  BSP_PureHydrogenGasOutValvePwrOff(void);
 
 void  BSP_TailGasOutValvePwrOn(void);
 void  BSP_TailGasOutValvePwrOff(void);
-    
+
 void  BSP_MakeVavuumValve2PwrOn(void);
 void  BSP_MakeVavuumValve3PwrOn(void);
 void  BSP_MakeVavuumValve4PwrOn(void);

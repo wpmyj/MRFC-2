@@ -35,7 +35,7 @@
 *                                  OS-RELATED    VARIABLES
 ***************************************************************************************************
 */
-       OS_TCB     StackShortCircuitTaskTCB;
+OS_TCB     StackShortCircuitTaskTCB;
 static CPU_STK    STACK_SHORT_CIRCUIT_TASK_STK[STACK_SHORT_CIRCUIT_TASK_STK_SIZE];
 /*
 ***************************************************************************************************
@@ -54,8 +54,8 @@ static CPU_STK    STACK_SHORT_CIRCUIT_TASK_STK[STACK_SHORT_CIRCUIT_TASK_STK_SIZE
 *                                         FUNCTION PROTOTYPES
 ***************************************************************************************************
 */
-static void  StackShortCircuitTask(void *p_arg);    
-    
+static void  StackShortCircuitTask(void *p_arg);
+
 /*
 ***************************************************************************************************
 *                               StackShortCircuitTaskCreate()
@@ -72,7 +72,7 @@ static void  StackShortCircuitTask(void *p_arg);
 void StackShortCircuitTaskCreate(void)
 {
     OS_ERR  err;
-    
+
     OSTaskCreate((OS_TCB *)&StackShortCircuitTaskTCB,
                  (CPU_CHAR *)"Stack Short Circuit Task Start",
                  (OS_TASK_PTR)StackShortCircuitTask,
@@ -104,39 +104,38 @@ void StackShortCircuitTaskCreate(void)
 * Notes       : 5分钟一次.
 ***************************************************************************************************
 */
-static void  StackShortCircuitTask(void *p_arg)                   
-{ 
-    OS_ERR  err; 
-    
-    while(DEF_TRUE)
-    {
+static void  StackShortCircuitTask(void *p_arg)
+{
+    OS_ERR  err;
+
+    while(DEF_TRUE) {
         OSTaskSuspend(NULL, &err);
         OSTaskSuspend(&DCModuleDynamicAdjustTaskTCB, &err);//挂起动态限流任务
-        
-        APP_TRACE_INFO(("Stack short circuit task resume...\n\r"));   
-             
-        while(DEF_TRUE)
-        {
-            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 5, 
-                          OS_OPT_PEND_BLOCKING, 
+
+        APP_TRACE_INFO(("Stack short circuit task resume...\n\r"));
+
+        while(DEF_TRUE) {
+            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 5,
+                          OS_OPT_PEND_BLOCKING,
                           NULL,
                           &err);
-			if(err == OS_ERR_TIMEOUT){
-                
-                APP_TRACE_INFO(("Start tack short circuit...\n\r"));   
-				Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
+
+            if(err == OS_ERR_TIMEOUT) {
+
+                APP_TRACE_INFO(("Start tack short circuit...\n\r"));
+                Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
                 Bsp_SetDcModuleOutPutVIvalue((float)VOLTAGE_LIMIT_MAX, 0);//限流点降为0
-                
+
                 BSP_StackShortCircuitActivationOn();
-				BSP_DCConnectValvePwrOff(); 
-				OSTimeDlyHMSM(0, 0, 0,200,OS_OPT_TIME_HMSM_STRICT,&err);
+                BSP_DCConnectValvePwrOff();
+                OSTimeDlyHMSM(0, 0, 0, 200, OS_OPT_TIME_HMSM_STRICT, &err);
                 BSP_StackShortCircuitActivationOff();
                 APP_TRACE_INFO(("Stop tack short circuit...\n\r"));
-				BSP_DCConnectValvePwrOn();
-                OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB,&err);//恢复平滑限流任务
-                
-			}else{}
-          
+                BSP_DCConnectValvePwrOn();
+                OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB, &err); //恢复平滑限流任务
+
+            } else {}
+
         }
     }
 }

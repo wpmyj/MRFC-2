@@ -85,7 +85,7 @@ static  STACK_WORK_STATU_Typedef        g_eStackWorkStatu = EN_NOT_IN_WORK;
 
 static  WHETHER_TYPE_VARIABLE_Typedef g_eExternalScreenUpdateStatu = YES;
 
-static	        uint16_t                g_u16StartRemainSecond = 900;//冷启动剩余时间
+static          uint16_t                g_u16StartRemainSecond = 900;//冷启动剩余时间
 static          float                   g_fSystemIsolatedGeneratedEnergyThisTime = 0.0;
 
 static          uint8_t                 g_u8WaitWorkModeSelectSwitch = DEF_DISABLED;
@@ -231,7 +231,7 @@ uint8_t GetWorkModeWaittingForSelectFlag(void)
 *                                      ControlModeTurnOver()
 *
 * Description:  Turn over the control mode.
-*               
+*
 * Arguments  :  none.
 *
 * Returns    :  none.
@@ -641,20 +641,20 @@ uint16_t GetStackWorkTimes()
 *                                      SetExternalScreenUpdateStatu()
 *
 * Description:  set the screen update statu.
-*								
+*
 * Arguments  :  none.
 *
 * Returns    :  enum type.
 *
-* Note(s)	 :	none.
+* Note(s)    :  none.
 *********************************************************************************************************
 */
 void SetExternalScreenUpdateStatu(WHETHER_TYPE_VARIABLE_Typedef i_NewStatu)
 {
-	CPU_SR_ALLOC();	
-	CPU_CRITICAL_ENTER();
-	g_eExternalScreenUpdateStatu = i_NewStatu;
-	CPU_CRITICAL_EXIT();
+    CPU_SR_ALLOC();
+    CPU_CRITICAL_ENTER();
+    g_eExternalScreenUpdateStatu = i_NewStatu;
+    CPU_CRITICAL_EXIT();
 }
 /*
 *********************************************************************************************************
@@ -666,12 +666,12 @@ void SetExternalScreenUpdateStatu(WHETHER_TYPE_VARIABLE_Typedef i_NewStatu)
 *
 * Returns    :  g_eExternalScreenUpdateStatu.
 *
-* Note(s)	 :	none.
+* Note(s)    :  none.
 *********************************************************************************************************
 */
 WHETHER_TYPE_VARIABLE_Typedef GetExternalScreenUpdateStatu(void)
 {
-	return g_eExternalScreenUpdateStatu;
+    return g_eExternalScreenUpdateStatu;
 }
 
 /*
@@ -697,7 +697,7 @@ void SetSystemWorkStatu(SYSTEM_WORK_STATU_Typedef m_enNewStatu)
 
     CPU_CRITICAL_ENTER();
     g_eSystemWorkStatu = m_enNewStatu;
-    SetExternalScreenUpdateStatu(YES);	//改变工作状态，串口屏更新状态
+    SetExternalScreenUpdateStatu(YES);  //改变工作状态，串口屏更新状态
     SetSystemRunningStatuCodeSysWorkStatuSection(g_eSystemWorkStatu);
     CPU_CRITICAL_EXIT();
 }
@@ -799,7 +799,7 @@ void ResetAllAlarms()
 * Note(s)    :  none.
 ***************************************************************************************************
 */
-void AlarmCmd(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind, SYSTEM_ALARM_GRADE_Typedef m_enAlarmGrade,SWITCH_TYPE_VARIABLE_Typedef m_enNewStatu)
+void AlarmCmd(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind, SYSTEM_ALARM_GRADE_Typedef m_enAlarmGrade, SWITCH_TYPE_VARIABLE_Typedef m_enNewStatu)
 {
     if((g_stSystemAlarmsInf.AlarmCode ^ (m_enNewStatu << (u8)m_enSystemAlarmKind)) != 0) { //若状态有变化
         g_stSystemAlarmsInf.HoldTime[m_enSystemAlarmKind].second = 0x00;
@@ -812,13 +812,13 @@ void AlarmCmd(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKind, SYSTEM_ALARM_GRADE_
             g_stSystemAlarmsInf.AlarmCode |= (1 << (u8)m_enSystemAlarmKind);
         }
     } else { //否则什么也不做
-        
+
     }
-    
-    if(g_stSystemAlarmsInf.AlarmCode != 0){
-        StartRunningBeepAlarm(m_enAlarmGrade,ON);//报警码不为零,开始报警
-    }else{
-        StartRunningBeepAlarm(m_enAlarmGrade,OFF);
+
+    if(g_stSystemAlarmsInf.AlarmCode != 0) {
+        StartRunningBeepAlarm(m_enAlarmGrade, ON); //报警码不为零,开始报警
+    } else {
+        StartRunningBeepAlarm(m_enAlarmGrade, OFF);
     }
 }
 
@@ -1259,7 +1259,7 @@ uint8_t CalcStackOptimumTemperatureByCurrent(void)
 {
     float m_StackCurrent;
     float m_StackOptimumTemperature;
-    
+
     m_StackCurrent = GetSrcAnaSig(STACK_CURRENT);
     m_StackOptimumTemperature = (0.53 * m_StackCurrent) + 26.01;
 
@@ -1433,7 +1433,7 @@ void SystemTimeStatTaskCreate(void)
 *                             SysTimeStatTask()
 *
 * Description:  the system time statistics task.
-*               
+*
 * Arguments  :  none.
 *
 * Returns    :  none.
@@ -1568,7 +1568,7 @@ float GetCurrentPower(void)
 *********************************************************************************************************
 *                          uint16_t GetStartRemainSencond(void)
 *
-* Description : The use of the funciton is to get the start remain sencond. 
+* Description : The use of the funciton is to get the start remain sencond.
 *
 * Arguments   : none.
 *
@@ -1579,7 +1579,7 @@ float GetCurrentPower(void)
 */
 uint16_t GetStartRemainSencond(void)
 {
-	return g_u16StartRemainSecond;
+    return g_u16StartRemainSecond;
 }
 /******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/
 

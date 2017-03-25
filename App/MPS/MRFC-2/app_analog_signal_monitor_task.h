@@ -1,5 +1,4 @@
-/*
-***************************************************************************************************
+/*********************************************************************************************************
 *                                         APPLICATION CODE
 *
 *                      (c) Copyright 2016; Guangdong ENECO Science And Technology Co.,Ltd
@@ -9,24 +8,20 @@
 ***************************************************************************************************
 */
 
-/********************************************************************************************************
-* Filename      :  bsp_atmel_25256b_sshl.h
+/*
+*******************************************************************************************************
+* Filename      :  app_analog_signal_monitor_task.h
 * Programmer(s) :  Fanjun
 * Version       :  V1.0
-* data          :  2016.12.27
+* data          :  2016.5.8
 * brief         :  This file contains all the functions prototypes for the system run
 *                  config parameters firmware library.
-*********************************************************************************************************/
-#ifndef __BSP_ATMEL_25256B_SSHL_H__
-#define __BSP_ATMEL_25256B_SSHL_H__
-/*
-***************************************************************************************************
-*                                                 MODULE
-*
-* Note(s) : (1) This header file is protected from multiple pre-processor inclusion through use of the
-*               BSP present pre-processor macro definition.
-***************************************************************************************************
+********************************************************************************************************
 */
+
+#ifndef __APP_ANALOG_SIGNAL_MONITOR_TASK_H__
+#define __APP_ANALOG_SIGNAL_MONITOR_TASK_H__
+
 
 /*
 ***************************************************************************************************
@@ -39,25 +34,20 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define AT25256B_CS             (GPIO_ResetBits(GPIOA, BSP_GPIOA_PIN15_STM_SPI_NSS_PORT_NMB));//AT25256B的片选信号
-#define AT25256B_NCS            (GPIO_SetBits(GPIOA, BSP_GPIOA_PIN15_STM_SPI_NSS_PORT_NMB));
-
-//AT25256B指令表
-#define WREN                0x06 //WREN
-#define WRDI                0x04 //WRDI
-#define RDSR                0x05 //RDSR
-#define WRSR                0x01 //WRSR
-#define READ                0x03 //READ
-#define WRITE               0x02 //WRITE
 /*
 ***************************************************************************************************
-*                                           EXPORTED DATA TYPE
+*                                    EXTERNAL OS VARIABLE DECLARATIONS
 ***************************************************************************************************
 */
-
+extern      OS_SEM      g_stAnaSigConvertFinishSem;
 /*
 ***************************************************************************************************
-*                              EXPORTED GLOBAL VARIABLE DECLARATIONS
+*                                           EXPORTED TYPE
+***************************************************************************************************
+*/
+/*
+***************************************************************************************************
+*                                           EXPORTED CONSTANTS
 ***************************************************************************************************
 */
 
@@ -72,14 +62,15 @@
 *                                           EXPORTED FUNCTION
 ***************************************************************************************************
 */
-void AT25256B_Init(void);
+void    AnaSigMonitorTaskCreate(void);
+void    SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(unsigned char);
+void    StackHydrgPressHighEnoughWaitHook(uint8_t i_u8WaitStatus);
+void    SetHydrgProducerPumpRunningStartAutoAdjHookSwitch(uint8_t i_NewStatu);
 
-uint8_t AT25256B_ReadSR(void);
-void AT25256B_Write_SR(uint8_t sr);
+void    SetStackIsPulledStoppedMonitorHookSwitch(uint8_t i_NewStatu);
+uint8_t GetStackNeedRestartLimitCurrentFlag(void);
 
-void AT25256B_Read(u8 *pBuffer, u16 ReadAddr, u16 NumByteToRead);
-void AT25256B_Write(u8 *pBuffer, u16 WriteAddr, u16 NumByteToWrite);
-
+void    StartRunningBeepAlarm(SYSTEM_ALARM_GRADE_Typedef , uint8_t);
 /*
 ***************************************************************************************************
 *                                             MODULE END

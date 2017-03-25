@@ -57,5 +57,6 @@
 
 
 #define  SPEED_CONTROL_DEVICE_MANAGE_TASK_PRIO              22
+#define  SYSTEM_STACK_USAGE_CHECK_TASK_PRIO									23
 
 #endif

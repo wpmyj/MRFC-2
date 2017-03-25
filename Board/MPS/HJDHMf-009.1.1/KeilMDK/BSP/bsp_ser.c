@@ -99,8 +99,8 @@ static  void        BSP_SerTo3G_ISR_Handler(void);
 static  void        UART4_DMA_NVIC_Init(void);
 static  void        BSP_SerToWIFI_ISR_Handler(void);
 
-        uint8_t     *GetPrgmRxBuffAddr(void);
-        uint8_t     GetPrgmRxBuffLen(void);
+uint8_t     *GetPrgmRxBuffAddr(void);
+uint8_t     GetPrgmRxBuffLen(void);
 
 /*
 ***************************************************************************************************
@@ -123,7 +123,7 @@ static  void        BSP_SerToWIFI_ISR_Handler(void);
 *                                          BSP_Ser_Init()
 *
 * Description : Initialize a serial port for communication.
-*                               
+*
 * Argument(s) : baud_rate           The desire RS232 baud rate.
 *
 * Return(s)   : none.
@@ -241,7 +241,7 @@ void  BSP_Ser_ISR_Handler(void)
 *                                 BSP_Ser_Init2()
 *
 * Description : Initialize a serial port for 3G communication.
-*                               
+*
 * Argument(s) : baud_rate   The desire 3G baud rate.
 *
 * Return(s)   : none.
@@ -255,7 +255,7 @@ uint8_t usart2_recv_buff[1024] = {0};
 uint16_t recv_cursor = 0;
 
 void  BSP_Ser_To_3G_Init(CPU_INT32U  baud_rate)
-{   
+{
     GPIO_InitTypeDef GPIO_InitStructure;
     USART_InitTypeDef USART_InitStructure;
 
@@ -269,7 +269,7 @@ void  BSP_Ser_To_3G_Init(CPU_INT32U  baud_rate)
     GPIO_PinRemapConfig(GPIO_Remap_USART2, ENABLE);
 
     //USART2_TX   PD5
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN5_UART2_TX_PORT_NMB; 
+    GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN5_UART2_TX_PORT_NMB;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP; //复用推挽输出
     GPIO_Init(GPIOD, &GPIO_InitStructure);
@@ -291,8 +291,7 @@ void  BSP_Ser_To_3G_Init(CPU_INT32U  baud_rate)
     USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
     FlagStatus tc_status = USART_GetFlagStatus(USART2, USART_FLAG_TC);
 
-    while(tc_status == SET)
-    {
+    while(tc_status == SET) {
         USART_ClearITPendingBit(USART2, USART_IT_TC);
         USART_ClearFlag(USART2, USART_IT_TC);
         BSP_OS_TimeDlyMs(10);
@@ -312,7 +311,7 @@ void  BSP_Ser_To_3G_Init(CPU_INT32U  baud_rate)
 *                                 BSP_SerTo3G_ISR_Handler()
 *
 * Description : Initialize a serial port for 3G communication.
-*                               
+*
 * Argument(s) : baud_rate   The desire 3G baud rate.
 *
 * Return(s)   : none.
@@ -327,9 +326,8 @@ static void  BSP_SerTo3G_ISR_Handler(void)
 
     rxne_status = USART_GetFlagStatus(USART2, USART_FLAG_RXNE);
 
-    if(rxne_status == SET)
-    {
-       BSP_Ser2RxData = USART_ReceiveData(USART2) & 0xFF;       /* Read one byte from the receive data register.      */
+    if(rxne_status == SET) {
+        BSP_Ser2RxData = USART_ReceiveData(USART2) & 0xFF;       /* Read one byte from the receive data register.      */
         usart2_recv_buff[recv_cursor++] = BSP_Ser2RxData;
         USART_ClearITPendingBit(USART2, USART_IT_RXNE);         /* Clear the USART1 receive interrupt.                */
         BSP_OS_SemPost(&BSP_Ser2RxWait);                        /* Post to the sempahore                              */
@@ -337,8 +335,7 @@ static void  BSP_SerTo3G_ISR_Handler(void)
 
     tc_status = USART_GetFlagStatus(USART2, USART_FLAG_TC);
 
-    if(tc_status == SET)
-    {
+    if(tc_status == SET) {
         USART_ITConfig(USART2, USART_IT_TC, DISABLE);
         USART_ClearITPendingBit(USART2, USART_IT_TC);           /* Clear the USART1 receive interrupt.                */
         BSP_OS_SemPost(&BSP_Ser2TxWait);                        /* Post to the semaphore                              */
@@ -350,7 +347,7 @@ static void  BSP_SerTo3G_ISR_Handler(void)
 *                                 BSP_Ser_ISR2_Handler()
 *
 * Description : Initialize a serial port for 3G communication.
-*                               
+*
 * Argument(s) : baud_rate   The desire 3G baud rate.
 *
 * Return(s)   : none.
@@ -360,8 +357,7 @@ static void  BSP_SerTo3G_ISR_Handler(void)
 */
 void SendString(USART_TypeDef *USARTx, const char *s)
 {
-    while(*s)
-    {
+    while(*s) {
         USART_ITConfig(USARTx, USART_IT_TC, ENABLE);
         USART_SendData(USARTx , *s++);
         BSP_OS_SemWait(&BSP_Ser2TxWait, 0);
@@ -373,7 +369,7 @@ void SendString(USART_TypeDef *USARTx, const char *s)
 *                                 BSP_Ser_ISR2_Handler()
 *
 * Description : Initialize a serial port for 3G communication.
-*                               
+*
 * Argument(s) : baud_rate   The desire 3G baud rate.
 *
 * Return(s)   : none.
@@ -383,8 +379,7 @@ void SendString(USART_TypeDef *USARTx, const char *s)
 */
 void CleanUsartRecvBuf(USART_TypeDef *USARTx)
 {
-    if(USART2 == USARTx)
-    {
+    if(USART2 == USARTx) {
         memset(usart2_recv_buff, 0x00, recv_cursor);
         recv_cursor = 0;
     }
@@ -394,7 +389,7 @@ void CleanUsartRecvBuf(USART_TypeDef *USARTx)
 *                                 BSP_Ser_ISR2_Handler()
 *
 * Description : Initialize a serial port for 3G communication.
-*                               
+*
 * Argument(s) : baud_rate   The desire 3G baud rate.
 *
 * Return(s)   : none.
@@ -412,7 +407,7 @@ void Uart_Send_array1(u8 *buffer, u8 count)
 *                                          BSP_SerToWIFI_Init()
 *
 * Description : Initialize a serial port for communication to WIFI.
-*               
+*
 * Argument(s) : none.
 *
 * Return(s)   : none.
@@ -500,7 +495,7 @@ void  BSP_SerToWIFI_Init()
 *                                   UART4_DMA_NVIC_Init()
 *
 * Description : Uart4 DMA NUIV init.
-*               
+*
 * Argument(s) : none.
 *
 * Return(s)   : none.
@@ -525,7 +520,7 @@ void UART4_DMA_NVIC_Init()
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
-   
+
     OSMutexCreate(&g_stWIFISerTxMutex,
                   "WIFI serial mutex",
                   NULL);
@@ -667,11 +662,11 @@ void WIFI_DataTx_IRQHandler(void)
     OS_ERR      err;
 
     if(DMA_GetITStatus(DMA2_IT_TC5) != RESET) { //检查DMA1_IT_TC5中断发生与否
-        
+
         OSSemPost(&g_stCommunicateDataSendResponseSem,
-						OS_OPT_POST_1,
-						&err);
-        
+                  OS_OPT_POST_1,
+                  &err);
+
         OSMutexPost(&g_stWIFISerTxMutex,
                     OS_OPT_POST_NONE,
                     &err);

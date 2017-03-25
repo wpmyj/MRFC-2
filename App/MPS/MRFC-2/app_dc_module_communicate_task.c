@@ -90,7 +90,7 @@ void DcModuleDynamicAdjustTaskCreate(void)
     OS_ERR  err;
     uint8_t u8RxLength = 0;
     uint16_t u16Rs485RxBuf[2] = {0, 0};
-    
+
     Bsp_DcModuleConmunicateInit();//485初始化
     //DC动态限流任务
     OSTaskCreate((OS_TCB *)&DCModuleDynamicAdjustTaskTCB,                    // Create the start task
@@ -107,9 +107,9 @@ void DcModuleDynamicAdjustTaskCreate(void)
                  (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                  (OS_ERR *)&err);
     APP_TRACE_INFO(("Created DC Module Adjust Task, and err code is %d...\n\r", err));
-                 
+
     //DC平滑限流任务
-    OSTaskCreate((OS_TCB *)&DCLimitCurrentSmoothlyTaskTCB,                    
+    OSTaskCreate((OS_TCB *)&DCLimitCurrentSmoothlyTaskTCB,
                  (CPU_CHAR *)"DC Limit Current Smoothly Task Create",
                  (OS_TASK_PTR) DcModuleLimitCurrentSmoothlyTask,
                  (void *) 0,
@@ -123,7 +123,7 @@ void DcModuleDynamicAdjustTaskCreate(void)
                  (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                  (OS_ERR *)&err);
     APP_TRACE_INFO(("Created DC Limit Current Smoothly Task, and err code is %d...\n\r", err));
-                 
+
     //485通信成功验证
     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
     Bsp_RS485_Receive_Data(u16Rs485RxBuf, &u8RxLength);
@@ -155,54 +155,57 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
     OS_ERR  err;
     float fStackVoltage = 0.0;
     static uint8_t u8CurrentLimitDelayCount = 0;
-    static uint8_t u8CurrentLimitHoldCount = 0;        
+    static uint8_t u8CurrentLimitHoldCount = 0;
 
-    while(DEF_TRUE) { 
-        
+    while(DEF_TRUE) {
+
         OSTaskSuspend(NULL, &err);
         APP_TRACE_INFO(("Resume Limit Current Smoothly Task...\n\r"));
-        
-        fIvalueNow = 0.0;//重新开始限流   
+
+        fIvalueNow = 0.0;//重新开始限流
         Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
         Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
-        
+
         while(DEF_TRUE) {
-                
-            if(g_u8DCModuleLimitCurrentSmoothlyTaskSw == DEF_DISABLED){
-                
+
+            if(g_u8DCModuleLimitCurrentSmoothlyTaskSw == DEF_DISABLED) {
+
                 APP_TRACE_INFO(("Limit Current Smoothly Task break ...\n\r"));
                 break;
             }
-            
-            OSTimeDlyHMSM(0, 0, 1, 0,OS_OPT_TIME_HMSM_STRICT,&err);
-            
+
+            OSTimeDlyHMSM(0, 0, 1, 0, OS_OPT_TIME_HMSM_STRICT, &err);
+
             fStackVoltage = GetSrcAnaSig(STACK_VOLTAGE);
             u8CurrentLimitDelayCount ++;
-            if(u8CurrentLimitDelayCount >= CURRENT_LIMIT_DELAY){
-                if(fIvalueNow <= CURRENT_LIMIT_MAX && fStackVoltage >= 41.0){
+
+            if(u8CurrentLimitDelayCount >= CURRENT_LIMIT_DELAY) {
+                if(fIvalueNow <= CURRENT_LIMIT_MAX && fStackVoltage >= 41.0) {
                     fIvalueNow += 5.0;
                     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
                     Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
                     APP_TRACE_INFO(("Smoothly current limit point increase,the IvalueNow is %.2f ...\n\r", fIvalueNow));
-                }else{
-                    
-                    APP_TRACE_INFO(("Smoothly current limit finished ...\n\r")); 
+                } else {
+
+                    APP_TRACE_INFO(("Smoothly current limit finished ...\n\r"));
 //                    OSTaskResume(&StackShortCircuitTaskTCB,&err);//恢复电堆短路活化任务
                     SetDCModuleAutoAdjustTaskSwitch(DEF_ENABLED);   //开动态限流开关
-                    OSTaskResume(&DCModuleDynamicAdjustTaskTCB,&err);//恢复动态限流任务
-                    break;//平滑限流完成  
+                    OSTaskResume(&DCModuleDynamicAdjustTaskTCB, &err); //恢复动态限流任务
+                    break;//平滑限流完成
                 }
+
                 u8CurrentLimitDelayCount = 0;
-            }else{
+            } else {
                 u8CurrentLimitHoldCount ++;
-                if(u8CurrentLimitHoldCount >= 10){//保证限流不中断，隔10s发送一次
+
+                if(u8CurrentLimitHoldCount >= 10) { //保证限流不中断，隔10s发送一次
                     Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
                     Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
                     u8CurrentLimitHoldCount = 0;
                     APP_TRACE_INFO(("Smoothly current limit point stay the same ,the IvalueNow is %.2f ...\n\r", fIvalueNow));
                 }
             }
-                
+
         }
     }
 }
@@ -226,14 +229,14 @@ static void DcModuleDynamicAdjustTask(void *p_arg)
 
     OSTaskSuspend(NULL, &err);
     APP_TRACE_INFO(("Resume dynamic current limit task ...\n\r"));
-    
+
     while(DEF_TRUE) {
-        
-        if(g_u8DCModuleDynamicAdjustTaskSw == DEF_DISABLED){
+
+        if(g_u8DCModuleDynamicAdjustTaskSw == DEF_DISABLED) {
             APP_TRACE_INFO(("Dynamic current limit task break ...\n\r"));
             break;
         }
-                  
+
         OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 8,//隔8s请求匹氢偏移监测任务的限流调节任务信号量
                       OS_OPT_PEND_BLOCKING,
                       NULL,
@@ -257,12 +260,12 @@ static void DcModuleDynamicAdjustTask(void *p_arg)
                     APP_TRACE_INFO(("DC dynamic current limit point decrease,the IvalueNow is %.2f ...\n\r", fIvalueNow));
                 }
             } else {}
-                
-        } else if(OS_ERR_TIMEOUT== err) { //超时说明不需要调节，保持原来设置
-            
+
+        } else if(OS_ERR_TIMEOUT == err) { //超时说明不需要调节，保持原来设置
+
             Bsp_SendAddressByDifferentCmdType(TRANSPOND_COMMAND);
             Bsp_SetDcModuleOutPutVIvalue(fVvalueNow, fIvalueNow);
-            APP_TRACE_INFO(("DC dynamic current limit point keep the same,the IvalueNow is %.2f...\n\r",fIvalueNow));            
+            APP_TRACE_INFO(("DC dynamic current limit point keep the same,the IvalueNow is %.2f...\n\r", fIvalueNow));
         } else {
             APP_TRACE_INFO(("DC dynamic Task Sem Pend err code is %d...\n\r", err));
         }
