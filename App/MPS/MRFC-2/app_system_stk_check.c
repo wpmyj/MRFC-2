@@ -98,53 +98,50 @@ static void  SystemStackUsageCheckTask (void *p_arg)
     CPU_STK_SIZE free,used;  
     (void)p_arg;  
     
-    while(DEF_TRUE)  
-    {
-        while(DEF_TRUE)  
-        {          
-            OSTaskStkChk (&SystemStackUsageCheckTaskTCB,&free,&used,&err);//统计任务本身的堆栈使用量                              
-            APP_TRACE_INFO(("SystemStackUsageCheck------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
-		
-						OSTaskStkChk (&HydrgProducerManagerTaskTCB,&free,&used,&err);  
-            APP_TRACE_INFO(("HydrgProducerManagerTask--->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
-						
-            OSTaskStkChk (&CommunicateDataSendTaskTCB,&free,&used,&err);  
-            APP_TRACE_INFO(("CommunicateTask------------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
-            
-						OSTaskStkChk (&CommunicateDataSendTaskTCB,&free,&used,&err);  
-            APP_TRACE_INFO(("CommunicateDataSendTask---->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+		while(DEF_TRUE)  
+		{          
+				OSTaskStkChk (&SystemStackUsageCheckTaskTCB,&free,&used,&err);//统计任务本身的堆栈使用量                              
+				APP_TRACE_INFO(("SystemStackUsageCheck------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 
-            OSTaskStkChk (&MF210_CommunicateTaskTCB,&free,&used,&err);  
-            APP_TRACE_INFO(("MF210_CommunicateTask------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+				OSTaskStkChk (&HydrgProducerManagerTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("HydrgProducerManagerTask--->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+				
+				OSTaskStkChk (&CommunicateDataSendTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("CommunicateTask------------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+				
+				OSTaskStkChk (&CommunicateDataSendTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("CommunicateDataSendTask---->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 
-						OSTaskStkChk (&Make_Vaccuum_FunctionTaskTCB,&free,&used,&err);  
-            APP_TRACE_INFO(("Make_Vaccuum_FunctionTask-->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+				OSTaskStkChk (&MF210_CommunicateTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("MF210_CommunicateTask------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 
-						OSTaskStkChk (&CommunicateDataSendTaskTCB,&free,&used,&err);  
-            APP_TRACE_INFO(("StackManagerTask----------->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
-						
-						OSTaskStkChk (&DCLimitCurrentSmoothlyTaskTCB,&free,&used,&err);  
-            APP_TRACE_INFO(("DCLimitCurrentSmoothlyTask-->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
-						
-						OSTaskStkChk (&DCModuleDynamicAdjustTaskTCB,&free,&used,&err);  
-            APP_TRACE_INFO(("DCModuleDynamicAdjustTask--->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
-						
-						OSTaskStkChk (&DigSigMonitorTaskTCB,&free,&used,&err);  
-            APP_TRACE_INFO(("DigSigMonitorTaskTCB-------->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
-										
-						OSTaskStkChk (&StackShortCircuitTaskTCB,&free,&used,&err);  
-            APP_TRACE_INFO(("StackShortCircuitTaskTCB---->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));
-						
-            APP_TRACE_INFO(("\r\n\r\n"));  
-						
-            OSTimeDlyHMSM(0,0,4,0,(OS_OPT)OS_OPT_TIME_DLY,(OS_ERR*)&err);
-            
-            if(EN_SHUTTING_DOWN == GetSystemWorkStatu())
-            {   
-                OSTaskSuspend(&SystemStackUsageCheckTaskTCB,             
-                              &err);
-            }
-        }
-    }  
+				OSTaskStkChk (&Make_Vaccuum_FunctionTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("Make_Vaccuum_FunctionTask-->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+
+				OSTaskStkChk (&CommunicateDataSendTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("StackManagerTask----------->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+				
+				OSTaskStkChk (&DCLimitCurrentSmoothlyTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("DCLimitCurrentSmoothlyTask-->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+				
+				OSTaskStkChk (&DCModuleDynamicAdjustTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("DCModuleDynamicAdjustTask--->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+				
+				OSTaskStkChk (&DigSigMonitorTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("DigSigMonitorTaskTCB-------->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+								
+				OSTaskStkChk (&StackShortCircuitTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("StackShortCircuitTaskTCB---->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));
+				
+				APP_TRACE_INFO(("\r\n\r\n"));  
+				
+				OSTimeDlyHMSM(0,0,4,0,(OS_OPT)OS_OPT_TIME_DLY,(OS_ERR*)&err);
+				
+				if(EN_SHUTTING_DOWN == GetSystemWorkStatu())
+				{   
+						OSTaskSuspend(&SystemStackUsageCheckTaskTCB,             
+													&err);
+				}
+		} 
 }
 /******************* (C) COPYRIGHT 2016 Guangdong ENECO *****END OF FILE****/

@@ -165,13 +165,13 @@ void  CommunicateTask(void *p_arg)
 
     while(DEF_TRUE) {
 
-        OSTimeDlyHMSM(0, 0, 0, 500,
+        OSTimeDlyHMSM(0, 0, 0, 300,
                       OS_OPT_TIME_HMSM_STRICT,
                       &err);
 
         if(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL == GetWorkMode()) {
 
-            st_SendMegGroupNum ++;//数据分开3组发送,0.5S发一次
+            st_SendMegGroupNum ++;//数据分开3组发送,0.3S发一次
 
             if(st_SendMegGroupNum == GROUP_ONE) {
                 AddRealTimeWorkInfoDataToSendBuff(EN_LATEST, REAL_TIME_RUNNING_INFORMATION_A);//制氢半机
@@ -198,11 +198,6 @@ void  CommunicateTask(void *p_arg)
             APP_TRACE_INFO(("...\n\r"));
         } else {
             //正常延时
-        }
-
-        //CAN总线错误码显示
-        if(g_u8CanErrorCode != 0) {
-            APP_TRACE_INFO(("CanErrorCode:%d ", g_u8CanErrorCode));
         }
 
         //发送信号量，启动一次数据传输
@@ -926,18 +921,19 @@ void LoadNonRealTimeWorkInfo(uint8_t i_eSendDataType, uint8_t i_uint8_tCmdCode, 
 static void SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg)
 {
     static uint8_t i;
+    
     BSP_PrgmDataDMASend(i_uint8_tTxMsgLen, i_pTxMsg);
 
     if(g_eCAN_BusOnLineFlag == YES)//CAN总线在线
-		{
-				SendCanMsgContainNodeId(PRGM_TX_BUFF_SIZE, i_pTxMsg, g_u16GlobalNetWorkId);
-//			  APP_TRACE_INFO(("Can Tx data:"));
-//				for(i = 0; i < 60; i++) {
-//						APP_TRACE_INFO(("%X ", i_pTxMsg[i]));
-//					
-//				}
-//				APP_TRACE_INFO(("...\n\r"));
-		}
+    {
+        SendCanMsgContainNodeId(PRGM_TX_BUFF_SIZE, i_pTxMsg, g_u16GlobalNetWorkId);
+        APP_TRACE_INFO(("Can Tx data:"));
+        for(i = 0; i < 60; i++) {
+            APP_TRACE_INFO(("%X ", i_pTxMsg[i]));
+        }
+        APP_TRACE_INFO(("...\n\r"));
+    }
+
 }
 
 /*

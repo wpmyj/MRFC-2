@@ -472,6 +472,11 @@
               <FileType>1</FileType>
               <FilePath>.\app_wireness_communicate_task.c</FilePath>
             </File>
+            <File>
+              <FileName>app_system_stk_check.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\app_system_stk_check.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

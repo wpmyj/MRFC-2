@@ -1689,7 +1689,7 @@ static void  BSP_StackFanCtrInit(void)
     TIM_DeInit(TIM4);
     /* Time base configuration */
     TIM_TimeBaseStructure.TIM_Period = TIMER_UPDATE_NUMBER; //当定时器从0计数到999，即为1000次，为一个定时周期50ms
-    TIM_TimeBaseStructure.TIM_Prescaler = 7199;     //设置预分频：72MHz/7200 = 10KHz
+    TIM_TimeBaseStructure.TIM_Prescaler = 71;     //1KHZ,设置预分频：72MHz/7200 = 10KHz
     TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1; //设置时钟分频系数：不分频
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;  //向上计数模式
 

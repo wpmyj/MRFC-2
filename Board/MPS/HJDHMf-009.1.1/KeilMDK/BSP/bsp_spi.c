@@ -71,7 +71,7 @@ void SPI3_Init(void)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3,  ENABLE);
 
-    //PB3-JTDO,PB4-JNTRST,PA15-JTDI默认是JTAG复用功能，这里要禁止掉才能当普通IO使用
+//    //PB3-JTDO,PB4-JNTRST,PA15-JTDI默认是JTAG复用功能，这里要禁止掉才能当SPI口用
 //    GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
 
     GPIO_InitStructure.GPIO_Pin = BSP_GPIOB_STM_SPI_CLK_PORT_NMB | BSP_GPIOB_STM_SPI_MISO_PORT_NMB | BSP_GPIOB_STM_SPI_MOSI_PORT_NMB;
@@ -90,7 +90,7 @@ void SPI3_Init(void)
     /*此处使用SPI模式0*/
     SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;          //串行同步时钟的空闲状态为低电平 SPI_CPOL_High+SPI_CPHA_2Edge:模式三
     SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;        //串行同步时钟的第一个跳变沿(上升沿)数据被采样
-    SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;           //NSS信号由硬件（NSS管脚）还是软件（使用SSI位）管理:内部NSS信号有SSI位控制
+    SPI_InitStructure.SPI_NSS = SPI_NSS_Hard;           //NSS信号由硬件（NSS管脚）还是软件（使用SSI位）管理:内部NSS信号有SSI位控制
     SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_4;// 36/4=9MHz AT25芯片在3.3V供电下最高频率为10MHz
     SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;  //数据传输从MSB位开始
     SPI_InitStructure.SPI_CRCPolynomial = 7;            //CRC值计算的多项式

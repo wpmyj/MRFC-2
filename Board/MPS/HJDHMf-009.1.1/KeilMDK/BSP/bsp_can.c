@@ -165,9 +165,10 @@ void CAN1_Init(void)
 */
 uint8_t CANx_Send_Msg(CAN_TypeDef *CANx, Message *m)
 {
-    uint8_t u8SendStatu = 0;
-    uint8_t ret;
-    uint8_t i;
+    uint8_t  u8SendStatu = 0;
+    uint8_t  ret;
+    uint8_t  i;
+	  uint16_t u16SendErrCount = 0;
     CanTxMsg TxMessage;
 
     TxMessage.StdId = (uint32_t)(m->cob_id);// 标准标识符11位,即发送优先级
@@ -182,12 +183,14 @@ uint8_t CANx_Send_Msg(CAN_TypeDef *CANx, Message *m)
 
     ret = CAN_Transmit(CAN1, &TxMessage);
 
-    if(ret != CAN_TxStatus_NoMailBox) {
-        u8SendStatu = 0;
-//      APP_TRACE_INFO(("MailBox Num: %d\r\n", ret));
-    } else {
-        u8SendStatu = 1;
-//      APP_TRACE_INFO(("MailBox has no empty space!\r\n"));
+    while(CAN_TxStatus_NoMailBox == CAN_Transmit(CANx, &TxMessage)) {
+        if(u16SendErrCount >= 0xFFF) {
+            u8SendStatu = 1;
+            APP_TRACE_INFO(("CAN send error..\r\n"));
+            break;
+        } else {
+            u16SendErrCount ++;
+        }
     }
 
     return u8SendStatu;
@@ -239,7 +242,7 @@ uint8_t SendCanMsgContainNodeId(uint32_t i_Msglen, uint8_t *msg, uint8_t i_NodeI
                           &err);
 
             if(++u8SendErrCount >= 10) {
-//                g_eCAN_BusOnLineFlag = NO;
+                g_eCAN_BusOnLineFlag = NO;
                 APP_TRACE_INFO(("CAN bus has dropped,send err..\r\n"));
                 break;
             }

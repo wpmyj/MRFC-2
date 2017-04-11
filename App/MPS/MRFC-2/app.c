@@ -183,7 +183,7 @@ static  void  AppTaskStart(void *p_arg)
 
     Make_Vacuum_FunctionTaskCreate(); //自动抽真空任务
 
-    SpeedControlDevManageTaskCreate();//调速设备管理任务
+//    SpeedControlDevManageTaskCreate();//调速设备管理任务
 
     IgniterWorkTaskCreate();
 
@@ -199,7 +199,7 @@ static  void  AppTaskStart(void *p_arg)
 
     StackManagerDlyStopTaskCreate();
 		
-//		SystemStackUsageCheckTaskCreate();//任务堆栈使用情况监测任务
+//	SystemStackUsageCheckTaskCreate();//任务堆栈使用情况监测任务
 
     BSP_BuzzerOn();
     OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);

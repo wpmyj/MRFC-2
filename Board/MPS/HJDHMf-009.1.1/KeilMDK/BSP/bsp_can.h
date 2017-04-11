@@ -59,7 +59,7 @@ typedef struct {
 */
 
 #define CAN1_RX0_INT_ENABLE  1      //CAN1接收RX1中断使能:0,不使能;1,使能.
-#define CAN1_ERR_INT_ENABLE  1      //CAN1错误中断使能
+#define CAN1_ERR_INT_ENABLE  0      //CAN1错误中断使能
 
 /*
 ***************************************************************************************************
