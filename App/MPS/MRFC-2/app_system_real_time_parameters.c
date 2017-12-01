@@ -59,6 +59,7 @@ static      CPU_STK     SysTimeStatTaskStk[SYSTEM_TIME_STATISTIC_TASK_STK_SIZE];
 */
 static  SYSTEM_CONTROL_MODE_Typedef     g_eSystemControlMode = EN_CONTROL_MODE_AUTO;
 static  SYSTEM_WORK_MODE_Typedef        g_eSystemWorkMode = EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL;
+static  HYDROGEN_WORK_MODE_Typedef      g_eHydrogenWorkMode = PURE_HYDROGEN_MODE;//PURE_HYDROGEN_MODE
 
 /* The system time variable */
 static  SYSTEM_TIME_Typedef             g_stSystemTime = {0, 0, 0};
@@ -80,7 +81,7 @@ static  RUNNING_ALARM_STATUS_Typedef    g_stSystemAlarmsInf;    //报警码及保持时
 static          uint16_t                g_u16CtlAndCommunicateCode = 0x0000;
 static          uint32_t                g_SystemRunningStatuCode = 0x00000000;
 
-static  SYSTEM_WORK_STATU_Typedef       g_eSystemWorkStatu = EN_WAITTING_COMMAND;
+static  SYS_WORK_STATU_Typedef       g_eSystemWorkStatu = EN_WAIT_CMD;
 static  STACK_WORK_STATU_Typedef        g_eStackWorkStatu = EN_NOT_IN_WORK;
 
 static  WHETHER_TYPE_VARIABLE_Typedef g_eExternalScreenUpdateStatu = YES;
@@ -268,6 +269,39 @@ SYSTEM_CONTROL_MODE_Typedef GetControlMode(void)
     return g_eSystemControlMode;
 }
 
+void HydrogenWorkModeTurnOver(void)
+{
+    if(g_eHydrogenWorkMode == PURE_HYDROGEN_MODE) {
+        g_eHydrogenWorkMode = RICH_HYDROGEN_MODE;
+        SetSystemRunningStatuCodeBit(RuningStatuCodeHydrgenProducerRuningMode);
+    } else {
+        g_eHydrogenWorkMode = PURE_HYDROGEN_MODE;
+        SetSystemRunningStatuCodeBit(RuningStatuCodeHydrgenProducerRuningMode);
+    }
+}
+
+HYDROGEN_WORK_MODE_Typedef GetHydrogenWorkMode(void)
+{
+    return g_eHydrogenWorkMode;
+}
+
+void SetHydrogenWorkMode(HYDROGEN_WORK_MODE_Typedef i_workmode)
+{
+    switch((uint8_t)i_workmode)
+    {
+        case RICH_HYDROGEN_MODE:
+			
+            SetSystemRunningStatuCodeBit(RuningStatuCodeHydrgenProducerRuningMode);
+            break;
+
+        case PURE_HYDROGEN_MODE:
+            SetSystemRunningStatuCodeBit(RuningStatuCodeHydrgenProducerRuningMode);
+            break;
+
+        default:
+            break;
+    }
+}
 /*
 ***************************************************************************************************
 *                                      ResetSystemWorkTimes()
@@ -687,7 +721,7 @@ WHETHER_TYPE_VARIABLE_Typedef GetExternalScreenUpdateStatu(void)
 * Note(s)    :  none.
 ***************************************************************************************************
 */
-void SetSystemWorkStatu(SYSTEM_WORK_STATU_Typedef m_enNewStatu)
+void SetSystemWorkStatu(SYS_WORK_STATU_Typedef m_enNewStatu)
 {
     CPU_SR_ALLOC();
 
@@ -715,7 +749,7 @@ void SetSystemWorkStatu(SYSTEM_WORK_STATU_Typedef m_enNewStatu)
 * Note(s)    :  none.
 ***************************************************************************************************
 */
-SYSTEM_WORK_STATU_Typedef GetSystemWorkStatu(void)
+SYS_WORK_STATU_Typedef GetSystemWorkStatu(void)
 {
     return g_eSystemWorkStatu;
 }
@@ -1150,7 +1184,7 @@ void ResetSystemRunningStatuCode(void)
 * Note(s)    :  none.
 ***************************************************************************************************
 */
-void SetSystemRunningStatuCodeSysWorkStatuSection(SYSTEM_WORK_STATU_Typedef i_u8NewStatu)
+void SetSystemRunningStatuCodeSysWorkStatuSection(SYS_WORK_STATU_Typedef i_u8NewStatu)
 {
     CPU_SR_ALLOC();
 
@@ -1176,7 +1210,7 @@ void SetSystemRunningStatuCodeSysWorkStatuSection(SYSTEM_WORK_STATU_Typedef i_u8
 * Note(s)    :  none.
 ***************************************************************************************************
 */
-void SetSystemRunningStatuCodeStackRunStatuSection(SYSTEM_WORK_STATU_Typedef i_u8NewStatu)
+void SetSystemRunningStatuCodeStackRunStatuSection(SYS_WORK_STATU_Typedef i_u8NewStatu)
 {
     CPU_SR_ALLOC();
 
@@ -1226,7 +1260,7 @@ void ResetConrolAndCommunicateStatuCodeBit(uint8_t i_u8BitNmb)
 
 /*
 ***************************************************************************************************
-*                                      GetConrolAndCommunicateStatuCode()
+*                                      GetConrolAndCommStatuCode()
 *
 * Description:  reset specified bit of the system running statu code.
 *
@@ -1237,7 +1271,7 @@ void ResetConrolAndCommunicateStatuCodeBit(uint8_t i_u8BitNmb)
 * Note(s)    :  none.
 ***************************************************************************************************
 */
-uint16_t GetConrolAndCommunicateStatuCode()
+uint16_t GetConrolAndCommStatuCode()
 {
     return g_u16CtlAndCommunicateCode;
 }

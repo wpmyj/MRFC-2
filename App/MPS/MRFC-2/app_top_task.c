@@ -248,49 +248,27 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
 {
     OS_ERR      err;
     VERIFY_RESULT_TYPE_VARIABLE_Typedef WaitCmdStatu;
-    SYSTEM_WORK_MODE_Typedef    eWorkMode;
-
-#if __INTERNAL_TEST_FLAG > 0u
-
-    APP_TRACE_INFO(("Waitting for the command to select the work mode...\r\n"));
-    SetWorkModeWaittingForSelectFlag();//置位等待运行模式选择等待标志
-    OSTaskResume(&CommunicateRequsetInfSendTaskTCB, &err);//请求发送任务开始运行
-    OSSemPend(&WaitSelcetWorkModeSem,
-              0,
-              OS_OPT_PEND_BLOCKING,
-              NULL,
-              &err);
-    ResetWorkModeWaittingForSelectFlag(); //复位选择等待标志
-    OSTimeDlyResume(&CommunicateTaskTCB, &err);
-
-#elif __HYDROGEN_GENERATOR_MODULE
-    SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER);
-    OSTaskResume(&Make_Vaccuum_FunctionTaskTCB, &err); //开始抽真空
-#elif __FUEL_CELL_MODULE
-    SetWorkMode(EN_WORK_MODE_FUEL_CELL);//发电模式下不需要抽真空
-#else
+ 
     SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL);
     OSTaskResume(&Make_Vaccuum_FunctionTaskTCB, &err); //开始抽真空
-#endif
 
-    eWorkMode = GetWorkMode();
-    APP_TRACE_INFO(("The work mode is: %d...\r\n", eWorkMode));
+    APP_TRACE_INFO(("---HYDROGEN_PRODUCER_AND_FUEL_CELL_MODE---\r\n"));
 
     while(DEF_TRUE) {
         if(EN_THROUGH == DeviceSelfCheck()) {
             APP_TRACE_INFO(("Self-check success...\n\r"));
 
-            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 30 * 1, //每30s自检一次
+            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 1, //1分钟自检一次
                           OS_OPT_PEND_BLOCKING,
                           NULL,
                           &err);
 
-            if(err == OS_ERR_NONE) {  //正确得到信号量，开始运行
+            if(err == OS_ERR_NONE) {  
                 APP_TRACE_INFO(("Receive the run command...\n\r"));
                 WaitCmdStatu = EN_THROUGH;
                 SetSystemWorkStatu(EN_START_PRGM_ONE_FRONT);
                 break;
-            } else if(err == OS_ERR_TIMEOUT) { //等待超时，重新自检
+            } else if(err == OS_ERR_TIMEOUT) { 
                 APP_TRACE_INFO(("Not receive the run command, restart the self-check...\n\r"));
             } else {
                 APP_TRACE_INFO(("Waitting run command failed, err code %d...\n\r", err));
@@ -331,9 +309,8 @@ void Starting(void)
 
     IgniteCheckTable1 = g_stReformerTempCmpTbl.IgFstTimeFrtToBhdTmpPnt;
     GoToNextStepTempTable1 = g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt;
-
-    //复位系统单次发电量
-    ResetSystemIsolatedGeneratedEnergyThisTime();
+  
+    ResetSystemIsolatedGeneratedEnergyThisTime();//复位系统单次发电量
     ResetHydrgProduceTimeThisTime();
     ResetStackProductTimeThisTime();
 
@@ -341,23 +318,22 @@ void Starting(void)
     eWorkMode = GetWorkMode();
 
     BSP_BuzzerOn();
-    OSTimeDlyHMSM(0, 0, 0, 200, OS_OPT_TIME_HMSM_STRICT, &err);
+    OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
     BSP_BuzzerOff();
-    OSTimeDlyHMSM(0, 0, 0, 200, OS_OPT_TIME_HMSM_STRICT, &err);
-
 
     //一体机模式或者制氢模式
     if((eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL) || (eWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER)) {
         if(EN_START_PRGM_ONE_FRONT == GetSystemWorkStatu()) {
+			
             HydrgProducerWorkTimesInc();
-
+                
             //第一次点火
             if((EN_PASS == IgniteFirstTime(IgniteCheckTable1, GoToNextStepTempTable1, 3, 1))) {
                 SetSystemWorkStatu(EN_START_PRGM_TWO);
             } else {
                 APP_TRACE_INFO(("Ignite for the first time is failed...\n\r"));
 
-                if(GetSystemWorkStatu() != EN_WAITTING_COMMAND) {   //上位机操作关机，导致冷启动提前结束
+                if(GetSystemWorkStatu() != EN_WAIT_CMD) {   //上位机操作关机，导致冷启动提前结束
                     SetShutDownActionFlag(EN_DELAY_STOP_PART_ONE);
                 }
             }
@@ -370,7 +346,7 @@ void Starting(void)
                 if(EN_PASS != IgniteSecondTime(IgniteCheckTable2, GoToNextStepTempTable2, 3, 1)) {
                     APP_TRACE_INFO(("Ignite for the second time is failed...\n\r"));
 
-                    if(GetSystemWorkStatu() != EN_WAITTING_COMMAND) {   //可能因为上位机直接将状态改为关保温，导致点火失败
+                    if(GetSystemWorkStatu() != EN_WAIT_CMD) {   //可能因为上位机直接将状态改为关保温，导致点火失败
                         SetShutDownActionFlag(EN_DELAY_STOP_BOTH_PARTS);
                     }
                 } else {
@@ -417,7 +393,7 @@ void    KeepingWarm(void)
 {
     ShutDown();
     APP_TRACE_INFO(("Keeping warm...\n\r"));
-    SetSystemWorkStatu(EN_WAITTING_COMMAND);
+    SetSystemWorkStatu(EN_WAIT_CMD);
 
 }
 
@@ -520,7 +496,7 @@ void ShutDown()
 {
     OS_ERR  err;
     uint8_t i;
-    SYSTEM_WORK_STATU_Typedef eWorkStatu;
+    SYS_WORK_STATU_Typedef eWorkStatu;
 
     eWorkStatu = GetSystemWorkStatu();
     ResetAllAlarms();//清空所有警报

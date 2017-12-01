@@ -28,7 +28,7 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define MAKE_VACCUUM_TASK_STK_SIZE 100
+#define MAKE_VACCUUM_TASK_STK_SIZE 			100
 /*
 ***************************************************************************************************
 *                                  OS-RELATED    VARIABLES
@@ -103,53 +103,38 @@ void Make_Vacuum_FunctionTaskCreate(void)
 * Notes       : none.
 ***************************************************************************************************
 */
+
 static void  Make_Vacuum_FunctionTask(void *p_arg)
 {
     OS_ERR  err;
-    static uint8_t u8timeCount = 0;
-    static uint8_t u8MakeVavuumValve4PwrOnFlag = 0;
+	uint8_t InVacuumFlag = DEF_NO;
+	uint8_t SysWorkStatus = 0;
+	uint8_t WaitSec = 0;
 
     while(DEF_TRUE) {
+		
         OSTaskSuspend(NULL, &err);
         APP_TRACE_INFO(("Start make vacuum task...\n\r"));
 
-        BSP_PureHydrogenGasOutValvePwrOff();
-        BSP_TailGasOutValvePwrOn();//关闭常开尾气电磁阀
-        BSP_MakeVavuumValve2PwrOn();
-        BSP_MakeVavuumValve4PwrOn();
-        u8MakeVavuumValve4PwrOnFlag = YES;
-
         while(DEF_TRUE) {
 
-            OSTaskSemPend(OS_CFG_TICK_RATE_HZ,
-                          OS_OPT_PEND_BLOCKING,
-                          NULL,
-                          &err);
-
-            if(err == OS_ERR_TIMEOUT) {
-                if(NO != u8MakeVavuumValve4PwrOnFlag) {
-                    u8timeCount++;
-
-                    if(u8timeCount >= 60) {
-                        BSP_MakeVavuumValve4PwrOff();
-                        BSP_MakeVavuumValve3PwrOn();
-                        BSP_MakeVavuumPumpPwrOn();
-                        u8MakeVavuumValve4PwrOnFlag = NO;
-                        u8timeCount = 0;
-                    }
-                }
-
-                //需要考虑如果在启动过程中，关机后采取什么操作
-            } else if(err == OS_ERR_NONE) { //切换后（重整温度达到后）全部关闭
-                APP_TRACE_INFO(("Stop make vacuum task...\n\r"));
-                BSP_PureHydrogenGasOutValvePwrOn();//纯氢出口
-                BSP_TailGasOutValvePwrOff();
-                BSP_MakeVavuumValve2PwrOff();
-                BSP_MakeVavuumValve3PwrOff();
-                BSP_MakeVavuumValve4PwrOff();
-                BSP_MakeVavuumPumpPwrOff();
-                break;
-            }
+			OSTimeDlyHMSM(0, 0, 1, 000,OS_OPT_TIME_HMSM_STRICT,&err);
+			
+			if(InVacuumFlag != DEF_YES){
+				WaitSec ++;
+				if(WaitSec > 60){
+					BSP_PureHydrogenGasOutValvePwrOff();//关闭纯氢出口阀
+					BSP_TailGasOutValvePwrOn();//抽真空小板上电
+					InVacuumFlag = DEF_YES;
+					WaitSec = 0;
+				}
+			}else{
+				if(EN_RUNNING == GetSystemWorkStatu()){
+					BSP_PureHydrogenGasOutValvePwrOn();
+					BSP_TailGasOutValvePwrOff();
+					break;
+				}
+			}
         }
     }
 }

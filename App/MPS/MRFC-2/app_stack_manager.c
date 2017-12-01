@@ -30,6 +30,7 @@
 #include "app_analog_signal_monitor_task.h"
 #include "bsp_pid.h"
 #include "app_stack_short_circuit_task.h"
+#include "bsp_dc_module_adjust.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -40,7 +41,7 @@
 #define STACK_HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_MONITOR_TASK_STK_SIZE     256
 
 
-#define  STACK_FAN_CONTROL_CYCLE   6  //风机控制周期
+#define  STACK_FAN_CONTROL_CYCLE   8  //风机控制周期
 /*
 ***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
@@ -50,8 +51,8 @@
 OS_TCB      StackManagerTaskTCB;
 OS_TCB      StackManagerDlyStopTaskTCB;
 OS_TCB      StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB;
-OS_TCB      StackProgramControlAirPressureReleaseTaskTCB;
 
+			OS_SEM                    StackStartSem;
 static      OS_SEM                    StackManagerStopSem;
 
 static      CPU_STK_8BYTE_ALIGNED     StackManagerTaskStk[STACK_MANAGER_TASK_STK_SIZE];
@@ -73,10 +74,9 @@ STACK_VENTING_TIME_PARAMETER_Typedef    StackVentAirTimeParameter = {0, 0.0, 0.0
 ***************************************************************************************************
 */
 static  float                           g_fHydrogenYieldMatchOffsetValue = 0.0;//电堆匹氢偏移值
-static  uint8_t                         g_u8DecompressCountPerMinute = 0;//每分钟电堆尾部泄压排气次数
 static  uint8_t                         g_u8StackFanPidControlSw = DEF_DISABLED;//电堆风扇自动调速开关
 static  uint8_t                         g_u8StackHydrogenYieldMatchingOffsetValueMonitorTaskSw = DEF_DISABLED;
-
+static  uint8_t                         g_u8DecompressCountPerMinute = 0;
 
 /*
 ***************************************************************************************************
@@ -94,7 +94,7 @@ static      void        StackManagerTask(void);
 static      void        SetStackFanSpdPidControlSwitch(uint8_t);
 
 static      void        StackManagerDlyStopTask(void);
-
+static 		void 		ResetMonitorTaskSwitch(void);
 /*
 ***************************************************************************************************
 *                                      CREATE STACK MANAGER TASK
@@ -110,6 +110,8 @@ void StackManagerTaskCreate(void)
 {
     OS_ERR  err;
 
+	OSSemCreate(&StackStartSem, "Stack manager sem", 0, &err);
+	
     OSSemCreate(&StackManagerStopSem, "Stack manager sem", 0, &err);
 
     OSTaskCreate((OS_TCB *)&StackManagerTaskTCB,                    // Create the start task
@@ -143,118 +145,137 @@ void StackManagerTask(void)
 {
     OS_ERR      err;
     uint16_t    u16StackFanSpeed = 0;
-    static      uint8_t  u8PidControlStartTimeCount = 0;
     static      uint16_t u16AmpIntegralSum = 0;
-    float       fVoltage = 0.0;
+	static		uint16_t short_congtol_cnt = 0;
     float       fCurrent = 0.0;
     float       fOptimumStackTemp = 0.0;
 
     while(DEF_TRUE) {
+		
+		APP_TRACE_INFO(("Suspend stack manager task ...\r\n"));
         OSTaskSuspend(NULL, &err);
+ 
+		while(DEF_TRUE) {
+			
+			APP_TRACE_INFO(("Get into the stack manager task ...\r\n"));
+			BSP_HydrgInValvePwrOn();
+			SetDcModeOutPutNominalVoltageButDifferentCurrent(HOLD_LIMIT_POINT);
 
-        StackWorkTimesInc();
-        IncrementType_PID_Init();   //PID参数初始化
+			APP_TRACE_INFO(("Stack manager start, waitting the hydrogen press up to 36KPa ...\r\n"));
+			SetHydrogenPressArrivedWaitSwitch(WAIT_FOR_36KPA);
+			OSTaskSemPend(0, OS_OPT_PEND_BLOCKING, NULL, &err);//接收模拟信号监测任务中气压监测任务信号量
+			APP_TRACE_INFO(("Start the stack start purify...\r\n"));
+			SetStackFanCtrlSpd(1000);
+			BSP_HydrgOutValvePwrOn();
+			OSTimeDlyHMSM(0, 0, 3, 0, OS_OPT_TIME_HMSM_STRICT, &err);
+			SetStackFanCtrlSpd(200);
+			OSTimeDlyHMSM(0, 0, 2, 0, OS_OPT_TIME_HMSM_STRICT, &err);
+			BSP_HydrgOutValvePwrOff();
+			APP_TRACE_INFO(("Finish the stack start purify...\r\n"));
 
-        BSP_HydrgInValvePwrOn();
-        //优化排杂程序
-        APP_TRACE_INFO(("Stack manager start, waitting the hydrogen press up to 36KPa ...\r\n"));
-        SetHydrogenPressArrivedWaitSwitch(WAIT_FOR_36KPA);
-        OSTaskSemPend(0, OS_OPT_PEND_BLOCKING, NULL, &err);//接收模拟信号监测任务中气压监测任务信号量
-        APP_TRACE_INFO(("Start the stack start purify...\r\n"));
-        SetStackFanCtlSpd(1000);
-        BSP_HydrgOutValvePwrOn();
-        OSTimeDlyHMSM(0, 0, 3, 0, OS_OPT_TIME_HMSM_STRICT, &err);
-        SetStackFanCtlSpd(200);
-        OSTimeDlyHMSM(0, 0, 2, 0, OS_OPT_TIME_HMSM_STRICT, &err);
-        BSP_HydrgOutValvePwrOff();
-        APP_TRACE_INFO(("Finish the stack start purify...\r\n"));
-
-        APP_TRACE_INFO(("Stack manager start, waitting the hydrogen press up to 45KPa ...\n\r"));
-        SetHydrogenPressArrivedWaitSwitch(WAIT_FOR_45KPA);
-
-        OSTaskSemPend(0, OS_OPT_PEND_BLOCKING, NULL, &err); //接收模拟信号监测任务中气压监测任务信号量
-        fVoltage = GetSrcAnaSig(STACK_VOLTAGE);
-
-//        if(fVoltage >= 48){//只有当气压达到45KPA的时候，电压大于48v电堆才进入工作状态
-        BSP_DCConnectValvePwrOn();
-//        }
-
-        SetStackWorkStatu(EN_IN_WORK);
-        SetExternalScreenUpdateStatu(YES);//串口显示屏界面更新
-
-        StackHydrogenYieldMatchingOffsetValueMonitorTaskCreate();//电堆匹氢偏移量监测任务创建
-
-        SetStackIsPulledStoppedMonitorHookSwitch(DEF_ENABLED);//监测电堆是否被拉停
-        SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(DEF_ENABLED);
-        SetDCModuleLimitCurrentSmoothlyTaskSwitch(DEF_ENABLED);//平滑限流
-        SetDCModuleAutoAdjustTaskSwitch(DEF_ENABLED);//DC动态限流任务开关
-        SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);
-
-        OSTaskResume(&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,  //恢复匹氢偏移监测任务
-                     &err);
-
-//        OSTaskResume(&StackShortCircuitTaskTCB,  //恢复短路活化任务
-//                     &err);
-        OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB,  //恢复平滑限流任务
-                     &err);
-
-        while(DEF_TRUE) {
-
-            OSSemPend(&StackManagerStopSem,
-                      OS_CFG_TICK_RATE_HZ,
+			APP_TRACE_INFO(("Stack manager start, waitting the hydrogen press up to 45KPa ...\n\r"));
+			SetHydrogenPressArrivedWaitSwitch(WAIT_FOR_45KPA);
+			
+			OSSemPend(&StackStartSem,//等待接收启动阶段信号量:气压达到和关机都能结束
+                      0,
                       OS_OPT_PEND_BLOCKING,
                       NULL,
                       &err);
-
-            if(err == OS_ERR_NONE) {
-                break;
-            }
-
-            //安培秒排气
-            fCurrent = GetSrcAnaSig(STACK_CURRENT);
-            u16AmpIntegralSum += (uint16_t)fCurrent;
-
-            if(u16AmpIntegralSum >= g_u16RunPurifyAmpIntegralValue) {
-                BSP_HydrgOutValvePwrOn();
-                OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
-                BSP_HydrgOutValvePwrOff();
-                u16AmpIntegralSum = 0;
-            }
-
-            //一开始处于电堆升温阶段，不进行控制，2分钟后才开始风机PID控制
-            if((g_u8StackFanPidControlSw == DEF_DISABLED) && (u8PidControlStartTimeCount <= 180)) {
-                u8PidControlStartTimeCount ++ ;
-
-                if(u8PidControlStartTimeCount >= 120) {
-                    SetStackFanSpdPidControlSwitch(DEF_ENABLED);
-                    u8PidControlStartTimeCount = 0;
-                    APP_TRACE_INFO(("Stack fans pid control start...\n\r"));
+			if(err == OS_ERR_NONE) {
+                if(EN_SHUTTING_DOWN == GetSystemWorkStatu()) {
+                    APP_TRACE_INFO(("Fuel cell not start and froce to stop...\n\r"));
+                    break;
+                } else {
+                    APP_TRACE_INFO(("Fuel cell wait hydrogen press arrived...\n\r"));
                 }
             }
 
-            //风机PID控制程序
-            if(EN_CONTROL_MODE_AUTO == GetControlMode()) {
+			BSP_DCConnectValvePwrOn();
+			StackWorkTimesInc();
+			IncrementType_PID_Init();   //PID参数初始化
+			SetStackWorkStatu(EN_IN_WORK);
+			SetExternalScreenUpdateStatu(YES);//串口显示屏界面更新
 
-                if(g_u8StackFanPidControlSw == DEF_ENABLED) {
-                    IPID.CalcCycleCount++;
+			StackHydrogenYieldMatchingOffsetValueMonitorTaskCreate();//电堆匹氢偏移量监测任务创建
 
-                    if(IPID.CalcCycleCount >= IPID.Tsam) {
-                        fOptimumStackTemp = CalcStackOptimumTemperatureByCurrent();//计算最佳温度
-                        u16StackFanSpeed = IncrementType_PID_Process(fOptimumStackTemp);
-                        SetStackFanCtlSpd(u16StackFanSpeed);
-                        IPID.CalcCycleCount = 0;
-                    }
-                } else {}
-            }
-        }
+			SetStackIsPulledStoppedMonitorHookSwitch(DEF_ENABLED);//监测电堆是否被拉停
+			SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(DEF_ENABLED);
+			SetDCModuleLimitCurrentSmoothlyTaskSwitch(DEF_ENABLED);//平滑限流
+			SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);
+			SetStackFanSpdPidControlSwitch(DEF_ENABLED);
 
-        SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(DEF_DISABLED);
-        SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);
-        SetDCModuleAutoAdjustTaskSwitch(DEF_DISABLED);
-        SetDCModuleLimitCurrentSmoothlyTaskSwitch(DEF_DISABLED);
-        SetStackIsPulledStoppedMonitorHookSwitch(DEF_DISABLED);
-        APP_TRACE_INFO(("Stack manager stop...\n\r"));
-    }
+			OSTaskResume(&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,&err);  //恢复匹氢偏移监测任务                                 
+			OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB,&err);  //恢复平滑限流任务
+						 
+			while(DEF_TRUE) {
+
+				OSSemPend(&StackManagerStopSem,
+						  OS_CFG_TICK_RATE_HZ,
+						  OS_OPT_PEND_BLOCKING,
+						  NULL,
+						  &err);
+
+				if(err == OS_ERR_NONE) {
+					break;
+				}
+
+				//安培秒排气
+				fCurrent = GetSrcAnaSig(STACK_CURRENT);
+				u16AmpIntegralSum += (uint16_t)fCurrent;
+
+				if(u16AmpIntegralSum >= g_u16RunPurifyAmpIntegralValue) {
+					BSP_HydrgOutValvePwrOn();
+					OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
+					BSP_HydrgOutValvePwrOff();
+					u16AmpIntegralSum = 0;
+				}
+
+				//风机PID控制程序
+				if(EN_CONTROL_MODE_AUTO == GetControlMode()) {
+
+					if(g_u8StackFanPidControlSw == DEF_ENABLED) {
+						IPID.CalcCycleCnt++;
+
+						if(IPID.CalcCycleCnt >= IPID.Tsam) {
+							fOptimumStackTemp = CalcStackOptimumTemperatureByCurrent();//计算最佳温度
+							u16StackFanSpeed = IncrementType_PID_Process(fOptimumStackTemp);
+							SetStackFanCtrlSpd(u16StackFanSpeed);
+							IPID.CalcCycleCnt = 0;
+						}
+					}
+				}
+					
+				//保持限流不中断
+                short_congtol_cnt ++;
+                if(short_congtol_cnt >= 50) {
+                    SetDcModeOutPutNominalVoltageButDifferentCurrent(g_fIvalueNow);
+                    short_congtol_cnt = 0;
+                }
+			}
+			APP_TRACE_INFO(("Stack manager stop...\n\r"));
+			break;//再次break挂起电堆管理任务
+		}
+		ResetMonitorTaskSwitch();
+	}
+}
+
+/*
+***************************************************************************************************
+*                          ResetMonitorAndSubTaskSwitch()
+*
+* Description:  Enable or Disable the stack fan auto adjust.
+*
+* Arguments  :  none
+*
+* Returns    :  none
+***************************************************************************************************
+*/
+static void ResetMonitorTaskSwitch(void)
+{
+    SetStackHydrogenYieldMatchingOffsetValueMonitorTaskSwitch(DEF_DISABLED);
+	SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_DISABLED);
+	SetDCModuleLimitCurrentSmoothlyTaskSwitch(DEF_DISABLED);
+	SetStackIsPulledStoppedMonitorHookSwitch(DEF_DISABLED);
 }
 /*
 ***************************************************************************************************
@@ -324,9 +345,12 @@ void StackManagerDlyStopTask(void)
         APP_TRACE_INFO(("The stack manager start to delay stop...\n\r"));
 
         g_eStackManagerStopDlyStatu = ON;
+		OSSemPost(&StackStartSem, OS_OPT_POST_1, &err);//电堆未正常开启需要发送信号量跳出循环
+		OSSemPost(&StackManagerStopSem, OS_OPT_POST_1, &err);//使电堆管理任务挂起
+		OSTaskSemPost(&StackRunningShortTaskTCB,OS_OPT_POST_NO_SCHED,&err);//使运行短路活化任务挂起
         SetStackFanSpdPidControlSwitch(DEF_DISABLED);  //关闭风机自动调速
 
-        SetStackFanCtlSpd(1000);
+        SetStackFanCtrlSpd(1000);
 
         while(DEF_TRUE) {
             OSTimeDlyHMSM(0, 0, 1, 0,
@@ -334,10 +358,12 @@ void StackManagerDlyStopTask(void)
                           &err);
             u16ShutDownStackFanDlySeconds ++;
 
-            if(u16ShutDownStackFanDlySeconds == 5) { //关闭直流接触器,停止输出
+            if(u16ShutDownStackFanDlySeconds == 5) { //关闭直流接触器,停止输出，排气三秒
                 BSP_DCConnectValvePwrOff();
+				BSP_HydrgOutValvePwrOn();
             } else if(u16ShutDownStackFanDlySeconds == 8) { //关闭进气电磁阀
                 BSP_HydrgInValvePwrOff();
+				BSP_HydrgOutValvePwrOff();
             } else if(u16ShutDownStackFanDlySeconds >= 30) {//电堆风扇延时30S后关闭，同时挂起电堆停止任务
 
                 OSSemPost(&StackManagerStopSem,
@@ -357,7 +383,7 @@ void StackManagerDlyStopTask(void)
         BSP_HydrgOutValvePwrOff();
 
         SetStackWorkStatu(EN_NOT_IN_WORK);
-        SetStackFanCtlSpd(0);
+        SetStackFanCtrlSpd(0);
 
         BSP_DCConnectValvePwrOff();
         g_eStackManagerStopDlyStatu = OFF;
@@ -430,8 +456,6 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
     float   fCurrent = 0.0;
     float   fAmpIntegralValue = 0.0; //安培时间积分值
     float   fActualHydrogenMatchValue = 0.0;
-    static  uint8_t u8HydrogenYieldEnoughCount = 0;
-    static  uint8_t u8HydrogenYieldLackCount = 0;
 
     while(DEF_TRUE) {
 
@@ -469,33 +493,12 @@ void StackHydrogenYieldMatchingOffsetValueMonitorTask()
                 //匹氢值小于标准的0.3倍(偏移值为正)，产气充足，并且电堆电压等参数正常,可提高输出功率
                 if((g_fHydrogenYieldMatchOffsetValue > 1.50) && (GetSrcAnaSig(STACK_VOLTAGE) > 41.0)) {
                     //限流点上升和下降都采用逐次周期增加
-                    u8HydrogenYieldEnoughCount ++;
-                    u8HydrogenYieldLackCount = 0;
-
-                    if(u8HydrogenYieldEnoughCount >= 5) {
-                        OSTaskSemPost(&DCModuleDynamicAdjustTaskTCB,
-                                      OS_OPT_POST_1,
-                                      &err);
-                        SetDCModuleCurrentLimitingPointImproveFlag(DEF_SET);
-                        u8HydrogenYieldEnoughCount = 0;
-                    }
 
                     //匹氢值大于标准的1.5倍，产气不足,限制输出功率(限流限压)
                 } else if((g_fHydrogenYieldMatchOffsetValue < -0.40) || ((GetSrcAnaSig(STACK_VOLTAGE) <= 41.0))) {
-                    u8HydrogenYieldLackCount ++;
-                    u8HydrogenYieldEnoughCount = 0;
-
-                    if(u8HydrogenYieldLackCount >= 5) {
-                        OSTaskSemPost(&DCModuleDynamicAdjustTaskTCB,
-                                      OS_OPT_POST_1,
-                                      &err);
-                        SetDcModuleCurrentLimitingPointReduceFlag(DEF_SET);
-                        u8HydrogenYieldLackCount = 0;
-                    }
+                    
                 } else {
                     //气量合适,清不正常计数值
-                    u8HydrogenYieldEnoughCount = 0;
-                    u8HydrogenYieldLackCount = 0;
                 }
             }
         }

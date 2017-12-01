@@ -119,34 +119,72 @@ typedef struct {
     uint8_t  SecondTimeAdjustFanValue;
 
 } RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef;
+
+typedef struct {
+    
+    uint8_t  ActiveStep;
+    uint16_t ActiveStep1PumpSpd;
+    uint16_t ActiveStep1FanSpd;
+    uint8_t  ActiveStep1HoldHour;
+    uint8_t  ActiveStep1HoldMin;
+    
+    uint16_t ActiveStep2PumpSpd;
+    uint16_t ActiveStep2FanSpd;
+    uint8_t  ActiveStep2HoldHour;
+    uint8_t  ActiveStep2HoldMin;
+    
+    uint16_t ActiveStep3PumpSpd;
+    uint16_t ActiveStep3FanSpd;
+    uint8_t  ActiveStep3HoldHour;
+    uint8_t  ActiveStep3HoldMin;
+    
+    uint16_t ActiveStep4PumpSpd;
+    uint16_t ActiveStep4FanSpd;
+    uint8_t  ActiveStep4HoldHour;
+    uint8_t  ActiveStep4HoldMin;
+    
+    uint8_t  CurrentActiveStepHoldHour;
+    uint8_t  CurrentActiveStepHoldMin;
+
+} RICH_HYDROGEN_ACTIVE_PARA_Typedef;
+
+
+typedef enum {
+    
+    ACTIVE_STEP_ONE = 1,
+    ACTIVE_STEP_TWO,
+    ACTIVE_STEP_THREE,
+    ACTIVE_STEP_FOUR,
+    
+}RICH_HYDROGEN_ACTIVE_STEP_Typedef;
+
 /*
 ***************************************************************************************************
 *                              EXPORTED GLOBAL VARIABLE DECLARATIONS
 ***************************************************************************************************
 */
 extern HYDROGEN_PUMP_SPEED_PARA_Typedef                         g_stStartHydrgPumpSpdPara;
-extern HYDROGEN_FAN_SPEED_PARA_Typedef                          g_stStartHydrgFanSpdPara;
+extern HYDROGEN_FAN_SPEED_PARA_Typedef                          g_stStartHydrogenFanSpdPara;
 extern REFORMER_TEMP_CMP_LINES_Typedef                          g_stReformerTempCmpTbl;
 extern LIQUID_PRESSURE_CMP_LINES_Typedef                        g_stLqdPressCmpTbl;
 extern LIQUID_HEIGHT_CMP_LINES_Typedef                          g_stLqdHeightCmpTbl;
 extern RUNNING_STATUS_DELAY_ADJUST_SPEED_PARAMETERS_Typedef     g_stRunningStatusDelayAdjustSpdPara;
 extern uint16_t                                                 g_u16RunPurifyAmpIntegralValue;
+extern RICH_HYDROGEN_ACTIVE_PARA_Typedef                        g_stRichHydrogenModePara;
 extern uint16_t                                                 g_u16GlobalNetWorkId;
 extern uint16_t                                                 g_u16FirstTimeHeatHoldSeconds;
+extern uint16_t                                   				g_ProductsType;
 /*
 ***************************************************************************************************
 *                                           EXPORTED MACRO
 ***************************************************************************************************
 */
-#define LOCAL_NETWORK_ID        0       //本地组网ID，独立运行的机器默认为0
-#define PRODUCTS_TYPE_ID        0x1100  //产品型号ID：小型发电机
 
 /*
 ***************************************************************************************************
 *                                           EXPORTED FUNCTION
 ***************************************************************************************************
 */
-//原有的
 void        LoadParameters(void);
 void        SaveSystemWorkTimes(void);
 
@@ -164,9 +202,18 @@ void        StoreStartHydrgFanSpdPara(HYDROGEN_FAN_SPEED_PARA_Typedef *);
 void        StoreStartHydrgFanSpdParaBySingle(uint16_t *i_StartHydrgFanSpdPara, u8 DataAddr);
 
 void        StoreGlobalNetWorkID(u16 *i_GlobalNetWorkID);
-void        StoreFirstTimeHeatHoldSeconds(u16 *i_FirstTimeHeatHoldSeconds);
-void        StoreRunningStatusDelayAdjustSpdParaBySingle(u16 *i_DelayAndAdjustSpdPara, u8 DataAddr);
+void        StoreFirstTimeHeatHoldSeconds(uint16_t *i_FirstTimeHeatHoldSeconds);
+void        StoreRunningStatusDelayAdjustSpdParaBySingle(uint16_t *i_DelayAndAdjustSpdPara, uint8_t DataAddr);
 
+void        StoreRichHydrogenModeFanPara(uint8_t * RecBuf,uint8_t i_eActiveStep);
+void        StoreRichHydrogenModePumpPara(uint8_t * RecBuf,uint8_t i_eActiveStep);
+void        StoreRichHydrogenModeHoldTimePara(uint8_t * RecBuf,uint8_t i_eActiveStep);
+void        LoadCurrentStepRemainTimePara(uint8_t i_CurrentActiveStep);
+void        LoadDefaultRichHydrogenModeHoldTimePara(void);
+
+
+void        StoreRichHydrogenModePara(RICH_HYDROGEN_ACTIVE_PARA_Typedef *i_RichModePara);
+typedef     void    (*StoreParaBySingleType)(uint16_t *,uint8_t);//存储参数类函数指针类型
 /*
 ***************************************************************************************************
 *                                             MODULE END

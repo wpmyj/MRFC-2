@@ -69,21 +69,25 @@ static      uint32_t    g_u32DigValueFilter[BSP_ANA_SENSORS_NMB][NMB_OF_AVERAGE_
 static      float       g_fDigValueSum[BSP_ANA_SENSORS_NMB] = {0};      //滤波器内数据和
 static      uint8_t     g_u8FilterOperationCursor = 0;                  //滤波器数据更新标记
 static      float       g_fDigFilteredValue[BSP_ANA_SENSORS_NMB] = {0}; //滤波后输出值
-
 static      uint8_t     g_u8AnaSensorTypeNmb[BSP_ANA_SENSORS_NMB] = {0};
 
 //线性输出的传感器相关参数
 static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorParameter[BSP_ANA_SENSORS_NMB];
 static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorDefaultParameter[BSP_ANA_SENSORS_NMB] = {
     {0, 0xFFFF},       //电堆温度
-    {627, 53.313},     //电压
+    {790, 17.3955},    //电压1.48--4.783.294，(4ma- 12.9277ma)* 370Ω
     {2007.35, 16.059}, //电流
     {794.2, 127.06},   //液压
     {359.86, 33.504},  //气压1:0.58 / 2 * 3.3 * 4095 ~ 4.9/2 *3.3 * 4095   359.86 - 3040.23 LSB,对应0.58 - 4.9输入,经2个5.1K电阻降压至0.29-2.45V（满量程0.29V-3.3V对应0-135Kpa），对应0-80KPa，比例为33.504LSB/KPa
-    {359.86, 33.504},  //气压2
-    {794.2, 3.1767},  // 液位
-    {0, 1241.21},      // 预留1
-    {0, 1241.21}       // 预留2
+    {359.86, 33.504},  //气压2-->改为液位2
+    {794.2, 3.1767},  // 液位1
+    {790, 17.3955},    //电压1.48--4.783.294，(4ma- 12.9277ma)* 370Ω
+    {0, 1241.21},     // 氢气浓度
+	{0, 1241.21},	  //电池电流
+	{0, 1241.21},	  //快速加热器电流
+	{1578.5, 10.592},  //负压传感器794.375，量程-100Kpa-200Kpa,输出信号是0.64-3.2V，对应794.375-3971.881LSB，量程是0-300Kpa，算出比率
+	{0, 0xFFFF},	  // 预留电流型传感器1
+	{0, 0xFFFF},	  // 预留电流型传感器2
 };
 
 static      float       g_fAnaSigAnaValue[BSP_ANA_SENSORS_NMB] = {0};//产生当前数字信号的源物理信号值（标准单位）
@@ -270,7 +274,7 @@ void AnaSensorSelfCheck(void)
     if(Temp >= 200 || Temp <= -200) {
         SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaVoltageBit);
     } else {
-        ResetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaCurrentBit);
+        ResetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaVoltageBit);
     }
 
     //电堆电流
@@ -299,36 +303,70 @@ void AnaSensorSelfCheck(void)
     } else {
         ResetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaHydrgPressBit);
     }
+   
+	//气压2--改成电压2
+	Temp = g_u16OriginalDigValue[5] - g_stAnaSigSensorParameter[5].BaseDigValue;
+	if(Temp >= 200 || Temp <= -200)
+	{
+		SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaRsvdBit_0);
+	}else {
+        ResetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaRsvdBit_0);
+    }
 
-    /*
-        //气压2
-        Temp = g_u16OriginalDigValue[5] - g_stAnaSigSensorParameter[5].BaseDigValue;
-        if(Temp >= 100 || Temp <= -100)
-        {
-            SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaRsvdBit_0);
-        }
+	//液位
+	Temp = g_u16OriginalDigValue[6] - g_stAnaSigSensorParameter[6].BaseDigValue;
+	if(Temp >= 200 || Temp <= -200)
+	{
+		SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpHydrgAnaRsvdBit_0);
+	}else {
+        ResetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpHydrgAnaRsvdBit_0);
+    }
 
-        //预留1
-        Temp = g_u16OriginalDigValue[6] - g_stAnaSigSensorParameter[6].BaseDigValue;
-        if(Temp >= 100 || Temp <= -100)
-        {
-            SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaRsvdBit_1);
-        }
+//	//氢气浓度
+//	Temp = g_u16OriginalDigValue[7] - g_stAnaSigSensorParameter[7].BaseDigValue;
+//	if(Temp >= 200 || Temp <= -200)
+//	{
+//		SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpHydrgAnaRsvdBit_1);
+//	}else {
+//        ResetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpHydrgAnaRsvdBit_1);
+//    }
+	
+//	//电池电流
+//	Temp = g_u16OriginalDigValue[8] - g_stAnaSigSensorParameter[8].BaseDigValue;
+//	if(Temp >= 200 || Temp <= -200)
+//	{
+//		SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaRsvdBit_1);
+//	}else {
+//        ResetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaRsvdBit_1);
+//    }
+	
+//	//快速加热器电流
+//	Temp = g_u16OriginalDigValue[9] - g_stAnaSigSensorParameter[9].BaseDigValue;
+//	if(Temp >= 200 || Temp <= -200)
+//	{
+//		SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpHydrgAnaRsvdBit_2);
+//	}else {
+//        ResetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpHydrgAnaRsvdBit_2);
+//    }
+	
+	//负压传感器
+	Temp = g_u16OriginalDigValue[10] - g_stAnaSigSensorParameter[10].BaseDigValue;
+	if(Temp >= 200 || Temp <= -200)
+	{
+		SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpHydrgAnaRsvdBit_3);
+	}else {
+        ResetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpHydrgAnaRsvdBit_3);
+    }
 
-        //预留2
-        Temp = g_u16OriginalDigValue[7] - g_stAnaSigSensorParameter[7].BaseDigValue;
-        if(Temp >= 100 || Temp <= -100)
-        {
-            SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaRsvdBit_2);
-        }
-
-        //预留3
-        Temp = g_u16OriginalDigValue[8] - g_stAnaSigSensorParameter[8].BaseDigValue;
-        if(Temp >= 100 || Temp <= -100)
-        {
-            SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaRsvdBit_3);
-        }
-    */
+//	//预留电流型传感器1
+//	Temp = g_u16OriginalDigValue[11] - g_stAnaSigSensorParameter[11].BaseDigValue;
+//	if(Temp >= 200 || Temp <= -200)
+//	{
+//		SetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaRsvdBit_2);
+//	}else {
+//        ResetMachinePartBSelfCheckCodeBit(SelfCheckCodeGrpFCAnaRsvdBit_2);
+//    }
+   
 }
 /*
 ***************************************************************************************************
@@ -399,11 +437,15 @@ float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
             } else {
                 g_fAnaSigAnaValue[STACK_VOLTAGE] = (g_fDigFilteredValue[STACK_VOLTAGE] - g_stAnaSigSensorParameter[STACK_VOLTAGE].BaseDigValue) / g_stAnaSigSensorParameter[STACK_VOLTAGE].AnaToDigRatio;
             }
-
 //            APP_TRACE_INFO(("--> g_fDigFilteredValue[STACK_VOLTAGE]: %f \r\n", g_fDigFilteredValue[STACK_VOLTAGE]));
 //            APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[STACK_VOLTAGE].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[STACK_VOLTAGE].BaseDigValue));
 //            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[STACK_VOLTAGE]: %f \r\n\r\n", g_fAnaSigAnaValue[STACK_VOLTAGE]));
-
+		}else if(BATTERY_VOLTAGE == i_eAnaSigKind) {
+			if(g_fDigFilteredValue[BATTERY_VOLTAGE] <= g_stAnaSigSensorParameter[BATTERY_VOLTAGE].BaseDigValue) {
+				g_fAnaSigAnaValue[BATTERY_VOLTAGE] = 0.0;
+			} else {
+				g_fAnaSigAnaValue[BATTERY_VOLTAGE] = (g_fDigFilteredValue[BATTERY_VOLTAGE] - g_stAnaSigSensorParameter[BATTERY_VOLTAGE].BaseDigValue) / g_stAnaSigSensorParameter[BATTERY_VOLTAGE].AnaToDigRatio;
+			}
         } else if(STACK_CURRENT == i_eAnaSigKind) {
             if(g_fDigFilteredValue[STACK_CURRENT] <= g_stAnaSigSensorParameter[STACK_CURRENT].BaseDigValue) {
                 g_fAnaSigAnaValue[STACK_CURRENT] = 0.0;
@@ -413,10 +455,6 @@ float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
                 g_fAnaSigAnaValue[STACK_CURRENT] = (fabs((g_fDigFilteredValue[STACK_CURRENT] - g_stAnaSigSensorParameter[STACK_CURRENT].BaseDigValue) + 1) / g_stAnaSigSensorParameter[STACK_CURRENT].AnaToDigRatio);
             }
 
-//            APP_TRACE_INFO(("--> g_fDigFilteredValue[STACK_CURRENT]: %f \r\n", g_fDigFilteredValue[STACK_CURRENT]));
-//            APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[STACK_CURRENT].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[STACK_CURRENT].BaseDigValue));
-//            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[STACK_CURRENT]: %f \r\n\r\n", g_fAnaSigAnaValue[STACK_CURRENT]));
-
         } else if(LIQUID_PRESS == i_eAnaSigKind) {
             if(g_fDigFilteredValue[LIQUID_PRESS] <= g_stAnaSigSensorParameter[LIQUID_PRESS].BaseDigValue) {
                 g_fAnaSigAnaValue[LIQUID_PRESS] = 0.0;
@@ -425,6 +463,19 @@ float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
             } else {
                 g_fAnaSigAnaValue[LIQUID_PRESS] = (fabs((g_fDigFilteredValue[LIQUID_PRESS] - g_stAnaSigSensorParameter[LIQUID_PRESS].BaseDigValue) + 1) / g_stAnaSigSensorParameter[LIQUID_PRESS].AnaToDigRatio);
             }
+		}else if(NEGATIVE_PRESSURE == i_eAnaSigKind) {
+        
+			if(g_fDigFilteredValue[NEGATIVE_PRESSURE] > g_stAnaSigSensorParameter[NEGATIVE_PRESSURE].BaseDigValue){
+				g_fAnaSigAnaValue[NEGATIVE_PRESSURE] = 0.0;//正压数据不显示
+			}else if(g_fDigFilteredValue[NEGATIVE_PRESSURE] < 794.375){//异常数据
+				g_fAnaSigAnaValue[NEGATIVE_PRESSURE] = 0.0;
+			}else{
+				//将0-300的值转换为-100到200的值,结果只显示负压
+				g_fAnaSigAnaValue[NEGATIVE_PRESSURE] =(g_stAnaSigSensorParameter[NEGATIVE_PRESSURE].BaseDigValue - g_fDigFilteredValue[NEGATIVE_PRESSURE]) / (g_stAnaSigSensorParameter[NEGATIVE_PRESSURE].AnaToDigRatio);
+			}
+//        APP_TRACE_INFO(("--> g_fDigFilteredValue[NEGATIVE_PRESSURE]: %f \r\n", g_fDigFilteredValue[NEGATIVE_PRESSURE]));
+//        APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[NEGATIVE_PRESSURE].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[NEGATIVE_PRESSURE].BaseDigValue));
+//        APP_TRACE_INFO(("--> g_fAnaSigAnaValue[NEGATIVE_PRESSURE]: %f \r\n\r\n", g_fAnaSigAnaValue[NEGATIVE_PRESSURE]));
         } else if(HYDROGEN_PRESS_1 == i_eAnaSigKind) {
 
             if(g_fDigFilteredValue[HYDROGEN_PRESS_1] <= g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue) {
@@ -443,9 +494,6 @@ float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
                 g_fAnaSigAnaValue[LIQUID_LEVEL] = 0.0;
             } else {
                 g_fAnaSigAnaValue[LIQUID_LEVEL] = (g_fDigFilteredValue[LIQUID_LEVEL] - g_stAnaSigSensorParameter[LIQUID_LEVEL].BaseDigValue) / g_stAnaSigSensorParameter[LIQUID_LEVEL].AnaToDigRatio;
-//                APP_TRACE_INFO(("--> g_fDigFilteredValue[LIQUID_LEVEL]: %f \r\n", g_fDigFilteredValue[LIQUID_LEVEL]));
-//                APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[LIQUID_LEVEL].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[LIQUID_LEVEL].BaseDigValue));
-//                APP_TRACE_INFO(("--> g_fAnaSigAnaValue[LIQUID_LEVEL]: %f \r\n\r\n", g_fAnaSigAnaValue[LIQUID_LEVEL]));
             }
 
         } else {}

@@ -33,56 +33,71 @@
 #include "app_system_run_cfg_parameters.h"
 #include "bsp_scale_data_read.h"
 #include "bsp_can.h"
+
 /*
 ***************************************************************************************************
 *                                       MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define COMMUNICATE_TASK_STK_SIZE               128
-#define COMMUNICATA_DATA_SEND_TASK_STK_SIZE     128
+#define COMM_TASK_STK_SIZE               200
+#define COMM_DATA_SEND_TASK_STK_SIZE     200
 
+#define  TX_MSG_MEM_BLK_NUM             30    //内存分区的内存块数量
+#define  TX_MSG_MEM_BLK_SIZE            60    //内存分区的内存块大小
+#define  TX_MSG_QUEUE_SIZE              30    //发送消息队列长度
 /*
 ***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
 ***************************************************************************************************
 */
-OS_SEM          g_stCommunicateDataSendSem;
-OS_SEM          g_stCommunicateDataSendResponseSem;
+OS_SEM          g_stCommDataSendSem;
 
-OS_TCB          CommunicateTaskTCB;
-OS_TCB          CommunicateDataSendTaskTCB;
+OS_TCB          CommTaskTCB;
+OS_TCB          CommDataSendTaskTCB;
 
-OS_MUTEX        TxMsgSendBuffWriteMutex;
+OS_Q            CommInfoQueue;
+OS_MEM          CommInfoMem;
 
-__attribute__((aligned(8)))  //任务堆栈8字节对齐，确保浮点数显示正常
-static      CPU_STK     CommunicateTaskStk[COMMUNICATE_TASK_STK_SIZE];
-static      CPU_STK     CommunicateDataSendTaskStk[COMMUNICATA_DATA_SEND_TASK_STK_SIZE];
+static          CPU_STK_8BYTE_ALIGNED     CommTaskStk[COMM_TASK_STK_SIZE];
+static          CPU_STK_8BYTE_ALIGNED     CommDataSendTaskStk[COMM_DATA_SEND_TASK_STK_SIZE];
+
 /*
 ***************************************************************************************************
 *                                           LOCAL VARIABLES
 ***************************************************************************************************
 */
-uint8_t             g_u8SerRxMsgBuff[PRGM_RX_BUFF_SIZE];
-static    uint32_t    g_u32TxMsgDataTagNumber[EN_SEND_DATA_TYPE_MAX] = {0};   //数据身份标签码
-
-static      TX_MSG_SEND_BUFF_Typedef        g_stTxMsgDataSendBuff = {0};
+		 CPU_INT08U  				 CommInfoMemStorage[TX_MSG_MEM_BLK_NUM][TX_MSG_MEM_BLK_SIZE];
+         uint8_t                     g_u8SerRxMsgBuff[PRGM_RX_BUFF_SIZE];
+static   uint32_t                    g_u32TxMsgDataTagNumber[EN_SEND_DATA_TYPE_MAX] = {0};   //数据身份标签码
 
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
 ***************************************************************************************************
 */
-static      void        CommunicateTask(void *p_arg);
-static      void        CommunicateDataSendTask(void *p_arg);
-static      void        ResponsePrgmCommand(uint8_t *);
-
-static      void        LoadNonRealTimeWorkInfo(uint8_t , uint8_t , uint8_t , uint8_t *p_uint8_tParas, uint8_t *);
-static      void        AddRealTimeWorkInfoDataToSendBuff(uint8_t , uint8_t);
-static      void        LoadHydrogenProducerRealTimeWorkInfo(uint8_t, uint8_t *);
-static      void        LoadFuelCellRealTimeWorkInfoPartA(uint8_t, uint8_t *);
-static      void        LoadFuelCellRealTimeWorkInfoPartB(uint8_t , uint8_t *);
-static      void        InsertNonRealTimeWorkInfoDataToSendBuff(uint8_t, uint8_t , uint8_t , uint8_t *);
+static      void        CommTask(void *p_arg);
+static      void        CommDataSendTask(void *p_arg);
+static      void        ResponsePrgmCmd(uint8_t *);
 static      void        SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg);
+
+static      void        AddRealTimeWorkInfoPartA1ToSendQueue(void);
+static      void        AddRealTimeWorkInfoPartB1ToSendQueue(void);
+static      void        AddRealTimeWorkInfoPartB2ToSendQueue(void);
+static      void        AddNonRealTimeWorkInfoToSendQueue(uint8_t , uint8_t, uint8_t, uint8_t *);
+
+/*
+***************************************************************************************************
+*                                       MACRO DEFINITIONS
+***************************************************************************************************
+*/
+
+
+/*
+***************************************************************************************************
+*                                         OS-RELATED    VARIABLES
+***************************************************************************************************
+*/
+
 
 /*
 ***************************************************************************************************
@@ -97,45 +112,70 @@ static      void        SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_
 * Notes       : none
 ***************************************************************************************************
 */
-void  CommunicateTaskCreate(void)
+
+void  CommTaskCreate(void)
 {
     OS_ERR  err;
 
-    BSP_SerToWIFI_Init();       //(WIFI)串口初始化
-
-    BSP_SerToWIFI_RxMsgInit(g_u8SerRxMsgBuff, PRGM_RX_BUFF_SIZE);   //接收数据地址初始化
-
-    OSTaskCreate((OS_TCB *)&CommunicateTaskTCB,
-                 (CPU_CHAR *)"Communicate Task Start",
-                 (OS_TASK_PTR) CommunicateTask,
+	BSP_SerToWIFI_Init();       //(WIFI)串口初始化
+	
+    OSTaskCreate((OS_TCB *)&CommTaskTCB,
+                 (CPU_CHAR *)"Comm Task Start",
+                 (OS_TASK_PTR) CommTask,
                  (void *) 0,
-                 (OS_PRIO) COMMUNICATE_TASK_PRIO,
-                 (CPU_STK *)&CommunicateTaskStk[0],
-                 (CPU_STK_SIZE) COMMUNICATE_TASK_STK_SIZE / 10,
-                 (CPU_STK_SIZE) COMMUNICATE_TASK_STK_SIZE,
+                 (OS_PRIO) COMM_TASK_PRIO,
+                 (CPU_STK *)&CommTaskStk[0],
+                 (CPU_STK_SIZE) COMM_TASK_STK_SIZE / 10,
+                 (CPU_STK_SIZE) COMM_TASK_STK_SIZE,
                  (OS_MSG_QTY) 5u,
                  (OS_TICK) 0u,
                  (void *) 0,
                  (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),
                  (OS_ERR *)&err);
     APP_TRACE_INFO(("Created communicate Task, and err code is %d...\r\n", err));
-
-    OSSemCreate(&g_stCommunicateDataSendSem,
-                "Communicate data send sem",
+                   
+    OSSemCreate(&g_stCommDataSendSem,
+                "Comm data send sem",
                 0,
                 &err);
-    OSMutexCreate(&TxMsgSendBuffWriteMutex,
-                  "Tx msg send buff write mutex",
-                  &err);
+                                
+    OSQCreate((OS_Q *)&CommInfoQueue,
+              (CPU_CHAR *)"Comm Info Queue",
+              (OS_MSG_QTY)TX_MSG_QUEUE_SIZE,
+              (OS_ERR *)&err);
+                
+    OSMemCreate((OS_MEM     *)&CommInfoMem,
+               (CPU_CHAR    *)"Comm Info Mem",
+               (void        *)&CommInfoMemStorage[0][0],//内存分区起始地址
+               (OS_MEM_QTY   )TX_MSG_MEM_BLK_NUM,//内存分区里的内存块数量
+               (OS_MEM_SIZE  )TX_MSG_MEM_BLK_SIZE,//每个内存块的大小(字节)
+               (OS_ERR      *)&err);
+}
 
-    OSTaskCreate((OS_TCB *)&CommunicateDataSendTaskTCB,
-                 (CPU_CHAR *)"Communicate Data Send Task Start",
-                 (OS_TASK_PTR) CommunicateDataSendTask,
+/*
+***************************************************************************************************
+*                                     CommDataSendTaskCreate()
+*
+* Description : The use of the the funciton is to create the task that manager the communication.
+*
+* Arguments   : none.
+*
+* Returns     : none
+*
+* Notes       : none
+***************************************************************************************************
+*/
+void  CommDataSendTaskCreate(void)
+{
+    OS_ERR  err;
+    OSTaskCreate((OS_TCB *)&CommDataSendTaskTCB,
+                 (CPU_CHAR *)"Comm Data Send Task Start",
+                 (OS_TASK_PTR) CommDataSendTask,
                  (void *) 0,
-                 (OS_PRIO) COMMUNICATE_DATA_SEND_TASK_PRIO,
-                 (CPU_STK *)&CommunicateDataSendTaskStk[0],
-                 (CPU_STK_SIZE) COMMUNICATA_DATA_SEND_TASK_STK_SIZE / 10,
-                 (CPU_STK_SIZE) COMMUNICATA_DATA_SEND_TASK_STK_SIZE,
+                 (OS_PRIO) COMM_DATA_SEND_TASK_PRIO,
+                 (CPU_STK *)&CommDataSendTaskStk[0],
+                 (CPU_STK_SIZE) COMM_DATA_SEND_TASK_STK_SIZE / 10,
+                 (CPU_STK_SIZE) COMM_DATA_SEND_TASK_STK_SIZE,
                  (OS_MSG_QTY) 5u,
                  (OS_TICK) 0u,
                  (void *) 0,
@@ -146,7 +186,7 @@ void  CommunicateTaskCreate(void)
 
 /*
 ***************************************************************************************************
-*                               CommunicateTask()
+*                               CommTask()
 *
 * Description :This is a task that manage the communication with other device.
 *
@@ -157,59 +197,51 @@ void  CommunicateTaskCreate(void)
 * Note(s)     : none.
 ***************************************************************************************************
 */
-void  CommunicateTask(void *p_arg)
+void  CommTask(void *p_arg)
 {
     OS_ERR      err;
-    uint8_t     i = 0;
-    static      uint8_t st_SendMegGroupNum = 0;
 
     while(DEF_TRUE) {
-
-        OSTimeDlyHMSM(0, 0, 0, 300,
+        
+        OSTimeDlyHMSM(0, 0, 1, 000,
                       OS_OPT_TIME_HMSM_STRICT,
                       &err);
-
-        if(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL == GetWorkMode()) {
-
-            st_SendMegGroupNum ++;//数据分开3组发送,0.3S发一次
-
-            if(st_SendMegGroupNum == GROUP_ONE) {
-                AddRealTimeWorkInfoDataToSendBuff(EN_LATEST, REAL_TIME_RUNNING_INFORMATION_A);//制氢半机
-            } else if(st_SendMegGroupNum == GROUP_TWO) {
-                AddRealTimeWorkInfoDataToSendBuff(EN_LATEST, REAL_TIME_RUNNING_INFORMATION_B_1);
-            } else if(st_SendMegGroupNum == GROUP_THERE) {
-                AddRealTimeWorkInfoDataToSendBuff(EN_LATEST, REAL_TIME_RUNNING_INFORMATION_B_2);
-                st_SendMegGroupNum = 0;//重置刷新组计数
-            } else {}
-        }
-
-        if(g_u8WifiCommandReceived == YES) { //收到串口指令而提前结束延时，响应上位机指令
-            ResponsePrgmCommand(g_u8SerRxMsgBuff);
-            g_u8WifiCommandReceived = NO;
-        } else if(g_eCanMsgRxStatu == YES) { //是否因收到CAN接口指令而提前结束延时
-            ResponsePrgmCommand(g_u8CanRxMsg);
-            g_eCanMsgRxStatu = NO;
-            APP_TRACE_INFO(("Can Rx data:"));
-
-            for(i = 0; i < 16; i++) {
-                APP_TRACE_INFO(("%X ", g_u8CanRxMsg[i]));
+       
+		if(g_u8WifiCmdRec == DEF_YES) { //收到串口指令而提前结束延时，响应上位机指令
+            ResponsePrgmCmd(g_u8SerRxMsgBuff);
+            g_u8WifiCmdRec = DEF_NO;
+		
+//WIFI_RX_DATA_TEST
+#if     0  
+            APP_TRACE_INFO(("WIFI Rx data:"));
+            for(uint8_t i = 0;i < 16;i++){
+                APP_TRACE_INFO(("%X ",g_u8SerRxMsgBuff[i]));
             }
-
             APP_TRACE_INFO(("...\n\r"));
-        } else {
-            //正常延时
-        }
+#endif
+		}
+			
+        if(g_eCanMsgRxStatu == DEF_YES){//是否因收到CAN接口指令而提前结束延时
+		
+			ResponsePrgmCmd(g_u8CanRxMsg);
+			g_eCanMsgRxStatu = DEF_NO;
+		}
+		//添加实时信息到发送队列
+		AddRealTimeWorkInfoPartA1ToSendQueue();
+        AddRealTimeWorkInfoPartB1ToSendQueue();
+        AddRealTimeWorkInfoPartB2ToSendQueue();
 
         //发送信号量，启动一次数据传输
-        OSSemPost(&g_stCommunicateDataSendSem,
+        OSSemPost(&g_stCommDataSendSem,
                   OS_OPT_POST_1,
                   &err);
     }
 }
 
+
 /*
 ***************************************************************************************************
-*                               AddRealTimeWorkInfoDataToSendBuff()
+*                               CommDataSendTask()
 *
 * Description :数据发送任务
 *
@@ -220,132 +252,35 @@ void  CommunicateTask(void *p_arg)
 * Note(s)     : none.
 ***************************************************************************************************
 */
-void CommunicateDataSendTask(void *p_arg)
+static void CommDataSendTask(void *p_arg)
 {
-    OS_ERR      err;
-
-    OSSemCreate(&g_stCommunicateDataSendResponseSem,
-                "Communicate data send response sem",
-                0,
-                &err);
-
+    OS_ERR       err;
+    OS_MSG_SIZE  msg_size;
+    CPU_INT08U   *pTxMsgData = NULL;
+ 
     while(DEF_TRUE) {
-
-        OSSemPend(&g_stCommunicateDataSendSem,
-                  OS_CFG_TICK_RATE_HZ,
-                  OS_OPT_PEND_BLOCKING,
-                  NULL,
-                  &err);
-
-        while(g_stTxMsgDataSendBuff.Q_length != 0) {
-            g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].OccupyStatu = EN_SENDING;
-            //一帧一帧的发送数据,暂时不能灵活改变帧的长度，接收方的长度是固定的，如要变则需要在帧数据包中加上一个帧类型
-            SendAPrgmMsgFrame(PRGM_TX_BUFF_SIZE, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].Data);
-
-            OSSemPend(&g_stCommunicateDataSendResponseSem,
-                      OS_CFG_TICK_RATE_HZ / 5,//五分之一秒
-                      OS_OPT_PEND_BLOCKING,
-                      NULL,
-                      &err);
-
-            if(err == OS_ERR_NONE) { //正常发送
-//              APP_TRACE_INFO(("Send statu normal...\r\n"));
-            } else { //存储到历史记录存储区中
-                APP_TRACE_INFO(("Send statu err...\r\n"));
-            }
-
-            OSMutexPend(&TxMsgSendBuffWriteMutex,
-                        OS_CFG_TICK_RATE_HZ / 10,
-                        OS_OPT_PEND_BLOCKING,
-                        NULL,
-                        &err);
-            g_stTxMsgDataSendBuff.Q_length--;
-            g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].OccupyStatu = EN_FREE;
-            //原来的第二节点成为新的头节点
-            g_stTxMsgDataSendBuff.Q_Qhead = g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].D_next;
-            //原来的头节点后向指针指向自己—即新的头节点的前一节点
-            g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].D_last].D_next = g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].D_last;
-            g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].D_last = g_stTxMsgDataSendBuff.Q_Qhead;//新头节点的前向标记指向自己
-            OSMutexPost(&TxMsgSendBuffWriteMutex,
-                        OS_OPT_POST_NONE,
-                        &err);
-        }
+        
+          pTxMsgData = OSQPend((OS_Q        *)&CommInfoQueue,
+                               (OS_TICK      )OS_CFG_TICK_RATE_HZ / 5,
+                               (OS_OPT       )OS_OPT_PEND_BLOCKING,
+                               (OS_MSG_SIZE *)&msg_size,
+                               (CPU_TS      *)NULL,
+                               (OS_ERR      *)&err);
+        
+          if(err == OS_ERR_NONE){
+              if(pTxMsgData != NULL){
+				  
+                  SendAPrgmMsgFrame(msg_size, pTxMsgData);
+                  OSMemPut(&CommInfoMem,pTxMsgData,&err);    
+              }                   
+          }   
     }
 }
 
-/*
-***************************************************************************************************
-*                               AddRealTimeWorkInfoDataToSendBuff()
-*
-* Description :追加实时运行数据至发送缓冲区
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Note(s)     : none.
-***************************************************************************************************
-*/
-void AddRealTimeWorkInfoDataToSendBuff(uint8_t i_uint8_tIsLatestData, uint8_t i_uint8_RealTimeWorkInfoType)
-{
-    OS_ERR      err;
-    uint8_t i;
-
-    OSMutexPend(&TxMsgSendBuffWriteMutex,
-                OS_CFG_TICK_RATE_HZ / 10,
-                OS_OPT_PEND_BLOCKING,
-                NULL,
-                &err);
-
-    if(g_stTxMsgDataSendBuff.Q_length == 0) { //队列中没有信息待发送
-        g_stTxMsgDataSendBuff.Q_length++;
-        g_stTxMsgDataSendBuff.Q_Qhead = 0;
-        g_stTxMsgDataSendBuff.Q_Qrear = 0;
-        g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].D_last = g_stTxMsgDataSendBuff.Q_Qhead;
-        g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].D_next = g_stTxMsgDataSendBuff.Q_Qrear;
-        g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].OccupyStatu = EN_WAITTING;
-
-        if(REAL_TIME_RUNNING_INFORMATION_A == i_uint8_RealTimeWorkInfoType) {
-            LoadHydrogenProducerRealTimeWorkInfo(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
-        } else if(REAL_TIME_RUNNING_INFORMATION_B_1 == i_uint8_RealTimeWorkInfoType) {
-            LoadFuelCellRealTimeWorkInfoPartA(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
-        } else if(REAL_TIME_RUNNING_INFORMATION_B_2 == i_uint8_RealTimeWorkInfoType) {
-            LoadFuelCellRealTimeWorkInfoPartB(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
-        } else {}
-
-    } else if(++g_stTxMsgDataSendBuff.Q_length <= TX_MSG_SEND_QUEUE_SIZE) {
-        //从缓冲区头搜寻空闲节点
-        for(i = 0; i < TX_MSG_SEND_QUEUE_SIZE; i++) {
-            if(g_stTxMsgDataSendBuff.Queue[i].OccupyStatu == EN_FREE) {
-                g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].D_next = i;//先前的尾节点后向标记指向搜寻到的空节点
-                g_stTxMsgDataSendBuff.Queue[i].D_last = g_stTxMsgDataSendBuff.Q_Qrear;//开辟的新节点的前向标记指向原来的尾节点
-                g_stTxMsgDataSendBuff.Q_Qrear = i;//尾节点更新到新的节点
-                g_stTxMsgDataSendBuff.Queue[i].OccupyStatu = EN_WAITTING;//新节点的状态更新为等待发送
-
-                if(REAL_TIME_RUNNING_INFORMATION_A == i_uint8_RealTimeWorkInfoType) {
-                    LoadHydrogenProducerRealTimeWorkInfo(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
-                } else if(REAL_TIME_RUNNING_INFORMATION_B_1 == i_uint8_RealTimeWorkInfoType) {
-                    LoadFuelCellRealTimeWorkInfoPartA(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
-                } else if(REAL_TIME_RUNNING_INFORMATION_B_2 == i_uint8_RealTimeWorkInfoType) {
-                    LoadFuelCellRealTimeWorkInfoPartB(i_uint8_tIsLatestData, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].Data);
-                } else {}
-
-                break;
-            }
-        }
-    } else {
-        --g_stTxMsgDataSendBuff.Q_length;
-        APP_TRACE_INFO(("The real time sends message buffer is overflow...\r\n"));
-    }
-
-    OSMutexPost(&TxMsgSendBuffWriteMutex,       //释放写发送缓冲区互斥锁
-                OS_OPT_POST_NONE,
-                &err);
-}
 
 /*
 ***************************************************************************************************
-*                                      LoadHydrogenProducerRealTimeWorkInfo()
+*                                      AddRealTimeWorkInfoPartA1ToSendQueue()
 *
 * Description:  载入制氢机实时运行数据,或当前的,或提取自历史记录.
 *
@@ -354,15 +289,16 @@ void AddRealTimeWorkInfoDataToSendBuff(uint8_t i_uint8_tIsLatestData, uint8_t i_
 * Returns    :  none
 ***************************************************************************************************
 */
-static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData, uint8_t *i_pRealTimeWorkInfo)
+static void AddRealTimeWorkInfoPartA1ToSendQueue(void)
 {
-
+	OS_ERR        err;
+	CPU_INT08U   *pTxBlkPtr; 
     uint16_t    u16CurrentTemp = 0;
     uint16_t    u16HydrgWorkTimes = 0;
-    uint16_t    u16HydrogenGasConcentration = 0;
+//    uint16_t    u16HydrogenGasConcentration = 0;
     uint16_t    u16VacuumNetativePressure = 0;
     uint16_t    u16LiquidLevel = 0;
-    uint16_t    u16LiquidFeedPerMinute = 0;
+//    uint16_t    u16LiquidFeedPerMinute = 0;
     uint16_t    u16PumpFeedbackSpeed = 0, u16PumpCtlSpeed = 0;
     uint16_t    u16HydrgFanCtlSpd = 0, u16HydrgFeedbackFanSpd = 0;
 //    uint16_t    u16FluidWeightPerMinuteMul100 = 0;
@@ -371,117 +307,126 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
     uint32_t    u32SystemRunningStatuCode = 0;
     SYSTEM_TIME_Typedef     stHydrgProduceTimeThisTime = {0}, stHydrgProduceTimeTotal = {0};
 
-    if(i_uint8_tIsHistoryData == EN_LATEST) { //最新的数据
+	pTxBlkPtr = OSMemGet(&CommInfoMem,&err);
+	
+    if(err == OS_ERR_NONE){
 //        APP_TRACE_INFO(("Load Hydrogen Producer real time work info...\r\n"));
         //数据报头段
-        *(i_pRealTimeWorkInfo + HEAD_BYTE_ONE) = 0xF1;
-        *(i_pRealTimeWorkInfo + HEAD_BYTE_TWO) = 0xF2;
-        *(i_pRealTimeWorkInfo + HEAD_BYTE_THREE) = 0xF3;
-        *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)((PRODUCT_MODEL_CODE & 0xFF00) >>  8);
-        *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(PRODUCT_MODEL_CODE & 0xFF);
-        *(i_pRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = g_u16GlobalNetWorkId;
+        *(pTxBlkPtr + HEAD_BYTE_ONE) = 0xF1;
+        *(pTxBlkPtr + HEAD_BYTE_TWO) = 0xF2;
+        *(pTxBlkPtr + HEAD_BYTE_THREE) = 0xF3;
+        *(pTxBlkPtr + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)((g_ProductsType & 0xFF00) >>  8);
+        *(pTxBlkPtr + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(g_ProductsType & 0xFF);
+        *(pTxBlkPtr + LOCAL_NETWORK_ID_CODE) = g_u16GlobalNetWorkId;
 
-        *(i_pRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)REAL_TIME_RUNNING_INFORMATION_A;
-        *(i_pRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_RUNNING_INFO_A_LENGTH;
+        *(pTxBlkPtr + INFORMATION_TYPE_CODE) = (uint8_t)RT_RUNNING_INFO_A_PART_A;
+        *(pTxBlkPtr + VALID_INFO_LEN_CTRL_CODE) = RT_RUNNING_INFO_A_1_LEN;
 
         //数据标签码码值增加
-        g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_A]++;
-        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_A] >> 24);
-        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_A] & 0xFF0000) >> 16);
-        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_A] & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_A] & 0xFF);
+        g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_A_PART_A]++;
+        *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_A_PART_A] >> 24);
+        *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_A_PART_A] & 0xFF0000) >> 16);
+        *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_A_PART_A] & 0xFF00) >> 8);
+        *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_A_PART_A] & 0xFF);
 
         //运行警报码
         u32AlarmCode = GetRunAlarmCode();
-        *(i_pRealTimeWorkInfo + RUN_ALARM_CODE_BYTE_4) = (uint8_t)(u32AlarmCode >> 24);
-        *(i_pRealTimeWorkInfo + RUN_ALARM_CODE_BYTE_3) = (uint8_t)((u32AlarmCode & 0xFF0000) >> 16);
-        *(i_pRealTimeWorkInfo + RUN_ALARM_CODE_BYTE_2) = (uint8_t)((u32AlarmCode & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + RUN_ALARM_CODE_BYTE_1) = (uint8_t)(u32AlarmCode & 0xFF);
+        *(pTxBlkPtr + RUN_ALARM_CODE_BYTE_4) = (uint8_t)(u32AlarmCode >> 24);
+        *(pTxBlkPtr + RUN_ALARM_CODE_BYTE_3) = (uint8_t)((u32AlarmCode & 0xFF0000) >> 16);
+        *(pTxBlkPtr + RUN_ALARM_CODE_BYTE_2) = (uint8_t)((u32AlarmCode & 0xFF00) >> 8);
+        *(pTxBlkPtr + RUN_ALARM_CODE_BYTE_1) = (uint8_t)(u32AlarmCode & 0xFF);
         //运行状态码
         u32SystemRunningStatuCode = GetSystemRunningStatuCode();
-        *(i_pRealTimeWorkInfo + RUNNING_STATU_CODE_BYTE_4) = (uint8_t)(u32SystemRunningStatuCode >> 24);
-        *(i_pRealTimeWorkInfo + RUNNING_STATU_CODE_BYTE_3) = (uint8_t)((u32SystemRunningStatuCode & 0xFF0000) >> 16);
-        *(i_pRealTimeWorkInfo + RUNNING_STATU_CODE_BYTE_2) = (uint8_t)((u32SystemRunningStatuCode & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + RUNNING_STATU_CODE_BYTE_1) = (uint8_t)(u32SystemRunningStatuCode & 0xFF);
+        *(pTxBlkPtr + RUNNING_STATU_CODE_BYTE_4) = (uint8_t)(u32SystemRunningStatuCode >> 24);
+        *(pTxBlkPtr + RUNNING_STATU_CODE_BYTE_3) = (uint8_t)((u32SystemRunningStatuCode & 0xFF0000) >> 16);
+        *(pTxBlkPtr + RUNNING_STATU_CODE_BYTE_2) = (uint8_t)((u32SystemRunningStatuCode & 0xFF00) >> 8);
+        *(pTxBlkPtr + RUNNING_STATU_CODE_BYTE_1) = (uint8_t)(u32SystemRunningStatuCode & 0xFF);
         //重整温度
         u16CurrentTemp = (uint16_t)GetReformerTemp();
-        *(i_pRealTimeWorkInfo + REFORMER_TEMP_HIGH) = (uint8_t)((u16CurrentTemp & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + REFORMER_TEMP_LOW) = (uint8_t)((u16CurrentTemp & 0xFF));
+        *(pTxBlkPtr + REFORMER_TEMP_HIGH) = (uint8_t)((u16CurrentTemp & 0xFF00) >> 8);
+        *(pTxBlkPtr + REFORMER_TEMP_LOW) = (uint8_t)((u16CurrentTemp & 0xFF));
         //火焰温度
         u16CurrentTemp = (uint16_t)GetFireOrRodTemp();
-        *(i_pRealTimeWorkInfo + FIRE_OR_ROD_TEMP_HIGH) = (uint8_t)((u16CurrentTemp & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + FIRE_OR_ROD_TEMP_LOW) = (uint8_t)((u16CurrentTemp & 0xFF));
+        *(pTxBlkPtr + FIRE_OR_ROD_TEMP_HIGH) = (uint8_t)((u16CurrentTemp & 0xFF00) >> 8);
+        *(pTxBlkPtr + FIRE_OR_ROD_TEMP_LOW) = (uint8_t)((u16CurrentTemp & 0xFF));
         //液压
         m_u16LiquidPress = (uint16_t)(GetSrcAnaSig(LIQUID_PRESS) * 100);
-        *(i_pRealTimeWorkInfo + LIQUID_PRESS_INTEGER_PART) = (uint8_t)(m_u16LiquidPress / 100);
-        *(i_pRealTimeWorkInfo + LIQUID_PRESS_DECIMAL_PART) = (uint8_t)(m_u16LiquidPress % 100);
+        *(pTxBlkPtr + LIQUID_PRESS_INTEGER_PART) = (uint8_t)(m_u16LiquidPress / 100);
+        *(pTxBlkPtr + LIQUID_PRESS_DECIMAL_PART) = (uint8_t)(m_u16LiquidPress % 100);
         //风机控制速度
         u16HydrgFanCtlSpd = GetHydrgFanCurrentCtlSpd();
-        *(i_pRealTimeWorkInfo + HYDROGEN_FAN_SPD_CONTROL_HIGH) = (uint8_t)((u16HydrgFanCtlSpd & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + HYDROGEN_FAN_SPD_CONTROL_LOW) = (uint8_t)((u16HydrgFanCtlSpd & 0xFF));
+        *(pTxBlkPtr + HYDROGEN_FAN_SPD_CONTROL_HIGH) = (uint8_t)((u16HydrgFanCtlSpd & 0xFF00) >> 8);
+        *(pTxBlkPtr + HYDROGEN_FAN_SPD_CONTROL_LOW) = (uint8_t)((u16HydrgFanCtlSpd & 0xFF));
         //风机反馈速度
         u16HydrgFeedbackFanSpd = GetHydrgFanFeedBackSpd();
-        *(i_pRealTimeWorkInfo + HYDROGEN_FAN_SPD_FEEDBACK_HIGH) = (uint8_t)((u16HydrgFeedbackFanSpd & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + HYDROGEN_FAN_SPD_FEEDBACK_LOW) = (uint8_t)((u16HydrgFeedbackFanSpd & 0xFF));
+        *(pTxBlkPtr + HYDROGEN_FAN_SPD_FEEDBACK_HIGH) = (uint8_t)((u16HydrgFeedbackFanSpd & 0xFF00) >> 8);
+        *(pTxBlkPtr + HYDROGEN_FAN_SPD_FEEDBACK_LOW) = (uint8_t)((u16HydrgFeedbackFanSpd & 0xFF));
         //水泵控制速度
         u16PumpCtlSpeed = GetPumpCtlSpd();
-        *(i_pRealTimeWorkInfo + PUMP_SPD_CONTROL_HIGH) = (uint8_t)((u16PumpCtlSpeed & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + PUMP_SPD_CONTROL_LOW) = (uint8_t)(u16PumpCtlSpeed & 0xFF);
+        *(pTxBlkPtr + PUMP_SPD_CONTROL_HIGH) = (uint8_t)((u16PumpCtlSpeed & 0xFF00) >> 8);
+        *(pTxBlkPtr + PUMP_SPD_CONTROL_LOW) = (uint8_t)(u16PumpCtlSpeed & 0xFF);
         //水泵反馈速度
         u16PumpFeedbackSpeed = GetPumpFeedBackSpd();
-        *(i_pRealTimeWorkInfo + PUMP_SPD_FEEDBACK_HIGH) = (uint8_t)((u16PumpFeedbackSpeed & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + PUMP_SPD_FEEDBACK_LOW) = (uint8_t)(u16PumpFeedbackSpeed & 0xFF);
+        *(pTxBlkPtr + PUMP_SPD_FEEDBACK_HIGH) = (uint8_t)((u16PumpFeedbackSpeed & 0xFF00) >> 8);
+        *(pTxBlkPtr + PUMP_SPD_FEEDBACK_LOW) = (uint8_t)(u16PumpFeedbackSpeed & 0xFF);
 
         //本次制氢时间,APP上主界面显示的是这个的值
         stHydrgProduceTimeThisTime = GetHydrgProduceTimeThisTime();
         //  APP_TRACE_INFO(("AAAAA:%d%d\r\nMinut:%d\r\nSecond:%d\r\n",(uint8_t)((stHydrgProduceTimeThisTime.hour & 0xFF00) >> 8),(uint8_t)((stHydrgProduceTimeThisTime.hour & 0xFF)), stHydrgProduceTimeThisTime.minute,stHydrgProduceTimeThisTime.second));
-        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TIME_THIS_TIME_HOUR_HIGH) = (uint8_t)((stHydrgProduceTimeThisTime.hour & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TIME_THIS_TIME_HOUR_LOW) = (uint8_t)(stHydrgProduceTimeThisTime.hour & 0xFF);
-        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TIME_THIS_TIME_MINUTE) = stHydrgProduceTimeThisTime.minute;
-        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TIME_THIS_TIME_SECOND) = stHydrgProduceTimeThisTime.second;
+        *(pTxBlkPtr + HYDROGEN_PRODUCT_TIME_THIS_TIME_HOUR_HIGH) = (uint8_t)((stHydrgProduceTimeThisTime.hour & 0xFF00) >> 8);
+        *(pTxBlkPtr + HYDROGEN_PRODUCT_TIME_THIS_TIME_HOUR_LOW) = (uint8_t)(stHydrgProduceTimeThisTime.hour & 0xFF);
+        *(pTxBlkPtr + HYDROGEN_PRODUCT_TIME_THIS_TIME_MINUTE) = stHydrgProduceTimeThisTime.minute;
+        *(pTxBlkPtr + HYDROGEN_PRODUCT_TIME_THIS_TIME_SECOND) = stHydrgProduceTimeThisTime.second;
         //累计制氢时间
         stHydrgProduceTimeTotal = GetHydrgProduceTimeThisTime();//暂以本次制氢时间代替
-        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TIME_TOTAL_HOUR_HIGH) = (uint8_t)((stHydrgProduceTimeTotal.hour & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TIME_TOTAL_HOUR_LOW) = (uint8_t)(stHydrgProduceTimeTotal.hour & 0xFF);
-        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TIME_TOTAL_MINUTE) = stHydrgProduceTimeTotal.minute;
-        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TIME_TOTAL_SECOND) = stHydrgProduceTimeTotal.second;
+        *(pTxBlkPtr + HYDROGEN_PRODUCT_TIME_TOTAL_HOUR_HIGH) = (uint8_t)((stHydrgProduceTimeTotal.hour & 0xFF00) >> 8);
+        *(pTxBlkPtr + HYDROGEN_PRODUCT_TIME_TOTAL_HOUR_LOW) = (uint8_t)(stHydrgProduceTimeTotal.hour & 0xFF);
+        *(pTxBlkPtr + HYDROGEN_PRODUCT_TIME_TOTAL_MINUTE) = stHydrgProduceTimeTotal.minute;
+        *(pTxBlkPtr + HYDROGEN_PRODUCT_TIME_TOTAL_SECOND) = stHydrgProduceTimeTotal.second;
         //累计制氢次数
         u16HydrgWorkTimes = GetHydrgProducerWorkTimes();
-        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TOTAL_TIMES_HIGH) = (uint8_t)((u16HydrgWorkTimes & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_TOTAL_TIMES_LOW) = (uint8_t)(u16HydrgWorkTimes & 0xFF);
+        *(pTxBlkPtr + HYDROGEN_PRODUCT_TOTAL_TIMES_HIGH) = (uint8_t)((u16HydrgWorkTimes & 0xFF00) >> 8);
+        *(pTxBlkPtr + HYDROGEN_PRODUCT_TOTAL_TIMES_LOW) = (uint8_t)(u16HydrgWorkTimes & 0xFF);
 
         //液位数据
         u16LiquidLevel = (uint16_t)GetSrcAnaSig(LIQUID_LEVEL);
-//        u16LiquidLevel = 235;
-        *(i_pRealTimeWorkInfo + LIQUID_LEVEL_INTEGER_PART) = (uint8_t)((u16LiquidLevel & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + LIQUID_LEVEL_DECIMAL_PART) = (uint8_t)(u16LiquidLevel & 0xFF);
+        *(pTxBlkPtr + LIQUID_LEVEL_INTEGER_PART) = (uint8_t)((u16LiquidLevel & 0xFF00) >> 8);
+        *(pTxBlkPtr + LIQUID_LEVEL_DECIMAL_PART) = (uint8_t)(u16LiquidLevel & 0xFF);
+		
         //每分钟进液量
 //        u16LiquidFeedPerMinute = (uint16_t)(ReadLiquidFlowRate() * 100);
-        u16LiquidFeedPerMinute = 0;
-        *(i_pRealTimeWorkInfo + LIQUID_FEED_PER_MINUTE_INTEGER_PART) = (uint8_t)(u16LiquidFeedPerMinute / 100);
-        *(i_pRealTimeWorkInfo + LIQUID_FEED_PER_MINUTE_DECIMAL_PART) = (uint8_t)(u16LiquidFeedPerMinute % 100);
+//        u16LiquidFeedPerMinute = 0;
+//        *(pTxBlkPtr + LIQUID_FEED_PER_MINUTE_INTEGER_PART) = (uint8_t)(u16LiquidFeedPerMinute / 100);
+//        *(pTxBlkPtr + LIQUID_FEED_PER_MINUTE_DECIMAL_PART) = (uint8_t)(u16LiquidFeedPerMinute % 100);
 
         //真空负压
-//        u16VacuumNetativePressure = (uint16_t)(GetSrcAnaSig(NEGATIVE_PRESSURE) * 100);
-        u16VacuumNetativePressure = 0;
-        *(i_pRealTimeWorkInfo + VACUUM_NEGATIVE_PRESSURE_HIGH) = (uint8_t)(u16VacuumNetativePressure / 100);
-        *(i_pRealTimeWorkInfo + VACUUM_NEGATIVE_PRESSURE_LOW) = (uint8_t)(u16VacuumNetativePressure % 100);
+        u16VacuumNetativePressure = (uint16_t)(GetSrcAnaSig(NEGATIVE_PRESSURE) * 100);
+        *(pTxBlkPtr + VACUUM_NEGATIVE_PRESSURE_HIGH) = (uint8_t)(u16VacuumNetativePressure / 100);
+        *(pTxBlkPtr + VACUUM_NEGATIVE_PRESSURE_LOW) = (uint8_t)(u16VacuumNetativePressure % 100);
 
         //氢气浓度
 //        u16HydrogenGasConcentration = (uint16_t)(GetSrcAnaSig(HYDROGEN_CONCENTRATION) * 100);
-        u16HydrogenGasConcentration = 0;
-        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_GAS_CONCENTRATION_INTEGER_PART) = (uint8_t)(u16HydrogenGasConcentration / 100);
-        *(i_pRealTimeWorkInfo + HYDROGEN_PRODUCT_GAS_CONCENTRATION_DECIMAL_PART) = (uint8_t)(u16HydrogenGasConcentration % 100);
+//        u16HydrogenGasConcentration = 0;
+//        *(pTxBlkPtr + HYDROGEN_PRODUCT_GAS_CONCENTRATION_INTEGER_PART) = (uint8_t)(u16HydrogenGasConcentration / 100);
+//        *(pTxBlkPtr + HYDROGEN_PRODUCT_GAS_CONCENTRATION_DECIMAL_PART) = (uint8_t)(u16HydrogenGasConcentration % 100);
 
         //子模块ID号
-//        *(i_pRealTimeWorkInfo + SUB_MODULE_ID_OF_THE_MULTI_MODULE_TYPE) = SUB_MODULE_ID;
+//        *(pTxBlkPtr + SUB_MODULE_ID_OF_THE_MULTI_MODULE_TYPE) = SUB_MODULE_ID;
         //数据报尾段
-        *(i_pRealTimeWorkInfo + END_BYTE_ONE) = 0x5F;
-        *(i_pRealTimeWorkInfo + END_BYTE_TWO) = 0x6F;
+        *(pTxBlkPtr + END_BYTE_ONE) = 0x5F;
+        *(pTxBlkPtr + END_BYTE_TWO) = 0x6F;
 
-    } else { //载入历史数据
-
-    }
+		OSQPost(&CommInfoQueue,
+				pTxBlkPtr,
+				TX_MSG_MEM_BLK_SIZE,
+				OS_OPT_POST_FIFO,
+				&err);
+		if(err != OS_ERR_NONE){
+			APP_TRACE_INFO(("- ->RT work info part_a1 msg post err,err code is %d\n\r",err));
+		}
+	}else{
+		APP_TRACE_INFO(("- ->RT work info part_a1 mem blk get err,err code is %d\n\r",err));
+	}   
 }
 /*
 ***************************************************************************************************
@@ -494,8 +439,10 @@ static void LoadHydrogenProducerRealTimeWorkInfo(uint8_t i_uint8_tIsHistoryData,
 * Returns    :  none
 ***************************************************************************************************
 */
-static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, uint8_t *i_pRealTimeWorkInfo)
+static void AddRealTimeWorkInfoPartB1ToSendQueue(void)
 {
+	OS_ERR        err;
+	CPU_INT08U   *pTxBlkPtr; 
     uint16_t  u16StackTemp = 0;
     uint16_t  u16StackFanSpdFeedBack = 0;
     uint16_t  u16StackFanSpdFeedBackB = 0;
@@ -506,135 +453,145 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
     uint16_t  m_u16StackVoltageMul100 = 0;
     uint16_t  m_u16StackPressMul100 = 0;
     uint32_t  u32IsolatedGenratedEnergyThisTime = 0;
-//    uint32_t  u32IsolatedGenratedEnergyCount = 0;
+    uint32_t  u32IsolatedGenratedEnergyCount = 0;
     int16_t   i16HydrogYieldMatchOffsetValue = 0;
     uint32_t  u32SystemWorkStatuCode = 0;
     SYSTEM_TIME_Typedef     stStackWorkTimeThisTime = {0}, stStackWorkTimeTotal = {0};
 
-    if(i_uint8_tIsHistoryData == EN_LATEST) { //最新的数据
+    pTxBlkPtr = OSMemGet(&CommInfoMem,&err);
+    
+    if(err == OS_ERR_NONE){
 //        APP_TRACE_INFO(("Load Fuel cell real time part A work info...\r\n"));
         //数据报头段
-        *(i_pRealTimeWorkInfo + HEAD_BYTE_ONE) = 0xF1;
-        *(i_pRealTimeWorkInfo + HEAD_BYTE_TWO) = 0xF2;
-        *(i_pRealTimeWorkInfo + HEAD_BYTE_THREE) = 0xF3;
-        *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)(PRODUCT_MODEL_CODE >> 8);
-        *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(PRODUCT_MODEL_CODE & 0xFF);
-        *(i_pRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = g_u16GlobalNetWorkId;
+        *(pTxBlkPtr + HEAD_BYTE_ONE) = 0xF1;
+        *(pTxBlkPtr + HEAD_BYTE_TWO) = 0xF2;
+        *(pTxBlkPtr + HEAD_BYTE_THREE) = 0xF3;
+        *(pTxBlkPtr + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)(g_ProductsType >> 8);
+        *(pTxBlkPtr + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(g_ProductsType & 0xFF);
+        *(pTxBlkPtr + LOCAL_NETWORK_ID_CODE) = g_u16GlobalNetWorkId;
 
-        *(i_pRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)REAL_TIME_RUNNING_INFORMATION_B_1;
-        *(i_pRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_RUNNING_INFO_B_1_LENGTH;
+        *(pTxBlkPtr + INFORMATION_TYPE_CODE) = (uint8_t)RT_RUNNING_INFO_B_PART_A;
+        *(pTxBlkPtr + VALID_INFO_LEN_CTRL_CODE) = RT_RUNNING_INFO_B_1_LENGTH;
 
         //数据标签码码值增加
-        g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1]++;
-        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] >> 24);
-        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] & 0xFF0000) >> 16);
-        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] & 0xFF);
+        g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_B_PART_A]++;
+        *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_B_PART_A] >> 24);
+        *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_B_PART_A] & 0xFF0000) >> 16);
+        *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_B_PART_A] & 0xFF00) >> 8);
+        *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_B_PART_A] & 0xFF);
 
         //运行警报码
         u32AlarmCode = GetRunAlarmCode();
-        *(i_pRealTimeWorkInfo + RUN_ALARM_CODE_BYTE_4) = (uint8_t)(u32AlarmCode >> 24);
-        *(i_pRealTimeWorkInfo + RUN_ALARM_CODE_BYTE_3) = (uint8_t)((u32AlarmCode & 0xFF0000) >> 16);
-        *(i_pRealTimeWorkInfo + RUN_ALARM_CODE_BYTE_2) = (uint8_t)((u32AlarmCode & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + RUN_ALARM_CODE_BYTE_1) = (uint8_t)(u32AlarmCode & 0xFF);
+        *(pTxBlkPtr + RUN_ALARM_CODE_BYTE_4) = (uint8_t)(u32AlarmCode >> 24);
+        *(pTxBlkPtr + RUN_ALARM_CODE_BYTE_3) = (uint8_t)((u32AlarmCode & 0xFF0000) >> 16);
+        *(pTxBlkPtr + RUN_ALARM_CODE_BYTE_2) = (uint8_t)((u32AlarmCode & 0xFF00) >> 8);
+        *(pTxBlkPtr + RUN_ALARM_CODE_BYTE_1) = (uint8_t)(u32AlarmCode & 0xFF);
 
         //运行状态码
         u32SystemWorkStatuCode = GetSystemRunningStatuCode();
-        *(i_pRealTimeWorkInfo + RUNNING_STATU_CODE_BYTE_4) = (uint8_t)(u32SystemWorkStatuCode >> 24);
-        *(i_pRealTimeWorkInfo + RUNNING_STATU_CODE_BYTE_3) = (uint8_t)((u32SystemWorkStatuCode & 0xFF0000) >> 16);
-        *(i_pRealTimeWorkInfo + RUNNING_STATU_CODE_BYTE_2) = (uint8_t)((u32SystemWorkStatuCode & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + RUNNING_STATU_CODE_BYTE_1) = (uint8_t)(u32SystemWorkStatuCode & 0xFF);
+        *(pTxBlkPtr + RUNNING_STATU_CODE_BYTE_4) = (uint8_t)(u32SystemWorkStatuCode >> 24);
+        *(pTxBlkPtr + RUNNING_STATU_CODE_BYTE_3) = (uint8_t)((u32SystemWorkStatuCode & 0xFF0000) >> 16);
+        *(pTxBlkPtr + RUNNING_STATU_CODE_BYTE_2) = (uint8_t)((u32SystemWorkStatuCode & 0xFF00) >> 8);
+        *(pTxBlkPtr + RUNNING_STATU_CODE_BYTE_1) = (uint8_t)(u32SystemWorkStatuCode & 0xFF);
 
         //电堆电流*100
         m_u16StackCurrentMul100 = (uint16_t)(GetSrcAnaSig(STACK_CURRENT) * 100);
-        *(i_pRealTimeWorkInfo + STACK_CURRENT_INTEGER_PART) = (uint8_t)(m_u16StackCurrentMul100 / 100);
-        *(i_pRealTimeWorkInfo + STACK_CURRENT_DECIMAL_PART) = (uint8_t)(m_u16StackCurrentMul100 % 100);
+        *(pTxBlkPtr + STACK_CURRENT_INTEGER_PART) = (uint8_t)(m_u16StackCurrentMul100 / 100);
+        *(pTxBlkPtr + STACK_CURRENT_DECIMAL_PART) = (uint8_t)(m_u16StackCurrentMul100 % 100);
 
         //电堆电压*100
         m_u16StackVoltageMul100 = (uint16_t)(GetSrcAnaSig(STACK_VOLTAGE) * 100);
-        *(i_pRealTimeWorkInfo + STACK_VOLTAGE_INTEGER_PART) = (uint8_t)(m_u16StackVoltageMul100 / 100);
-        *(i_pRealTimeWorkInfo + STACK_VOLTAGE_DECIMAL_PART) = (uint8_t)(m_u16StackVoltageMul100 % 100);
+        *(pTxBlkPtr + STACK_VOLTAGE_INTEGER_PART) = (uint8_t)(m_u16StackVoltageMul100 / 100);
+        *(pTxBlkPtr + STACK_VOLTAGE_DECIMAL_PART) = (uint8_t)(m_u16StackVoltageMul100 % 100);
 
         //电堆温度,暂时只用整数部分
         u16StackTemp = (uint16_t)GetSrcAnaSig(STACK_TEMP);
-        *(i_pRealTimeWorkInfo + STACK_TEMP_INTEGER_PART) = (uint8_t)(u16StackTemp & 0xFF);
-//      *(i_pRealTimeWorkInfo + STACK_TEMP_INTEGER_PART) = (uint8_t)((u32SystemWorkStatuCode & 0xFF00) >> 8);
-//      *(i_pRealTimeWorkInfo + STACK_TEMP_DECIMAL_PART) = (uint8_t)(u32SystemWorkStatuCode & 0xFF);
+        *(pTxBlkPtr + STACK_TEMP_INTEGER_PART) = (uint8_t)(u16StackTemp & 0xFF);
+//      *(pTxBlkPtr + STACK_TEMP_INTEGER_PART) = (uint8_t)((u32SystemWorkStatuCode & 0xFF00) >> 8);
+//      *(pTxBlkPtr + STACK_TEMP_DECIMAL_PART) = (uint8_t)(u32SystemWorkStatuCode & 0xFF);
 
         //电堆氢气压力*100
         m_u16StackPressMul100 = (uint16_t)(GetSrcAnaSig(HYDROGEN_PRESS_1) * 100);
-        *(i_pRealTimeWorkInfo + STACK_HYDROGEN_PRESS_INTEGER_PART) = (uint8_t)(m_u16StackPressMul100 / 100);
-        *(i_pRealTimeWorkInfo + STACK_HYDROGEN_PRESS_DECIMAL_PART) = (uint8_t)(m_u16StackPressMul100 % 100);
+        *(pTxBlkPtr + STACK_HYDROGEN_PRESS_INTEGER_PART) = (uint8_t)(m_u16StackPressMul100 / 100);
+        *(pTxBlkPtr + STACK_HYDROGEN_PRESS_DECIMAL_PART) = (uint8_t)(m_u16StackPressMul100 % 100);
 
         //电堆风扇控制速度
         u16StackFanCtlSpd = GetStackFanCtlSpd();
-        *(i_pRealTimeWorkInfo + STACK_FAN_SPD_CONTROL_HIGH) = (uint8_t)((u16StackFanCtlSpd & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + STACK_FAN_SPD_CONTROL_LOW) = (uint8_t)(u16StackFanCtlSpd & 0xFF);
+        *(pTxBlkPtr + STACK_FAN_SPD_CONTROL_HIGH) = (uint8_t)((u16StackFanCtlSpd & 0xFF00) >> 8);
+        *(pTxBlkPtr + STACK_FAN_SPD_CONTROL_LOW) = (uint8_t)(u16StackFanCtlSpd & 0xFF);
 
         //电堆风扇反馈速度
         u16StackFanSpdFeedBack = GetStackFanSpdFeedBack();
-        *(i_pRealTimeWorkInfo + STACK_FAN_PART_A_SPD_FEEDBACK_HIGH) = (uint8_t)((u16StackFanSpdFeedBack & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + STACK_FAN_PART_A_SPD_FEEDBACK_LOW) = (uint8_t)(u16StackFanSpdFeedBack & 0xFF);
+        *(pTxBlkPtr + STACK_FAN_PART_A_SPD_FEEDBACK_HIGH) = (uint8_t)((u16StackFanSpdFeedBack & 0xFF00) >> 8);
+        *(pTxBlkPtr + STACK_FAN_PART_A_SPD_FEEDBACK_LOW) = (uint8_t)(u16StackFanSpdFeedBack & 0xFF);
 
         u16StackFanSpdFeedBackB = 0;
-        *(i_pRealTimeWorkInfo + STACK_FAN_PART_B_SPD_FEEDBACK_HIGH) = (uint8_t)((u16StackFanSpdFeedBackB & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + STACK_FAN_PART_B_SPD_FEEDBACK_LOW) = (uint8_t)(u16StackFanSpdFeedBackB & 0xFF);
+        *(pTxBlkPtr + STACK_FAN_PART_B_SPD_FEEDBACK_HIGH) = (uint8_t)((u16StackFanSpdFeedBackB & 0xFF00) >> 8);
+        *(pTxBlkPtr + STACK_FAN_PART_B_SPD_FEEDBACK_LOW) = (uint8_t)(u16StackFanSpdFeedBackB & 0xFF);
 
         //本次发电时间,APP上发电界面显示的是这个值
         stStackWorkTimeThisTime = GetStackProductTimeThisTime();
-        *(i_pRealTimeWorkInfo + STACK_WORK_TIME_THIS_TIME_HOUR_HIGH) = (uint8_t)((stStackWorkTimeThisTime.hour & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + STACK_WORK_TIME_THIS_TIME_HOUR_LOW) = (uint8_t)(stStackWorkTimeThisTime.hour & 0xFF);
-        *(i_pRealTimeWorkInfo + STACK_WORK_TIME_THIS_TIME_MINUTE) = (uint8_t)(stStackWorkTimeThisTime.minute);
-        *(i_pRealTimeWorkInfo + STACK_WORK_TIME_THIS_TIME_SECOND) = (uint8_t)(stStackWorkTimeThisTime.second);
+        *(pTxBlkPtr + STACK_WORK_TIME_THIS_TIME_HOUR_HIGH) = (uint8_t)((stStackWorkTimeThisTime.hour & 0xFF00) >> 8);
+        *(pTxBlkPtr + STACK_WORK_TIME_THIS_TIME_HOUR_LOW) = (uint8_t)(stStackWorkTimeThisTime.hour & 0xFF);
+        *(pTxBlkPtr + STACK_WORK_TIME_THIS_TIME_MINUTE) = (uint8_t)(stStackWorkTimeThisTime.minute);
+        *(pTxBlkPtr + STACK_WORK_TIME_THIS_TIME_SECOND) = (uint8_t)(stStackWorkTimeThisTime.second);
 
         //累计发电时间
         stStackWorkTimeTotal = GetStackProductTimeTotal();
-        *(i_pRealTimeWorkInfo + STACK_WORK_TIME_TOTAL_HOUR_HIGH) = (uint8_t)((stStackWorkTimeTotal.hour & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + STACK_WORK_TIME_TOTAL_HOUR_LOW) = (uint8_t)(stStackWorkTimeTotal.hour & 0xFF);
-        *(i_pRealTimeWorkInfo + STACK_WORK_TIME_TOTAL_MINUTE) = (uint8_t)(stStackWorkTimeTotal.minute);
-        *(i_pRealTimeWorkInfo + STACK_WORK_TIME_TOTAL_SECOND) = (uint8_t)(stStackWorkTimeTotal.second);
+        *(pTxBlkPtr + STACK_WORK_TIME_TOTAL_HOUR_HIGH) = (uint8_t)((stStackWorkTimeTotal.hour & 0xFF00) >> 8);
+        *(pTxBlkPtr + STACK_WORK_TIME_TOTAL_HOUR_LOW) = (uint8_t)(stStackWorkTimeTotal.hour & 0xFF);
+        *(pTxBlkPtr + STACK_WORK_TIME_TOTAL_MINUTE) = (uint8_t)(stStackWorkTimeTotal.minute);
+        *(pTxBlkPtr + STACK_WORK_TIME_TOTAL_SECOND) = (uint8_t)(stStackWorkTimeTotal.second);
 
         //当前输出功率
         u32StackPower = (uint32_t)(GetCurrentPower() * 100);
-        *(i_pRealTimeWorkInfo + CURRENT_ISOLATED_POWER_INTEGER_PART_HIGH) = (uint8_t)(((uint16_t)(u32StackPower / 100) & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + CURRENT_ISOLATED_POWER_INTEGER_PART_LOW) = (uint8_t)((uint16_t)(u32StackPower / 100) & 0xFF);
-        *(i_pRealTimeWorkInfo + CURRENT_ISOLATED_POWER_DECIMAL_PART) = (uint8_t)(u32StackPower % 100);
+        *(pTxBlkPtr + CURRENT_ISOLATED_POWER_INTEGER_PART_HIGH) = (uint8_t)(((uint16_t)(u32StackPower / 100) & 0xFF00) >> 8);
+        *(pTxBlkPtr + CURRENT_ISOLATED_POWER_INTEGER_PART_LOW) = (uint8_t)((uint16_t)(u32StackPower / 100) & 0xFF);
+        *(pTxBlkPtr + CURRENT_ISOLATED_POWER_DECIMAL_PART) = (uint8_t)(u32StackPower % 100);
 
         //本次单机发电量
         u32IsolatedGenratedEnergyThisTime = (uint32_t)(GetIsolatedGenratedEnergyThisTime() * 1000);
-//        u32IsolatedGenratedEnergyThisTime = 635423;
-        *(i_pRealTimeWorkInfo + ISOLATED_GENERATED_ENERGY_THIE_TIME_INTEGER_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyThisTime / 1000) & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + ISOLATED_GENERATED_ENERGY_THIE_TIME_INTEGER_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyThisTime / 1000) & 0xFF);
-        *(i_pRealTimeWorkInfo + ISOLATED_GENERATED_ENERGY_THIE_TIME_DECIMAL_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyThisTime % 1000) & 0xFF00) >> 8);
-        *(i_pRealTimeWorkInfo + ISOLATED_GENERATED_ENERGY_THIE_TIME_DECIMAL_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyThisTime % 1000) & 0xFF);
+        *(pTxBlkPtr + ISOLATED_GENERATED_ENERGY_THIE_TIME_INTEGER_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyThisTime / 1000) & 0xFF00) >> 8);
+        *(pTxBlkPtr + ISOLATED_GENERATED_ENERGY_THIE_TIME_INTEGER_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyThisTime / 1000) & 0xFF);
+        *(pTxBlkPtr + ISOLATED_GENERATED_ENERGY_THIE_TIME_DECIMAL_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyThisTime % 1000) & 0xFF00) >> 8);
+        *(pTxBlkPtr + ISOLATED_GENERATED_ENERGY_THIE_TIME_DECIMAL_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyThisTime % 1000) & 0xFF);
 
-//        u32IsolatedGenratedEnergyCount = 552341;
-//        *(i_pRealTimeWorkInfo + GENERATED_ENERGY_TOTAL_INTEGER_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyCount / 1000) & 0xFF00) >> 8);
-//        *(i_pRealTimeWorkInfo + GENERATED_ENERGY_TOTAL_INTEGER_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyCount / 1000) & 0xFF);
-//        *(i_pRealTimeWorkInfo + GENERATED_ENERGY_TOTAL_DECIMAL_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyCount % 1000) & 0xFF00) >> 8);
-//        *(i_pRealTimeWorkInfo + GENERATED_ENERGY_TOTAL_DECIMAL_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyCount % 1000) & 0xFF);
+        u32IsolatedGenratedEnergyCount = 0;
+        *(pTxBlkPtr + GENERATED_ENERGY_TOTAL_INTEGER_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyCount / 1000) & 0xFF00) >> 8);
+        *(pTxBlkPtr + GENERATED_ENERGY_TOTAL_INTEGER_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyCount / 1000) & 0xFF);
+        *(pTxBlkPtr + GENERATED_ENERGY_TOTAL_DECIMAL_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyCount % 1000) & 0xFF00) >> 8);
+        *(pTxBlkPtr + GENERATED_ENERGY_TOTAL_DECIMAL_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyCount % 1000) & 0xFF);
 
         //匹氢偏移值
-        i16HydrogYieldMatchOffsetValue = (int16_t)(GetStackHydrogenYieldMatchOffsetValue() * 100);
+		i16HydrogYieldMatchOffsetValue = 0;
+//        i16HydrogYieldMatchOffsetValue = (int16_t)(GetStackHydrogenYieldMatchOffsetValue() * 100);
 
-        if(i16HydrogYieldMatchOffsetValue > 0 || i16HydrogYieldMatchOffsetValue < -100) { //整数位带符号位
-            *(i_pRealTimeWorkInfo + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_INTEGER_PART_MUL100) = (int8_t)(i16HydrogYieldMatchOffsetValue / 100);
-            *(i_pRealTimeWorkInfo + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_DECIMAL_PART_MUL100_HIGH) = (uint8_t)(((i16HydrogYieldMatchOffsetValue % 100)) & 0xFF);
-        } else { //小数位带符号位
-            *(i_pRealTimeWorkInfo + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_INTEGER_PART_MUL100) = (uint8_t)(i16HydrogYieldMatchOffsetValue / 100);
-            *(i_pRealTimeWorkInfo + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_DECIMAL_PART_MUL100_HIGH) = (int8_t)((i16HydrogYieldMatchOffsetValue % 100) & 0xFF);
-        }
+//        if(i16HydrogYieldMatchOffsetValue > 0 || i16HydrogYieldMatchOffsetValue < -100) { //整数位带符号位
+//            *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_INTEGER_PART_MUL100) = (int8_t)(i16HydrogYieldMatchOffsetValue / 100);
+//            *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_DECIMAL_PART_MUL100_HIGH) = (uint8_t)(((i16HydrogYieldMatchOffsetValue % 100)) & 0xFF);
+//        } else { //小数位带符号位
+//            *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_INTEGER_PART_MUL100) = (uint8_t)(i16HydrogYieldMatchOffsetValue / 100);
+//            *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_DECIMAL_PART_MUL100_HIGH) = (int8_t)((i16HydrogYieldMatchOffsetValue % 100) & 0xFF);
+//        }
 
         //子模块ID号
-//        *(i_pRealTimeWorkInfo + SUB_MODULE_ID_OF_THE_MULTI_MODULE_TYPE) = SUB_MODULE_ID;
+//        *(pTxBlkPtr + SUB_MODULE_ID_OF_THE_MULTI_MODULE_TYPE) = SUB_MODULE_ID;
 
         //数据报尾段
-        *(i_pRealTimeWorkInfo + END_BYTE_ONE) = 0x5F;
-        *(i_pRealTimeWorkInfo + END_BYTE_TWO) = 0x6F;
-
-    } else { //载入历史数据
-
-    }
+        *(pTxBlkPtr + END_BYTE_ONE) = 0x5F;
+        *(pTxBlkPtr + END_BYTE_TWO) = 0x6F;
+		
+		OSQPost(&CommInfoQueue,
+                pTxBlkPtr,
+                TX_MSG_MEM_BLK_SIZE,
+                OS_OPT_POST_FIFO,
+                &err);
+        if(err != OS_ERR_NONE){
+            APP_TRACE_INFO(("- ->RT work info part_b1 msg post err,err code is %d\n\r",err));
+        }
+    }else{
+        APP_TRACE_INFO(("- ->RT work info part_b1 mem blk get err,err code is %d\n\r",err));
+    }   
 }
 
 /*
@@ -648,140 +605,71 @@ static void LoadFuelCellRealTimeWorkInfoPartA(uint8_t i_uint8_tIsHistoryData, ui
 * Returns    :  none
 ***************************************************************************************************
 */
-static void LoadFuelCellRealTimeWorkInfoPartB(uint8_t i_uint8_tIsHistoryData, uint8_t *i_pRealTimeWorkInfo)
+static void AddRealTimeWorkInfoPartB2ToSendQueue(void)
 {
+	OS_ERR       err;
+    CPU_INT08U   *pTxBlkPtr;
     uint16_t   u8DecompressCountPerMin = 0;
     uint16_t   u16BatteryVoltage = 0.0;
     uint16_t   u16BatteryCurrent = 0.0;
 
-    if(i_uint8_tIsHistoryData == EN_LATEST) { //最新的数据
+    pTxBlkPtr = OSMemGet(&CommInfoMem,&err);
+    
+    if(err == OS_ERR_NONE){
 
 //        APP_TRACE_INFO(("Load Fuel cell real time part B work info...\r\n"));
         //数据报头段
-        *(i_pRealTimeWorkInfo + HEAD_BYTE_ONE) = 0xF1;
-        *(i_pRealTimeWorkInfo + HEAD_BYTE_TWO) = 0xF2;
-        *(i_pRealTimeWorkInfo + HEAD_BYTE_THREE) = 0xF3;
-        *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)(PRODUCT_MODEL_CODE >> 8);
-        *(i_pRealTimeWorkInfo + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(PRODUCT_MODEL_CODE & 0xFF);
-        *(i_pRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = g_u16GlobalNetWorkId;
-        *(i_pRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)REAL_TIME_RUNNING_INFORMATION_B_2;
-        *(i_pRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_RUNNING_INFO_B_2_LENGTH;
+        *(pTxBlkPtr + HEAD_BYTE_ONE) = 0xF1;
+        *(pTxBlkPtr + HEAD_BYTE_TWO) = 0xF2;
+        *(pTxBlkPtr + HEAD_BYTE_THREE) = 0xF3;
+        *(pTxBlkPtr + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)(g_ProductsType >> 8);
+        *(pTxBlkPtr + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(g_ProductsType & 0xFF);
+        *(pTxBlkPtr + LOCAL_NETWORK_ID_CODE) = g_u16GlobalNetWorkId;
+        *(pTxBlkPtr + INFORMATION_TYPE_CODE) = (uint8_t)RT_RUNNING_INFO_B_PART_B;
+        *(pTxBlkPtr + VALID_INFO_LEN_CTRL_CODE) = RT_RUNNING_INFO_B_2_LENGTH;
 
         //数据标签码码值增加
-//        g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1]++;
-//        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] >> 24);
-//        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] & 0xFF0000) >> 16);
-//        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] & 0xFF00) >> 8);
-//        *(i_pRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[REAL_TIME_RUNNING_INFORMATION_B_1] & 0xFF);
+        g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_B_PART_A]++;
+        *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_B_PART_A] >> 24);
+        *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_B_PART_A] & 0xFF0000) >> 16);
+        *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_B_PART_A] & 0xFF00) >> 8);
+        *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_B_PART_A] & 0xFF);
 
         //电堆一分钟内实时的泄压排气次数
         u8DecompressCountPerMin = GetPassiveDecompressCountPerMinutes();
-        *(i_pRealTimeWorkInfo + STACK_DECOMPRESS_COUNT_PER_MINUTES_HIGH) = 0;
-        *(i_pRealTimeWorkInfo + STACK_DECOMPRESS_COUNT_PER_MINUTES_LOW) = (uint8_t)(u8DecompressCountPerMin & 0xFF);
+        *(pTxBlkPtr + STACK_DECOMPRESS_COUNT_PER_MINUTES_HIGH) = 0;
+        *(pTxBlkPtr + STACK_DECOMPRESS_COUNT_PER_MINUTES_LOW) = (uint8_t)(u8DecompressCountPerMin & 0xFF);
 
         //电池电压
-//        u16BatteryVoltage = (uint16_t)(GetSrcAnaSig(BATTERY_VOLTAGE) * 100);
-        u16BatteryVoltage = 0;
-        *(i_pRealTimeWorkInfo + BATTERY_VOLTAGE_INTEGER_PART) = (uint8_t)(u16BatteryVoltage / 100);
-        *(i_pRealTimeWorkInfo + BATTERY_VOLTAGE_IDECIMAL_PART) = (uint8_t)(u16BatteryVoltage % 100);
+        u16BatteryVoltage = (uint16_t)(GetSrcAnaSig(BATTERY_VOLTAGE) * 100);
+        *(pTxBlkPtr + BATTERY_VOLTAGE_INTEGER_PART) = (uint8_t)(u16BatteryVoltage / 100);
+        *(pTxBlkPtr + BATTERY_VOLTAGE_IDECIMAL_PART) = (uint8_t)(u16BatteryVoltage % 100);
 
         //电池电流
 //        u16BatteryCurrent = (uint16_t)(GetSrcAnaSig(BATTERY_CURRENT) * 100);
         u16BatteryCurrent = 0;
-        *(i_pRealTimeWorkInfo + BATTERY_CURRENT_INTEGER_PART) = (uint8_t)(u16BatteryCurrent / 100);
-        *(i_pRealTimeWorkInfo + BATTERY_CURRENT_IDECIMAL_PART) = (uint8_t)(u16BatteryCurrent % 100);
+        *(pTxBlkPtr + BATTERY_CURRENT_INTEGER_PART) = (uint8_t)(u16BatteryCurrent / 100);
+        *(pTxBlkPtr + BATTERY_CURRENT_IDECIMAL_PART) = (uint8_t)(u16BatteryCurrent % 100);
 
         //数据报尾段
-        *(i_pRealTimeWorkInfo + END_BYTE_ONE) = 0x5F;
-        *(i_pRealTimeWorkInfo + END_BYTE_TWO) = 0x6F;
-
-    } else { //载入历史数据
-
+        *(pTxBlkPtr + END_BYTE_ONE) = 0x5F;
+        *(pTxBlkPtr + END_BYTE_TWO) = 0x6F;
+		
+		OSQPost(&CommInfoQueue,
+                pTxBlkPtr,
+                TX_MSG_MEM_BLK_SIZE,
+                OS_OPT_POST_FIFO,
+                &err);
+        if(err != OS_ERR_NONE){
+            APP_TRACE_INFO(("- ->RT work info part_b2 msg post err,err code is %d\n\r",err));
+        }
+    }else{
+        APP_TRACE_INFO(("- ->RT work info part_b2 mem blk get err,err code is %d\n\r",err));
     }
 }
 /*
 ***************************************************************************************************
-*                                      InsertNonRealTimeWorkInfoDataToSendBuff()
-*
-* Description:  插入非实时工作信息类数据到发送缓存区，出于实时性考虑，将其插入到第一个待发送的数据的位置.
-*
-* Arguments  :  none.
-*
-* Returns    :  none.
-*
-* Note(s)    :  The flag is included in the message that will send to the control side.
-***************************************************************************************************
-*/
-static void InsertNonRealTimeWorkInfoDataToSendBuff(uint8_t i_eSendDataType, uint8_t i_uint8_tCmdCode, uint8_t i_uint8_tParaLen, uint8_t *p_uint8_tParas)
-{
-    OS_ERR  err;
-    uint8_t i;
-    uint8_t uint8_tInsertCursor;
-
-    OSMutexPend(&TxMsgSendBuffWriteMutex,
-                OS_CFG_TICK_RATE_HZ / 10,
-                OS_OPT_PEND_BLOCKING,
-                NULL,
-                &err);
-
-    if(g_stTxMsgDataSendBuff.Q_length == 0) { //直接放在第一个位置即可
-//      APP_TRACE_INFO(("Insert the non-real time in the head...\r\n"));
-        g_stTxMsgDataSendBuff.Q_length++;
-        g_stTxMsgDataSendBuff.Q_Qhead = 0;
-        g_stTxMsgDataSendBuff.Q_Qrear = 0;
-        g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].D_last = g_stTxMsgDataSendBuff.Q_Qhead;
-        g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].D_next = g_stTxMsgDataSendBuff.Q_Qrear;
-        g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qrear].OccupyStatu = EN_WAITTING;
-        LoadNonRealTimeWorkInfo(i_eSendDataType, i_uint8_tCmdCode, i_uint8_tParaLen, p_uint8_tParas, g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].Data);
-    } else if(++g_stTxMsgDataSendBuff.Q_length <= TX_MSG_SEND_QUEUE_SIZE) {
-//      APP_TRACE_INFO(("Q_length normal...\r\n"));
-        for(i = 0; i < TX_MSG_SEND_QUEUE_SIZE; i++) {
-            if(g_stTxMsgDataSendBuff.Queue[i].OccupyStatu == EN_FREE) {
-                uint8_tInsertCursor = i;
-                g_stTxMsgDataSendBuff.Queue[uint8_tInsertCursor].OccupyStatu = EN_WAITTING;
-                LoadNonRealTimeWorkInfo(i_eSendDataType, i_uint8_tCmdCode, i_uint8_tParaLen, p_uint8_tParas, g_stTxMsgDataSendBuff.Queue[uint8_tInsertCursor].Data);
-                break;
-            }
-        }
-
-        if(g_stTxMsgDataSendBuff.Q_length == 2) {
-            if(g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].OccupyStatu == EN_WAITTING) { //头节点也在等待中
-                //直接替换头节点
-                g_stTxMsgDataSendBuff.Queue[uint8_tInsertCursor].D_last = uint8_tInsertCursor;
-                g_stTxMsgDataSendBuff.Queue[uint8_tInsertCursor].D_next = g_stTxMsgDataSendBuff.Q_Qhead;
-                g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].D_last = uint8_tInsertCursor;
-                g_stTxMsgDataSendBuff.Q_Qhead = uint8_tInsertCursor;
-            } else { //新节点增加到头节点后面
-                g_stTxMsgDataSendBuff.Queue[uint8_tInsertCursor].D_last = g_stTxMsgDataSendBuff.Q_Qhead;
-                g_stTxMsgDataSendBuff.Queue[uint8_tInsertCursor].D_next = uint8_tInsertCursor;
-                g_stTxMsgDataSendBuff.Queue[g_stTxMsgDataSendBuff.Q_Qhead].D_next = uint8_tInsertCursor;
-                g_stTxMsgDataSendBuff.Q_Qrear = uint8_tInsertCursor;
-            }
-        } else {
-            for(i = g_stTxMsgDataSendBuff.Q_Qhead; ;) {
-                if(g_stTxMsgDataSendBuff.Queue[i].OccupyStatu == EN_WAITTING) {
-                    g_stTxMsgDataSendBuff.Queue[i].D_next = i;//先前从头节点开始第一个等待的节点的前向标记指向要插入新数据的节点
-                    g_stTxMsgDataSendBuff.Queue[i].D_last = g_stTxMsgDataSendBuff.Q_Qrear;//开辟的新节点的前向标记指向原来的尾节点
-                    g_stTxMsgDataSendBuff.Q_Qrear = i;//尾节点更新到新的节点
-                    g_stTxMsgDataSendBuff.Queue[i].OccupyStatu = EN_WAITTING;//新节点的状态更新为等待发送
-                    break;
-                } else {
-                    i = g_stTxMsgDataSendBuff.Queue[i].D_next;//搜索下一个节点
-                }
-            }
-        }
-    } else {
-        --g_stTxMsgDataSendBuff.Q_length;
-        APP_TRACE_INFO(("The non real time inf add faild,the Tx queue is overflow...\r\n"));
-    }
-
-    OSMutexPost(&TxMsgSendBuffWriteMutex,
-                OS_OPT_POST_NONE,
-                &err);
-}
-/*
-***************************************************************************************************
-*                                      LoadNonRealTimeWorkInfo()
+*                                      AddNonRealTimeWorkInfoToSendQueue()
 *
 * Description:  This is a task that manage the communication with other device.
 *
@@ -790,123 +678,171 @@ static void InsertNonRealTimeWorkInfoDataToSendBuff(uint8_t i_eSendDataType, uin
 * Returns    :  none
 ***************************************************************************************************
 */
-void LoadNonRealTimeWorkInfo(uint8_t i_eSendDataType, uint8_t i_uint8_tCmdCode, uint8_t i_uint8_tParaLen, uint8_t *p_uint8_tParas, uint8_t *i_pNonRealTimeWorkInfo)
+static void AddNonRealTimeWorkInfoToSendQueue(uint8_t i_eSendDataType, uint8_t i_uint8_tCmdCode, uint8_t i_uint8_tParaLen, uint8_t *p_uint8_tParas)
 {
+    OS_ERR       err;
     uint8_t i;
-    SELF_CHECK_CODE_Typedef stSelfCheckCode;
-    uint16_t m_u16ConrolAndCommunicateStatuCode;
+    CPU_INT08U   *pTxBlkPtr;
+    SELF_CHECK_CODE_Typedef     stSelfCheckCode;
+    uint16_t   m_u16ConrolAndCommStatusCode;
 
-//    APP_TRACE_INFO(("load the non real time data...\r\n"));
+    pTxBlkPtr = OSMemGet(&CommInfoMem,&err);
+    
+    if(err == OS_ERR_NONE){
+        if((i_eSendDataType != RT_RUNNING_INFO_A_PART_A) && (i_eSendDataType != RT_RUNNING_INFO_B_PART_A) && (i_eSendDataType != RT_RUNNING_INFO_B_PART_B) && (i_eSendDataType < EN_SEND_DATA_TYPE_MAX)) {
+            //数据报头段
+            *(pTxBlkPtr + HEAD_BYTE_ONE) = 0xF1;
+            *(pTxBlkPtr + HEAD_BYTE_TWO) = 0xF2;
+            *(pTxBlkPtr + HEAD_BYTE_THREE) = 0xF3;
+            *(pTxBlkPtr + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)((g_ProductsType & 0xFF00) >> 8);
+            *(pTxBlkPtr + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(g_ProductsType & 0xFF);
+            *(pTxBlkPtr + LOCAL_NETWORK_ID_CODE) = g_u16GlobalNetWorkId;
 
-    if((i_eSendDataType != REAL_TIME_RUNNING_INFORMATION_A) && (i_eSendDataType != REAL_TIME_RUNNING_INFORMATION_B_1) && (i_eSendDataType != REAL_TIME_RUNNING_INFORMATION_B_2) && (i_eSendDataType < EN_SEND_DATA_TYPE_MAX)) {
-        //数据报头段
-        *(i_pNonRealTimeWorkInfo + HEAD_BYTE_ONE) = 0xF1;
-        *(i_pNonRealTimeWorkInfo + HEAD_BYTE_TWO) = 0xF2;
-        *(i_pNonRealTimeWorkInfo + HEAD_BYTE_THREE) = 0xF3;
-        *(i_pNonRealTimeWorkInfo + PRODUCTS_TYPE_ID_HIGH) = (uint8_t)((PRODUCT_MODEL_CODE & 0xFF00) >> 8);
-        *(i_pNonRealTimeWorkInfo + PRODUCTS_TYPE_ID_LOW) = (uint8_t)(PRODUCT_MODEL_CODE & 0xFF);
-        *(i_pNonRealTimeWorkInfo + LOCAL_NETWORK_ID_CODE) = g_u16GlobalNetWorkId;
+            g_u32TxMsgDataTagNumber[i_eSendDataType]++;
+            *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[i_eSendDataType] >> 24);
+            *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[i_eSendDataType] & 0xFF0000) >> 16);
+            *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[i_eSendDataType] & 0xFF00) >> 8);
+            *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[i_eSendDataType] & 0xFF);
 
-        g_u32TxMsgDataTagNumber[i_eSendDataType]++;
-        *(i_pNonRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_1) = (uint8_t)(g_u32TxMsgDataTagNumber[i_eSendDataType] >> 24);
-        *(i_pNonRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_2) = (uint8_t)((g_u32TxMsgDataTagNumber[i_eSendDataType] & 0xFF0000) >> 16);
-        *(i_pNonRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_3) = (uint8_t)((g_u32TxMsgDataTagNumber[i_eSendDataType] & 0xFF00) >> 8);
-        *(i_pNonRealTimeWorkInfo + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[i_eSendDataType] & 0xFF);
+            //数据类型控制码的高4位尚未定义，在此清零
+            *(pTxBlkPtr + INFORMATION_TYPE_CODE) = (uint8_t)(i_eSendDataType & 0x0F);
 
-        //数据类型控制码的高4位尚未定义，在此清零
-        *(i_pNonRealTimeWorkInfo + INFORMATION_TYPE_CONTROL_CODE) = (uint8_t)(i_eSendDataType & 0x0F);
+            switch((uint8_t)i_eSendDataType) {
+                case RT_REQ_INFO:
+                    *(pTxBlkPtr + VALID_INFO_LEN_CTRL_CODE) = RT_REQUEST_INFO_LENGTH;
+                    *(pTxBlkPtr + REQUEST_INFORMATION_TYPE) = i_uint8_tCmdCode;
+                    *(pTxBlkPtr + LENGTH_OF_REQUEST_PARAMETERS) = i_uint8_tParaLen;
+                    i = 0;
 
-        switch((uint8_t)i_eSendDataType) {
-            case REAL_TIME_REQUEST_INFORMATION:
-                *(i_pNonRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_REQUEST_INFO_LENGTH;
-                *(i_pNonRealTimeWorkInfo + REQUEST_INFORMATION_TYPE) = i_uint8_tCmdCode;
-                *(i_pNonRealTimeWorkInfo + LENGTH_OF_REQUEST_PARAMETERS) = i_uint8_tParaLen;
-                i = 0;
+                    while(i < i_uint8_tParaLen) {
+                        *(pTxBlkPtr + REQUEST_PARA_ONE + i) = *(p_uint8_tParas + i);
+                        i++;
+                    }
 
-                while(i < i_uint8_tParaLen) {
-                    *(i_pNonRealTimeWorkInfo + REQUEST_PARAMETER_ONE + i) = *(p_uint8_tParas + i);
-                    i++;
-                }
+                    break;
 
-                break;
+                case RT_ASSIST_INFO:
+                    *(pTxBlkPtr + VALID_INFO_LEN_CTRL_CODE) = RT_ASSIST_INFO_LENGTH;
+                    
+                    *(pTxBlkPtr + LEGAL_AUTHORIZATION_CODE) = EN_LEGAL_AUTHORIZATION;//暂未检验权限检验码
+                
+                    stSelfCheckCode = GetSysSelfCheckCode();
+                    *(pTxBlkPtr + SELF_CHECK_SENSOR_STATUS_CODE) = stSelfCheckCode.DevSelfCheckSensorStatusCode;
 
-            case REAL_TIME_ASSIST_INFORMATION:
-                *(i_pNonRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = REAL_TIME_ASSIST_INFO_LENGTH;
+                    *(pTxBlkPtr + SELF_CHECK_CODE_GROUP_HYDRGEN_BYTE_4) = (uint8_t)((stSelfCheckCode.MachinePartASelfCheckCode & 0xFF000000) >> 24);
+                    *(pTxBlkPtr + SELF_CHECK_CODE_GROUP_HYDRGEN_BYTE_3) = (uint8_t)((stSelfCheckCode.MachinePartASelfCheckCode & 0xFF0000) >> 16);
+                    *(pTxBlkPtr + SELF_CHECK_CODE_GROUP_HYDRGEN_BYTE_2) = (uint8_t)((stSelfCheckCode.MachinePartASelfCheckCode & 0xFF00) >> 8);
+                    *(pTxBlkPtr + SELF_CHECK_CODE_GROUP_HYDRGEN_BYTE_1) = (uint8_t)(stSelfCheckCode.MachinePartASelfCheckCode & 0xFF);
 
-                *(i_pNonRealTimeWorkInfo + LEGAL_AUTHORIZATION_CODE) = EN_LEGAL_AUTHORIZATION;//暂未检验权限检验码
+                    *(pTxBlkPtr + SELF_CHECK_CODE_GROUP_FUEL_CELL_BYTE_4) = (uint8_t)((stSelfCheckCode.MachinePartBSelfCheckCode & 0xFF000000) >> 24);
+                    *(pTxBlkPtr + SELF_CHECK_CODE_GROUP_FUEL_CELL_BYTE_3) = (uint8_t)((stSelfCheckCode.MachinePartBSelfCheckCode & 0xFF0000) >> 16);
+                    *(pTxBlkPtr + SELF_CHECK_CODE_GROUP_FUEL_CELL_BYTE_2) = (uint8_t)((stSelfCheckCode.MachinePartBSelfCheckCode & 0xFF00) >> 8);
+                    *(pTxBlkPtr + SELF_CHECK_CODE_GROUP_FUEL_CELL_BYTE_1) = (uint8_t)(stSelfCheckCode.MachinePartBSelfCheckCode & 0xFF);
 
-                stSelfCheckCode = GetSysSelfCheckCode();
-                *(i_pNonRealTimeWorkInfo + SELF_CHECK_SENSOR_STATUS_CODE) = stSelfCheckCode.DevSelfCheckSensorStatusCode;
+                    //通信状态控制码
+                    m_u16ConrolAndCommStatusCode = GetConrolAndCommStatuCode();
+                    *(pTxBlkPtr + CTRL_AND_COMM_STATU_CODE_BYTE_H) = (uint8_t)((m_u16ConrolAndCommStatusCode & 0xFF00) >> 8);
+                    *(pTxBlkPtr + CTRL_AND_COMM_STATU_CODE_BYTE_L) = (uint8_t)(m_u16ConrolAndCommStatusCode & 0xFF);
 
-                *(i_pNonRealTimeWorkInfo + SELF_CHECK_CODE_GROUP_HYDRGEN_BYTE_4) = (uint8_t)((stSelfCheckCode.MachinePartASelfCheckCode & 0xFF000000) >> 24);
-                *(i_pNonRealTimeWorkInfo + SELF_CHECK_CODE_GROUP_HYDRGEN_BYTE_3) = (uint8_t)((stSelfCheckCode.MachinePartASelfCheckCode & 0xFF0000) >> 16);
-                *(i_pNonRealTimeWorkInfo + SELF_CHECK_CODE_GROUP_HYDRGEN_BYTE_2) = (uint8_t)((stSelfCheckCode.MachinePartASelfCheckCode & 0xFF00) >> 8);
-                *(i_pNonRealTimeWorkInfo + SELF_CHECK_CODE_GROUP_HYDRGEN_BYTE_1) = (uint8_t)(stSelfCheckCode.MachinePartASelfCheckCode & 0xFF);
+                    break;
 
-                *(i_pNonRealTimeWorkInfo + SELF_CHECK_CODE_GROUP_FUEL_CELL_BYTE_4) = (uint8_t)((stSelfCheckCode.MachinePartBSelfCheckCode & 0xFF000000) >> 24);
-                *(i_pNonRealTimeWorkInfo + SELF_CHECK_CODE_GROUP_FUEL_CELL_BYTE_3) = (uint8_t)((stSelfCheckCode.MachinePartBSelfCheckCode & 0xFF0000) >> 16);
-                *(i_pNonRealTimeWorkInfo + SELF_CHECK_CODE_GROUP_FUEL_CELL_BYTE_2) = (uint8_t)((stSelfCheckCode.MachinePartBSelfCheckCode & 0xFF00) >> 8);
-                *(i_pNonRealTimeWorkInfo + SELF_CHECK_CODE_GROUP_FUEL_CELL_BYTE_1) = (uint8_t)(stSelfCheckCode.MachinePartBSelfCheckCode & 0xFF);
+                case CONSTANT_ASSIST_INFO:
+                    *(pTxBlkPtr + VALID_INFO_LEN_CTRL_CODE) = CONSTANT_ASSIST_INFO_LEN;
+                    *(pTxBlkPtr + LEGAL_AUTHORIZATION_CODE) = 0;//暂未设权限检验码
+                    break;
+				
+				case FOR_QUERY_AND_CFG_INFO:
+                *(pTxBlkPtr + VALID_INFO_LEN_CTRL_CODE) = FOR_QUERY_AND_CFG_INFO_LEN;
 
-                //通信状态控制码
-                m_u16ConrolAndCommunicateStatuCode = GetConrolAndCommunicateStatuCode();
-                *(i_pNonRealTimeWorkInfo + CONTROL_AND_COMMUNICATE_STATU_CODE_BYTE_H) = (uint8_t)((m_u16ConrolAndCommunicateStatuCode & 0xFF00) >> 8);
-                *(i_pNonRealTimeWorkInfo + CONTROL_AND_COMMUNICATE_STATU_CODE_BYTE_L) = (uint8_t)(m_u16ConrolAndCommunicateStatuCode & 0xFF);
+				/*获取修改后的Flash参数并发送到上位机确认*/
+				*(pTxBlkPtr + HEAT_STATUS_PUMP_CONTROL_SPD_HIGH) = (uint8_t)((g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime & 0xFF00) >> 8);
+				*(pTxBlkPtr + HEAT_STATUS_PUMP_CONTROL_SPD_LOW) = (uint8_t)(g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime & 0xFF);
 
-                break;
+				*(pTxBlkPtr + HEAT_STATUS_HYDROGEN_FAN_CONTROL_SPD_HIGH) = (uint8_t)((g_stStartHydrogenFanSpdPara.FanSpdIgniterFirstTime & 0xFF00) >> 8);
+				*(pTxBlkPtr + HEAT_STATUS_HYDROGEN_FAN_CONTROL_SPD_LOW) = (uint8_t)(g_stStartHydrogenFanSpdPara.FanSpdIgniterFirstTime & 0xFF);
 
-            case CONSTANT_ASSIST_INFORMATION:
-                *(i_pNonRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = CONSTANT_ASSIST_INFORMATION_LENGTH;
-                *(i_pNonRealTimeWorkInfo + LEGAL_AUTHORIZATION_CODE) = 0;//暂未设权限检验码
-                break;
+				*(pTxBlkPtr + RUNNING_STATUS_PUMP_SPD_CONTROL_HIGH) = (uint8_t)((g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime & 0xFF00) >> 8);
+				*(pTxBlkPtr + RUNNING_STATUS_PUMP_SPD_CONTROL_LOW) = (uint8_t)(g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime & 0xFF);
 
-            case FOR_QUERY_AND_CONFIG_INFORMATION:
-                *(i_pNonRealTimeWorkInfo + VALID_INFORMATION_LENGTH_CONTROL_CODE) = FOR_QUERY_AND_CONFIG_INFORMATION_LENGTH;
+				*(pTxBlkPtr + RUNNING_STATUS_HYDROGEN_FAN_SPD_CONTROL_HIGH) = (uint8_t)((g_stStartHydrogenFanSpdPara.FanSpdIgniterSecondTime & 0xFF00) >> 8);
+				*(pTxBlkPtr + RUNNING_STATUS_HYDROGEN_FAN_SPD_CONTROL_LOW) = (uint8_t)(g_stStartHydrogenFanSpdPara.FanSpdIgniterSecondTime & 0xFF);
 
-                APP_TRACE_INFO(("Report config information...\r\n"));
-                /*获取修改后的Flash参数并发送到上位机确认*/
-                *(i_pNonRealTimeWorkInfo + HEAT_STATUS_PUMP_CONTROL_SPD_HIGH) = (uint8_t)((g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime & 0xFF00) >> 8);
-                *(i_pNonRealTimeWorkInfo + HEAT_STATUS_PUMP_CONTROL_SPD_LOW) = (uint8_t)(g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime & 0xFF);
+				*(pTxBlkPtr + FAST_HEAT_HOLD_SECONDS_VALUE_HIGH) = (uint8_t)((g_u16FirstTimeHeatHoldSeconds & 0xFF00) >> 8);
+				*(pTxBlkPtr + FAST_HEAT_HOLD_SECONDS_VALUE_LOW) = (uint8_t)(g_u16FirstTimeHeatHoldSeconds & 0xFF);
 
-                *(i_pNonRealTimeWorkInfo + HEAT_STATUS_HYDROGEN_FAN_CONTROL_SPD_HIGH) = (uint8_t)((g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime & 0xFF00) >> 8);
-                *(i_pNonRealTimeWorkInfo + HEAT_STATUS_HYDROGEN_FAN_CONTROL_SPD_LOW) = (uint8_t)(g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime & 0xFF);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP1_PUMP_SPD_HIGH) = (uint8_t)((g_stRichHydrogenModePara.ActiveStep1PumpSpd & 0xFF00) >> 8);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP1_PUMP_SPD_LOW) = (uint8_t)(g_stRichHydrogenModePara.ActiveStep1PumpSpd & 0xFF);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP1_HOLD_TIME_HOUR) = (uint8_t)(g_stRichHydrogenModePara.ActiveStep1HoldHour & 0xFF);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP1_HOLD_TIME_MIN) = (uint8_t)(g_stRichHydrogenModePara.ActiveStep1HoldMin & 0xFF);
 
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_PUMP_SPD_CONTROL_HIGH) = (uint8_t)((g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime & 0xFF00) >> 8);
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_PUMP_SPD_CONTROL_LOW) = (uint8_t)(g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime & 0xFF);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP2_PUMP_SPD_HIGH) = (uint8_t)((g_stRichHydrogenModePara.ActiveStep2PumpSpd & 0xFF00) >> 8);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP2_PUMP_SPD_LOW) = (uint8_t)(g_stRichHydrogenModePara.ActiveStep2PumpSpd & 0xFF);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP2_HOLD_TIME_HOUR) = (uint8_t)(g_stRichHydrogenModePara.ActiveStep2HoldHour & 0xFF);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP2_HOLD_TIME_MIN) = (uint8_t)(g_stRichHydrogenModePara.ActiveStep2HoldMin & 0xFF);
+				
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP3_PUMP_SPD_HIGH) = (uint8_t)((g_stRichHydrogenModePara.ActiveStep3PumpSpd & 0xFF00) >> 8);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP3_PUMP_SPD_LOW) = (uint8_t)(g_stRichHydrogenModePara.ActiveStep3PumpSpd & 0xFF);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP3_HOLD_TIME_HOUR) = (uint8_t)(g_stRichHydrogenModePara.ActiveStep3HoldHour & 0xFF);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP3_HOLD_TIME_MIN) = (uint8_t)(g_stRichHydrogenModePara.ActiveStep3HoldMin & 0xFF);
+				
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP4_PUMP_SPD_HIGH) = (uint8_t)((g_stRichHydrogenModePara.ActiveStep4PumpSpd & 0xFF00) >> 8);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP4_PUMP_SPD_LOW) = (uint8_t)(g_stRichHydrogenModePara.ActiveStep4PumpSpd & 0xFF);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP4_HOLD_TIME_HOUR) = (uint8_t)(g_stRichHydrogenModePara.ActiveStep4HoldHour & 0xFF);
+				*(pTxBlkPtr + HYDROGEN_ACTIVATED_STEP4_HOLD_TIME_MIN) = (uint8_t)(g_stRichHydrogenModePara.ActiveStep4HoldMin & 0xFF);
+				break;
 
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_HYDROGEN_FAN_SPD_CONTROL_HIGH) = (uint8_t)((g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime & 0xFF00) >> 8);
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_HYDROGEN_FAN_SPD_CONTROL_LOW) = (uint8_t)(g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime & 0xFF);
+                default:
+                    break;
+            }
 
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_FIRST_DELAY_TIME) = (uint8_t)(g_stRunningStatusDelayAdjustSpdPara.FirstDelayTimeByMin & 0xFF);
-
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_FIRST_TIME_ADJUST_PUMP_FLAG) = (uint8_t)(g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustPumpFlag & 0xFF);
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_FIRST_TIME_ADJUST_PUMP_VALUE) = (uint8_t)(g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustPumpValue & 0xFF);
-
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_FIRST_TIME_ADJUST_FUN_FLAG) = (uint8_t)(g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustFanFlag & 0xFF);
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_FIRST_TIME_ADJUST_FUN_VALUE) = (uint8_t)(g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustFanValue & 0xFF);
-
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_SECOND_DELAY_TIME) = (uint8_t)(g_stRunningStatusDelayAdjustSpdPara.SecondDelayTimeByMin & 0xFF);
-
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_SECOND_TIME_ADJUST_PUMP_FLAG) = (uint8_t)(g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustPumpFlag & 0xFF);
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_SECOND_TIME_ADJUST_PUMP_VALUE) = (uint8_t)(g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustPumpValue & 0xFF);
-
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_SECOND_TIME_ADJUST_FUN_FLAG) = (uint8_t)(g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustFanFlag & 0xFF);
-                *(i_pNonRealTimeWorkInfo + RUNNING_STATUS_SECOND_TIME_ADJUST_FUN_VALUE) = (uint8_t)(g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustFanValue & 0xFF);
-                break;
-
-            default:
-                break;
+            //数据报尾段
+            *(pTxBlkPtr + END_BYTE_ONE) = 0x5F;
+            *(pTxBlkPtr + END_BYTE_TWO) = 0x6F;
+            
+            OSQPost(&CommInfoQueue,
+                    pTxBlkPtr,
+                    TX_MSG_MEM_BLK_SIZE,
+                    OS_OPT_POST_LIFO, //提高非实时信息实时性
+                    &err);
+            if(err != OS_ERR_NONE){
+                APP_TRACE_INFO(("- ->NRT work info msg post err,err code is %d\n\r",err));
+            }              
+        } else {
+            APP_TRACE_INFO(("The load data type is illegal...\r\n"));
         }
-
-        //数据报尾段
-        *(i_pNonRealTimeWorkInfo + END_BYTE_ONE) = 0x5F;
-        *(i_pNonRealTimeWorkInfo + END_BYTE_TWO) = 0x6F;
-
-    } else {
-        APP_TRACE_INFO(("The load data type is illegal...\r\n"));
-    }
+    }else{
+        APP_TRACE_INFO(("- ->NRT work info mem blk get err,err code is %d\n\r",err));
+    } 
 }
 
+
+/*
+***************************************************************************************************
+*                                      StoreCfgParaBySingleAndReport()
+*
+* Description:  存储参数然后上报.
+*
+* Arguments  :  fp_StoreType:调用的存储函数类型
+*
+* Returns    :  none.
+***************************************************************************************************
+*/
+void StoreCfgParaBySingleAndReport(uint8_t *i_PrgmRxMsg,uint16_t *i_StoreData,StoreParaBySingleType fp_StoreType,uint8_t i_StoreAddr)
+{
+    OS_ERR      err;  
+    OSSchedLock(&err);
+
+    if(((*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_3) << 8) | (*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_4))) >= 2000) {
+        * i_StoreData = 2000;
+    } else {
+        * i_StoreData  = (*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_3) << 8) | (*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_4));
+    }
+    
+    fp_StoreType(i_StoreData,i_StoreAddr);//调用函数指针指向的专用函数存储
+    SendInquireOrConfigurationInfo();
+    
+    OSSchedUnlock(&err);
+}
 /*
 ***************************************************************************************************
 *                                      SendAPrgmMsgFrame()
@@ -920,25 +856,24 @@ void LoadNonRealTimeWorkInfo(uint8_t i_eSendDataType, uint8_t i_uint8_tCmdCode, 
 */
 static void SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg)
 {
-    static uint8_t i;
-    
     BSP_PrgmDataDMASend(i_uint8_tTxMsgLen, i_pTxMsg);
 
-    if(g_eCAN_BusOnLineFlag == YES)//CAN总线在线
-    {
-        SendCanMsgContainNodeId(PRGM_TX_BUFF_SIZE, i_pTxMsg, g_u16GlobalNetWorkId);
-        APP_TRACE_INFO(("Can Tx data:"));
-        for(i = 0; i < 60; i++) {
-            APP_TRACE_INFO(("%X ", i_pTxMsg[i]));
-        }
-        APP_TRACE_INFO(("...\n\r"));
-    }
+	if(g_eCAN_BusOnLineFlag == DEF_YES)//CAN总线在线
+	{
+		SendCanMsgContainNodeId(PRGM_TX_BUFF_SIZE, i_pTxMsg, g_u16GlobalNetWorkId);
+//		APP_TRACE_INFO(("Can Tx data:"));
+//		for(uint8_t i = 0; i < 60; i++) {
+//			APP_TRACE_INFO(("%X ", i_pTxMsg[i]));
+//		}
+//		APP_TRACE_INFO(("...\n\r"));
+	}
+	
 
 }
 
 /*
 ***************************************************************************************************
-*                                      ResponsePrgmCommand()
+*                                      ResponsePrgmCmd()
 *
 * Description:  anwser the command that receive from the control side under the Dubug mode.
 *
@@ -947,22 +882,22 @@ static void SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg)
 * Returns    :  none.
 ***************************************************************************************************
 */
-static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
+static void ResponsePrgmCmd(uint8_t *i_PrgmRxMsg)
 {
     OS_ERR      err;
     uint32_t    u32ErrCode;
     uint8_t     i;
 
-    if((*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_HEAD_ONE)     == 0xFC)
-            && (*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_HEAD_TWO)     == 0xFD)
-            && (*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_HEAD_THREE)   == 0xFE)
-            && (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_END_OF_DATA)   == 0xAA)//报尾
-            && (*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_HEAD_TARGET_LOCAL_NET_ID)   == g_u16GlobalNetWorkId)//组网ID
+    if((*(i_PrgmRxMsg + REC_DATA_BYTE_HEAD_ONE)     == 0xFC)
+            && (*(i_PrgmRxMsg + REC_DATA_BYTE_HEAD_TWO)     == 0xFD)
+            && (*(i_PrgmRxMsg + REC_DATA_BYTE_HEAD_THREE)   == 0xFE)
+            && (*(i_PrgmRxMsg + REC_DATA_BYTE_END_OF_DATA)   == 0xAA)//报尾
+            && (*(i_PrgmRxMsg + REC_DATA_BYTE_HEAD_TARGET_LOCAL_NET_ID)   == g_u16GlobalNetWorkId)//组网ID
 //            && (*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_HEAD_TARGET_LOCAL_NET_ID)   == 0x01)//暂不判定子模块ID
       ) {
-        switch(*(i_PrgmRxMsg + RECEIVE_DATA_BYTE_CMD_TYPE) & 0x0F) { //指令类型码的高4位尚未定义——将其清零
-            case COMMAND_TYPE_DBG://调试指令
-                switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CODE_VALUE)) {
+        switch(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_TYPE) & 0x0F) { //指令类型码的高4位尚未定义——将其清零
+            case CMD_TYPE_DBG://调试指令
+                switch(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_CODE_VALUE)) {
                     case DBG_SELECT_WORK_MODE:
                         break;
 
@@ -993,21 +928,21 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
 
                     case DBG_CHANGE_THE_WORK_STATU_TO_STANDING_BY:
                         if(EN_KEEPING_WARM == GetSystemWorkStatu()) {
-                            SetSystemWorkStatu(EN_WAITTING_COMMAND);
+                            SetSystemWorkStatu(EN_WAIT_CMD);
                         }
 
                         break;
 
-                    case DBG_PUMP_SPEED_INC:
+                    case DBG_PUMP1_SPEED_INC:
                         PumpSpdInc();
                         break;
 
-                    case DBG_PUMP_SPEED_DEC:
+                    case DBG_PUMP1_SPEED_DEC:
                         PumpSpdDec();
                         break;
 
-                    case DBG_PUMP_SPEED_SET_WITH_PARAMETERS:
-                        SetPumpCtlSpd((uint16_t)(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_1) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_2));
+                    case DBG_PUMP1_SPEED_SET_WITH_PARAMETERS:
+                        SetPumpCtlSpd((uint16_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_1) << 8) + * (i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_2));
                         break;
 
                     case DBG_HYDRG_SPEED_INC:
@@ -1019,7 +954,7 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                         break;
 
                     case DBG_HYDRG_SPEED_SET_WHTI_PARAMETERS:
-                        SetHydrgFanCtlSpd((uint16_t)((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_1) << 8) + * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_2)));
+                        SetHydrgFanCtlSpd((uint16_t)((*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_1) << 8) + * (i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_2)));
                         break;
 
                     case DBG_STACK_FAN_SPEED_INC:
@@ -1044,41 +979,30 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
 
                 break;
 
-            case COMMAND_TYPE_CONFIGURATION: //配置类指令
-                switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CODE_VALUE)) {
+            case CMD_TYPE_CFG: //配置类指令
+                switch(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_CODE_VALUE)) {
 
                     case CONFIG_HYDROGEN_GROUP_RUNNING_PARA:
-                        if((EN_WAITTING_COMMAND == GetSystemWorkStatu() || EN_ALARMING == GetSystemWorkStatu())) {
-                            if(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETERS_LENGTH) == 6u) {
+                        if((EN_WAIT_CMD == GetSystemWorkStatu() || EN_ALARMING == GetSystemWorkStatu())) {
+                            if(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARAMETERS_LENGTH) == 6u) {
 
-                                switch((uint8_t)(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_1))) {
-                                    case CONFIG_IGNITE_FIRST_STEP_PARA:
-                                        switch((uint8_t)(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_2))) {
-                                            case CONFIG_IGNITE_FIRST_STEP_PUMP_SPD:
-                                                OSSchedLock(&err);
-                                                g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime  = (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3) << 8) | *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
-                                                StoreStartHydrgPumpSpdParaBySingle(&g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime, 0);
-                                                SendInquireOrConfigurationInfo();//返回设置参数
-                                                OSSchedUnlock(&err);
-                                                APP_TRACE_INFO(("PumpSpdIgniterFirstTime:%d...\n\r", g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime));
+                                switch((uint8_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_1))) {
+                                    case CONFIG_HEAT_STEP_PARA:
+                                        switch((uint8_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_2))) {
+                                            case CONFIG_HEAT_STEP_PUMP_SPD:
+                                                StoreCfgParaBySingleAndReport(i_PrgmRxMsg,&g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime,StoreStartHydrgPumpSpdParaBySingle,0);              
                                                 break;
 
-                                            case CONFIG_IGNITE_FIRST_STEP_FAN_SPD:
-                                                OSSchedLock(&err);
-                                                g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime = (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3) << 8) | *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
-                                                StoreStartHydrgFanSpdParaBySingle(&g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime, 0);
-                                                SendInquireOrConfigurationInfo();
-                                                OSSchedUnlock(&err);
-                                                APP_TRACE_INFO(("FanSpdIgniterFirstTime:%d...\n\r", g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime));
+                                            case CONFIG_HEAT_STEP_FAN_SPD:
+                                                StoreCfgParaBySingleAndReport(i_PrgmRxMsg,&g_stStartHydrogenFanSpdPara.FanSpdIgniterFirstTime,StoreStartHydrgFanSpdParaBySingle,1);              
                                                 break;
 
-                                            case CONFIG_FIRST_TIME_HEAT_HOLD_TIME_BY_SEC:
+                                            case CONFIG_HEAT_HOLD_TIME_BY_SEC:
                                                 OSSchedLock(&err);
-                                                g_u16FirstTimeHeatHoldSeconds = (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3) << 8) | *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
+                                                g_u16FirstTimeHeatHoldSeconds = (*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_3) << 8) | (*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_4));
                                                 StoreFirstTimeHeatHoldSeconds(&g_u16FirstTimeHeatHoldSeconds);
                                                 SendInquireOrConfigurationInfo();
                                                 OSSchedUnlock(&err);
-                                                APP_TRACE_INFO(("g_u16FirstTimeHeatHoldSeconds:%d...\n\r", g_u16FirstTimeHeatHoldSeconds));
                                                 break;
 
                                             default:
@@ -1088,87 +1012,47 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                                         break;
 
                                     case CONFIG_RUNNING_STATUS_PARA:
-                                        switch((uint8_t)(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_2))) {
-                                            case CONFIG_IGNITE_SECOND_STEP_PUMP_SPD:
-                                                OSSchedLock(&err);
-                                                g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime = (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3) << 8) | *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
-                                                StoreStartHydrgPumpSpdParaBySingle(&g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime, 1);
-                                                SendInquireOrConfigurationInfo();
-                                                OSSchedUnlock(&err);
-                                                APP_TRACE_INFO(("PumpSpdIgniterSecondTime:%d...\n\r", g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime));
+                                        switch((uint8_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_2))) {
+                                            case CONFIG_RUNNING_STEP_PUMP_SPD:
+                                                StoreCfgParaBySingleAndReport(i_PrgmRxMsg,&g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime,StoreStartHydrgPumpSpdParaBySingle,1);              
                                                 break;
 
-                                            case CONFIG_IGNITE_SECOND_STEP_FAN_SPD:
-                                                OSSchedLock(&err);
-                                                g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime = (*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3) << 8) | *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
-                                                StoreStartHydrgFanSpdParaBySingle(&g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime, 2);
-                                                SendInquireOrConfigurationInfo();
-                                                OSSchedUnlock(&err);
-                                                APP_TRACE_INFO(("FanSpdIgniterSecondTime:%d...\n\r", g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime));
-                                                break;
-
-                                            case CONFIG_FIRST_TIME_DELAY_ADJUST_TIME_BY_MINUTE:
-                                                OSSchedLock(&err);
-                                                g_stRunningStatusDelayAdjustSpdPara.FirstDelayTimeByMin = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
-                                                StoreRunningStatusDelayAdjustSpdParaBySingle(&g_stRunningStatusDelayAdjustSpdPara.FirstDelayTimeByMin, 0);
-                                                SendInquireOrConfigurationInfo();
-                                                OSSchedUnlock(&err);
-                                                APP_TRACE_INFO(("FirstDelayTimeByMin:%d...\n\r", g_stRunningStatusDelayAdjustSpdPara.FirstDelayTimeByMin));
-                                                break;
-
-                                            case CONFIG_FIRST_TIME_DELAY_ADJUST_PUMP_SPEED_VALUE:
-                                                OSSchedLock(&err);
-                                                g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustPumpFlag = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3);
-                                                g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustPumpValue = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
-                                                StoreRunningStatusDelayAdjustSpdParaBySingle((u16 *)&g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustPumpValue, 1);
-                                                SendInquireOrConfigurationInfo();
-                                                APP_TRACE_INFO(("FirstTimeAdjustPumpValue:%d...\n\r", g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustPumpValue));
-                                                OSSchedUnlock(&err);
-                                                break;
-
-                                            case CONFIG_FIRST_TIME_DELAY_ADJUST_FANS_SPEED_VALUE:
-                                                OSSchedLock(&err);
-                                                g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustFanFlag = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3);
-                                                g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustFanValue = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
-                                                StoreRunningStatusDelayAdjustSpdParaBySingle((u16 *)&g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustFanValue, 2);
-                                                SendInquireOrConfigurationInfo();
-                                                OSSchedUnlock(&err);
-                                                APP_TRACE_INFO(("FirstTimeAdjustFanValue:%d...\n\r", g_stRunningStatusDelayAdjustSpdPara.FirstTimeAdjustFanValue));
-                                                break;
-
-                                            case CONFIG_SECOND_TIME_DELAY_ADJUST_TIME_BY_MINUTE:
-                                                OSSchedLock(&err);
-                                                g_stRunningStatusDelayAdjustSpdPara.SecondDelayTimeByMin = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
-                                                StoreRunningStatusDelayAdjustSpdParaBySingle(&g_stRunningStatusDelayAdjustSpdPara.SecondDelayTimeByMin, 3);
-                                                SendInquireOrConfigurationInfo();
-                                                OSSchedUnlock(&err);
-                                                APP_TRACE_INFO(("SecondDelayTimeByMin:%d...\n\r", g_stRunningStatusDelayAdjustSpdPara.SecondDelayTimeByMin));
-                                                break;
-
-                                            case CONFIG_SECOND_TIME_DELAY_ADJUST_PUMP_SPEED_VALUE:
-                                                OSSchedLock(&err);
-                                                g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustPumpFlag = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3);
-                                                g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustPumpValue = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
-                                                StoreRunningStatusDelayAdjustSpdParaBySingle((u16 *)&g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustPumpValue, 4);
-                                                SendInquireOrConfigurationInfo();
-                                                OSSchedUnlock(&err);
-                                                APP_TRACE_INFO(("SecondTimeAdjustPumpValue:%d...\n\r", g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustPumpValue));
-                                                break;
-
-                                            case CONFIG_SECOND_TIME_DELAY_ADJUST_FANS_SPEED_VALUE:
-                                                OSSchedLock(&err);
-                                                g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustFanFlag = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3);
-                                                g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustFanValue = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4);
-                                                StoreRunningStatusDelayAdjustSpdParaBySingle((u16 *)&g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustFanValue, 5);
-                                                SendInquireOrConfigurationInfo();
-                                                OSSchedUnlock(&err);
-                                                APP_TRACE_INFO(("SecondTimeAdjustFanValue:%d...\n\r", g_stRunningStatusDelayAdjustSpdPara.SecondTimeAdjustFanValue));
+                                            case CONFIG_RUNNING_STEP_FAN_SPD:
+                                                StoreCfgParaBySingleAndReport(i_PrgmRxMsg,&g_stStartHydrogenFanSpdPara.FanSpdIgniterSecondTime,StoreStartHydrgFanSpdParaBySingle,2);              
                                                 break;
 
                                             default:
                                                 break;
                                         }
 
+                                        break;
+                                    case CONFIG_RICH_HYDROG_ACTIVE_PARA:
+                                        switch((uint8_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_2))) {
+                                            case CONFIG_RICH_HYDROG_ACTIVE_STEP:                         
+                                                g_stRichHydrogenModePara.ActiveStep = (uint8_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_4));
+                                                LoadCurrentStepRemainTimePara(g_stRichHydrogenModePara.ActiveStep);
+//                                                APP_TRACE_INFO(("ActiveStep %d...\r\n",*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_4)));
+                                                break;
+
+                                            case CONFIG_RICH_HYDROG_ACTIVE_STEP_PUMP_SPD:
+                                                StoreRichHydrogenModePumpPara(i_PrgmRxMsg,(uint8_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_4)));
+                                                break;
+                                            
+                                            case CONFIG_RICH_HYDROG_ACTIVE_STEP_FAN_SPD:
+//                                                StoreRichHydrogenModeFanPara(i_PrgmRxMsg,(uint8_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_4)));
+                                                break;
+                                            
+                                            case CONFIG_RICH_HYDROG_ACTIVE_STEP_HOLD_TIME:
+                                                StoreRichHydrogenModeHoldTimePara(i_PrgmRxMsg,(uint8_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_4)));
+                                                break;
+                                            
+                                            case CONFIG_HYDROG_PRODUCER_WORK_MODE_NEXT_TIME:
+//                                                HydrogenWorkModeTurnOver();
+                                                break;
+
+                                            default:
+                                                break;
+                                        }
                                         break;
 
                                     default:
@@ -1185,8 +1069,8 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
 
                 break;
 
-            case COMMAND_TYPE_INQUIRE_REQUEST://查询、请求指令
-                switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CODE_VALUE)) {
+            case CMD_TYPE_REQ://查询、请求指令
+                switch(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_CODE_VALUE)) {
                     case REQUEST_DATA_RETRANSMIT:
                         break;
 
@@ -1198,14 +1082,14 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                         break;
                 }
 
-            case COMMAND_TYPE_RESPONSE_CONFIRM://应答、确认指令
-                switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_CODE_VALUE)) {
+            case CMD_TYPE_CONFIRM://应答、确认指令
+                switch(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_CODE_VALUE)) {
                     case RESPONSE_ALLOCATE_ID_NMB_WITH_PARAMETERS:
-                        if((EN_WAITTING_COMMAND == GetSystemWorkStatu() || EN_ALARMING == GetSystemWorkStatu()) && (1 == *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETERS_LENGTH))) { //限制参数长度为1
+                        if((EN_WAIT_CMD == GetSystemWorkStatu() || EN_ALARMING == GetSystemWorkStatu()) && (1 == *(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARAMETERS_LENGTH))) { //限制参数长度为1
                             OSSchedLock(&err);
 
-                            if((*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETERS_LENGTH) <= 255)) {
-                                g_u16GlobalNetWorkId = *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_1);
+                            if((*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARAMETERS_LENGTH) <= 255)) {
+                                g_u16GlobalNetWorkId = *(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_1);
                                 StoreGlobalNetWorkID(&g_u16GlobalNetWorkId);
                                 SendInquireOrConfigurationInfo();//返回设置参数
                                 CAN1_Init();//帧ID变化后需重新初始化CAN过滤器,以接收新的帧ID数据
@@ -1218,12 +1102,12 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
                         break;
 
                     case RESPONSE_SLAVE_SHUT_DOWN_CMD:
-                        u32ErrCode = ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_1) << 24)
-                                     | ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_2) << 16)
-                                     | ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_3) << 8)
-                                     | ((uint32_t) * (i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_4));
+                        u32ErrCode = ((uint32_t) * (i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_1) << 24)
+                                     | ((uint32_t) * (i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_2) << 16)
+                                     | ((uint32_t) * (i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_3) << 8)
+                                     | ((uint32_t) * (i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_4));
 
-                        switch(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_5)) {
+                        switch(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_5)) {
                             case RESPONSE_SLAVE_SHUT_DOWN_CMD_RIGHT_NOW:
                                 i = 0;
 
@@ -1245,7 +1129,7 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
 
                                 while(u32ErrCode) {
                                     if((u32ErrCode % 2) == 1) {
-                                        SetShutDownRequestMaskStatu((SYSTEM_ALARM_ADDR_Typedef)i, EN_DELAY, (uint16_t)(*(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_6) * 60));//对应的错误屏蔽位清零
+                                        SetShutDownRequestMaskStatu((SYSTEM_ALARM_ADDR_Typedef)i, EN_DELAY, (uint16_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_6) * 60));//对应的错误屏蔽位清零
                                     }
 
                                     i++;
@@ -1291,13 +1175,13 @@ static void ResponsePrgmCommand(uint8_t *i_PrgmRxMsg)
 void CmdStart(void)
 {
     OS_ERR      err;
-    SYSTEM_WORK_STATU_Typedef eSysRunningStatu;
+    SYS_WORK_STATU_Typedef eSysRunningStatu;
     SYSTEM_WORK_MODE_Typedef    eWorkMode;
 
     eSysRunningStatu = GetSystemWorkStatu();
 
     if(DEF_OFF == GetHydrgProducerStopDlyStatu() && (DEF_OFF == GetStackStopDlyStatu())) {  //防止关机过程未结束再次开机
-        if(eSysRunningStatu == EN_WAITTING_COMMAND) { //等待指令，循环设备自检中
+        if(eSysRunningStatu == EN_WAIT_CMD) { //等待指令，循环设备自检中
             eWorkMode = GetWorkMode();
 
             if(eWorkMode != EN_WORK_MODE_FUEL_CELL) {   //制氢或者一体机模式
@@ -1314,7 +1198,7 @@ void CmdStart(void)
             OSSchedUnlock(&err);
         } else if(eSysRunningStatu == EN_ALARMING) {
 
-            SetSystemWorkStatu(EN_WAITTING_COMMAND);//故障状态下，如果故障排除,再次按下启动键可排除故障
+            SetSystemWorkStatu(EN_WAIT_CMD);//故障状态下，如果故障排除,再次按下启动键可排除故障
             ResetDeviceAlarmStatu();
         } else {
 
@@ -1338,7 +1222,7 @@ void CmdStart(void)
 void CmdShutDown()
 {
     OS_ERR      err;
-    SYSTEM_WORK_STATU_Typedef eSysRunningStatu;
+    SYS_WORK_STATU_Typedef eSysRunningStatu;
 
     eSysRunningStatu = GetSystemWorkStatu();
 
@@ -1379,44 +1263,6 @@ void CmdShutDown()
 
 }
 
-/*
-***************************************************************************************************
-*                                      SendShutDownRequest()
-*
-* Description:  send the "shut down" command accord to the statu of the system.
-*
-* Arguments  :  none
-*
-* Returns    :  none
-***************************************************************************************************
-*/
-void SendShutDownRequest()
-{
-    uint32_t u32ErrCode;
-    uint8_t  uint8_tCodePara[4];
-    u32ErrCode = GetSysErrCode();
-    uint8_tCodePara[0] = (uint8_t)(u32ErrCode >> 24);
-    uint8_tCodePara[1] = (uint8_t)((u32ErrCode & 0xFF0000) >> 16);
-    uint8_tCodePara[2] = (uint8_t)((u32ErrCode & 0xFF00) >> 8);
-    uint8_tCodePara[3] = (uint8_t)(u32ErrCode & 0xFF);
-    InsertNonRealTimeWorkInfoDataToSendBuff(REAL_TIME_REQUEST_INFORMATION, REAL_TIME_REQUEST_INFO_REQUEST_SHUT_DOWN, 4, uint8_tCodePara);
-}
-
-/*
-***************************************************************************************************
-*                             SendChooseWorkModeRequest()
-*
-* Description: send choose the work mode request.
-*
-* Arguments  :  none
-*
-* Returns    :  none
-***************************************************************************************************
-*/
-void SendChooseWorkModeRequest()
-{
-    InsertNonRealTimeWorkInfoDataToSendBuff(REAL_TIME_REQUEST_INFORMATION, REAL_TIME_REQUEST_INFO_REQUEST_CHOOSE_WORK_MODE, NULL, NULL);
-}
 
 /*
 ***************************************************************************************************
@@ -1429,9 +1275,9 @@ void SendChooseWorkModeRequest()
 * Returns    :  none
 ***************************************************************************************************
 */
-void SendRealTimeAssistInfo()
+void SendRealTimeAssistInfo(void)
 {
-    InsertNonRealTimeWorkInfoDataToSendBuff(REAL_TIME_ASSIST_INFORMATION, NULL, NULL, NULL);
+    AddNonRealTimeWorkInfoToSendQueue(RT_ASSIST_INFO, NULL, NULL, NULL);
 }
 
 /*
@@ -1448,7 +1294,7 @@ void SendRealTimeAssistInfo()
 
 void SendInquireOrConfigurationInfo()
 {
-    InsertNonRealTimeWorkInfoDataToSendBuff(FOR_QUERY_AND_CONFIG_INFORMATION, NULL, NULL, NULL);
+    AddNonRealTimeWorkInfoToSendQueue(FOR_QUERY_AND_CFG_INFO, NULL, NULL, NULL);
 }
 /*
 ***************************************************************************************************

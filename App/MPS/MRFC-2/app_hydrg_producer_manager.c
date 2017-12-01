@@ -48,6 +48,7 @@ OS_TCB      HydrgProducerManagerTaskTCB;
 OS_TCB      HydrgProducerManagerDlyStopTaskTCB;
 OS_TCB      IgniterWorkTaskTCB;
 
+static      OS_SEM		FastHeatFinishedWaitSem;
 static      OS_SEM      HydrgProducerManagerStopSem;
 
 static      CPU_STK     HydrgProducerManagerTaskStk[HYDROGEN_PRODUCER_MANAGER_TASK_STK_SIZE];
@@ -103,20 +104,28 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
         APP_TRACE_INFO(("Start program one front,fast heat 3 minutes...\n\r"));
         BSP_FastHeaterPwrOn();
 
-        if(GetReformerTemp() <= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt) {
-
-            OSTimeDlyHMSM(0, 3, 0, 0,   OS_OPT_TIME_HMSM_STRICT, &err); //快速加热三分钟
-//            OSTimeDlyHMSM(0, 0, 10, 0,   OS_OPT_TIME_HMSM_STRICT,&err);//快速加热三分钟
-            APP_TRACE_INFO(("Fast heat control finish...\n\r"));
-        }
-
-        SetSystemWorkStatu(EN_START_PRGM_ONE_BEHIND);
-
+		if(GetReformerTemp() <= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt) {
+			
+			OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 1,//等待任务信号量3
+						  OS_OPT_PEND_BLOCKING,
+						  NULL,
+						  &err);
+			if(err == OS_ERR_TIMEOUT) {
+				SetSystemWorkStatu(EN_START_PRGM_ONE_BEHIND);
+				APP_TRACE_INFO(("Fast heat control finish...\n\r"));
+			}else{
+				APP_TRACE_INFO(("force stoped fast heat step...\n\r"));
+			}
+		}else{
+			APP_TRACE_INFO(("Do not need fast heat...\n\r"));
+			SetSystemWorkStatu(EN_START_PRGM_ONE_BEHIND);
+		}
+   
         if(EN_START_PRGM_ONE_BEHIND == GetSystemWorkStatu()) {
             APP_TRACE_INFO(("Ignite first time behind...\n\r"));
             BSP_LqdValve1_PwrOn();
             SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime);
-            SetHydrgFanCtlSpdSmoothly(g_stStartHydrgFanSpdPara.FanSpdIgniterFirstTime, 90, 10, g_stStartHydrgFanSpdPara.FanSpdAfterIgniterFirstSuccessd);
+            SetHydrgFanCtlSpdSmoothly(g_stStartHydrogenFanSpdPara.FanSpdIgniterFirstTime, 90, 10, g_stStartHydrogenFanSpdPara.FanSpdAfterIgniterFirstSuccessd);
             IgniterWorkForSeconds(240);
 
             SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(DEF_ENABLED);//重整温度监测
@@ -154,7 +163,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
 
             BSP_LqdValve1_PwrOff();
         } else {
-            APP_TRACE_INFO(("The first time ignite first time statu is failed, ignite for the first time behind has not start...\n\r"));
+            APP_TRACE_INFO(("The first time ignite front is failed or froce stoped...\n\r"));
             m_eIgniteStatu = EN_NOT_PASS;
         }
     } else {
@@ -181,16 +190,16 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
 */
 IGNITE_CHECK_STATU_Typedef IgniteSecondTime(float m_IgniteCheckTable2, float m_GoToNextStepTempTable2, uint8_t maxtrytime, uint8_t m_CheckDelayTimeFlag)
 {
+	OS_ERR      err;
     IGNITE_CHECK_STATU_Typedef m_eIgniteStatu;
 
     APP_TRACE_INFO(("Ignite second time...\n\r"));
     BSP_FastHeaterPwrOff();
     BSP_LqdValve2_PwrOn();
     SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime);
-    SetHydrgFanCtlSpdSmoothly(g_stStartHydrgFanSpdPara.FanSpdIgniterSecondTime, 90, 10, g_stStartHydrgFanSpdPara.FanSpdAfterIgniterSecondSuccessd);
+    SetHydrgFanCtlSpdSmoothly(g_stStartHydrogenFanSpdPara.FanSpdIgniterSecondTime, 90, 10, g_stStartHydrogenFanSpdPara.FanSpdAfterIgniterSecondSuccessd);
 
     IgniterWorkForSeconds(180);
-
     m_eIgniteStatu = EN_PASS;
     return m_eIgniteStatu;
 }
@@ -242,6 +251,7 @@ void HydrgProducerManagerTaskCreate(void)
 {
     OS_ERR  err;
     OSSemCreate(&HydrgProducerManagerStopSem, "Hydrogen producer manager sem", 0, &err);
+	OSSemCreate(&FastHeatFinishedWaitSem, "Fast heat finished wait sem", 0, &err);
 
     OSTaskCreate((OS_TCB *)&HydrgProducerManagerTaskTCB,                    // Create the start task
                  (CPU_CHAR *)"Hydrogen producer manager task",
@@ -279,7 +289,7 @@ void HydrgProducerManagerTask()
 
         SetHydrgProducerDigSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);//开运行数字信号警报监测开关
         SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);//开运行模拟信号警报监测开关
-        SetHydrgProducerPumpRunningStartAutoAdjHookSwitch(DEF_ENABLED);//允許自動減泵速,在泵速降到300以后会自动失能
+        SetHydrgProducerPumpRunningStartAutoAdjHookSwitch(DEF_ENABLED);//允許自動減泵速
 
         while(DEF_TRUE) {
             OSSemPend(&HydrgProducerManagerStopSem,
@@ -356,7 +366,7 @@ void HydrgProducerManagerDlyStopTask(void)
 
         g_eHydrgProducerManagerStopDlyStatu = ON;
         APP_TRACE_INFO(("The Hydrogen producer manager start to delay stop...\n\r"));
-        IgniterWorkForSeconds(0);//防止关机时，点火器因未到定时时间而继续运行，故将其关闭
+        IgniterWorkForSeconds(0);
         SetPumpExpectSpdSmoothly(0, 10); //关机泵控平滑处理
         BSP_LqdValve2_PwrOff();
         SetHydrgFanCtlSpdSmoothly(2000, 0, 0, 2000);

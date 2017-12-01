@@ -43,7 +43,7 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define  APP_TASK_START_STK_SIZE                    128
+#define  APP_TASK_START_STK_SIZE                    256
 
 /*
 ***************************************************************************************************
@@ -82,23 +82,23 @@ int  main(void)
     BSP_IntDisAll();                                            /* Disable all interrupts.                              */
 
     OSInit(&err);                                               /* Init uC/OS-III.                                      */
-    OS_CRITICAL_ENTER();//进入临界区
+    OS_CRITICAL_ENTER();
 
-    OSTaskCreate((OS_TCB *)&AppTaskStartTCB,                    //任务控制块
-                 (CPU_CHAR *)"App Task Start",                                  //任务名字
-                 (OS_TASK_PTR) AppTaskStart,                                        //任务函数
-                 (void *) 0,                                                                //传递给任务函数的参数
-                 (OS_PRIO) APP_TASK_START_PRIO,                             //任务优先级
-                 (CPU_STK *)&AppTaskStartStk[0],                            //任务堆栈基地址
-                 (CPU_STK_SIZE) APP_TASK_START_STK_SIZE / 10,       //任务堆栈深度限位
-                 (CPU_STK_SIZE) APP_TASK_START_STK_SIZE,            //任务堆栈大小
-                 (OS_MSG_QTY) 5u,                                   //任务内部消息队列能够接收的最大消息数目,为0时禁止接收消息
-                 (OS_TICK) 0u,                                      //当使能时间片轮转时的时间片长度，为0时为默认长度，
-                 (void *) 0,                                        //用户补充的存储区
-                 (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),       //任务选项
-                 (OS_ERR *)&err);                                   //存放该函数错误时的返回值
+    OSTaskCreate((OS_TCB *)&AppTaskStartTCB,                    
+                 (CPU_CHAR *)"App Task Start",                                  
+                 (OS_TASK_PTR) AppTaskStart,                                       
+                 (void *) 0,                                                                
+                 (OS_PRIO) APP_TASK_START_PRIO,                             
+                 (CPU_STK *)&AppTaskStartStk[0],                            
+                 (CPU_STK_SIZE) APP_TASK_START_STK_SIZE / 10,       
+                 (CPU_STK_SIZE) APP_TASK_START_STK_SIZE,            
+                 (OS_MSG_QTY) 5u,                                   
+                 (OS_TICK) 0u,                                      
+                 (void *) 0,                                       
+                 (OS_OPT)(OS_OPT_TASK_STK_CHK | OS_OPT_TASK_STK_CLR),       
+                 (OS_ERR *)&err);                                   
 
-    OS_CRITICAL_EXIT(); //退出临界区
+    OS_CRITICAL_EXIT(); 
     OSStart(&err);                                              /* Start multitasking (i.e. give control to uC/OS-III). */
 }
 
@@ -121,7 +121,6 @@ static  void  AppTaskStart(void *p_arg)
     CPU_INT32U  cpu_clk_freq;
     CPU_INT32U  cnts;
     OS_ERR      err;
-//    uint8_t i = 0;
 
     VERIFY_RESULT_TYPE_VARIABLE_Typedef eWaitCmdCheckStatu;
 
@@ -137,47 +136,48 @@ static  void  AppTaskStart(void *p_arg)
 
     USER_NVIC_Cfg();
 
-    Mem_Init();                                                 /*初始化内存管理模块*/
+    Mem_Init();                                                 
 
-#if OS_CFG_STAT_TASK_EN > 0u                                   /*统计任务*/
+#if OS_CFG_STAT_TASK_EN > 0u                                   
     OSStatTaskCPUUsageInit(&err);                             /* Compute CPU capacity with no task running            */
 #endif
 
-#ifdef CPU_CFG_INT_DIS_MEAS_EN                                //如果使能了测量中断关闭时间
-    CPU_IntDisMeasMaxCurReset();                              //重置当前最大禁用中断时间
+#ifdef CPU_CFG_INT_DIS_MEAS_EN                                
+    CPU_IntDisMeasMaxCurReset();                              
 #endif
 
 
-#if OS_CFG_SCHED_ROUND_ROBIN_EN                                                     //当使用时间片轮转的时候
-    //使能时间片轮转调度功能,时间片长度为1个系统时钟节拍，既1*5=5ms
+#if OS_CFG_SCHED_ROUND_ROBIN_EN                                                     
+    
     OSSchedRoundRobinCfg(DEF_ENABLED, 1, &err);
 #endif
 
 
-#if (APP_CFG_SERIAL_EN == DEF_ENABLED)         /*串口初始化*/
-    BSP_Ser_Init(115200);                      /* 调试串口*/
+#if (APP_CFG_SERIAL_EN == DEF_ENABLED)         
+    BSP_Ser_Init(115200);                      
 #endif
 
     OSSemCreate(&g_stAnaSigConvertFinishSem, "Ana Signal convert finish sem", 0, &err);
-    OSSemCreate(&IgniteFirstBehindWaitSem, "Fast heater finish sem", 0, &err);
-    OSSemCreate(&IgniteSecondBehindWaitSem, "IgniteSecondBehindWaitSem...", 0, &err);
-    OSSemCreate(&WaitSelcetWorkModeSem, "WaitSelcetWorkModeSem...", 0, &err);
+    OSSemCreate(&IgniteFirstBehindWaitSem, "Ignite First Behind Wait Sem", 0, &err);
+    OSSemCreate(&IgniteSecondBehindWaitSem, "Ignite Second Behind Wait Sem...", 0, &err);
 
-    LoadDriverLayerParameters();     //载入驱动层参数
+    LoadDriverLayerParameters();     
 
-    LoadApplicationLayerParameters();//载入应用层参数
+    LoadApplicationLayerParameters();
 
     App_OS_SetAllHooks();             //钩子函数设置
 
     CAN1_Init();                      //需先载入组网ID后再进行CAN总线配置，波特率50K
 
-    SystemTimeStatTaskCreate();       // 系统时钟统计任务创建
+    SystemTimeStatTaskCreate();       
 
     AnaSigMonitorTaskCreate();
 
     DigSigMonitorTaskCreate();
 
-    CommunicateTaskCreate();
+    CommTaskCreate();
+	
+	CommDataSendTaskCreate();
 
     MF210_CommunicateTaskCreate();//3G模块数据发送任务
 
@@ -190,10 +190,12 @@ static  void  AppTaskStart(void *p_arg)
     HydrgProducerManagerTaskCreate();
 
     StackManagerTaskCreate();
+	
+#ifdef  STACK_SHORT_CONTROL_ENABLE
+    StackShortCircuitTaskCreate();
+#endif
 
-    StackShortCircuitTaskCreate();//电堆短路活化任务
-
-    DcModuleDynamicAdjustTaskCreate();//DC动态限流调节任务,平滑限流任务
+    CurrentSmoothlyLimitTaskCreate();
 
     HydrgProducerDlyStopTaskCreate();
 
@@ -204,7 +206,6 @@ static  void  AppTaskStart(void *p_arg)
     BSP_BuzzerOn();
     OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
     BSP_BuzzerOff();
-    OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
 
     APP_TRACE_INFO(("Running top Task...\n\r"));
 

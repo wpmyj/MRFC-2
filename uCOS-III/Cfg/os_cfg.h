@@ -66,9 +66,9 @@
 
 
 /* --------------------------- MESSAGE QUEUES -------------------------- */
-#define OS_CFG_Q_EN                     0u   /* Enable (1) or Disable (0) code generation for QUEUES                  */
-#define OS_CFG_Q_DEL_EN                 0u   /*     Include code for OSQDel()                                         */
-#define OS_CFG_Q_FLUSH_EN               0u   /*     Include code for OSQFlush()                                       */
+#define OS_CFG_Q_EN                     1u   /* Enable (1) or Disable (0) code generation for QUEUES                  */
+#define OS_CFG_Q_DEL_EN                 1u   /*     Include code for OSQDel()                                         */
+#define OS_CFG_Q_FLUSH_EN               1u   /*     Include code for OSQFlush()                                       */
 #define OS_CFG_Q_PEND_ABORT_EN          0u   /*     Include code for OSQPendAbort()                                   */
 
 

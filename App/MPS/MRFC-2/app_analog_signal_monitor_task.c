@@ -32,7 +32,7 @@
 #include "app_hydrg_producer_manager.h"
 #include "app_dc_module_communicate_task.h"
 #include "app_mf210_communicate_task.h"
-#include "bsp_MF210.h"
+#include "bsp_MF210v2.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINES
@@ -79,10 +79,8 @@ static      void        AnaSigMonitorTask(void *p_arg);
 static      void        HydrgProducerAnaSigAlarmRunningMonitorHook(void);
 static      void        StackAnaSigAlarmRunningMonitorHook(void);
 static      void        JudgeWhetherTheStackIsPulledStoppedMonitorHook(void);
-//static      void        HydrgProducerPumpAutoAdjByDecompressCountHook(void);
 static      void        HydrgProducerPumpRunningStartAutoAdjHook(void);
 
-static      void        StackHydrgPressHighEnoughWaitHook(uint8_t i_WaitStatus);
 /*
 ***************************************************************************************************
 *                                 AnaSigMonitorTaskCreate()
@@ -135,6 +133,7 @@ void  AnaSigMonitorTask(void *p_arg)
     OS_ERR      err;
 
     while(DEF_TRUE) {
+		
         OSTimeDlyHMSM(0, 0, 0, 100, OS_OPT_TIME_HMSM_STRICT, &err);
 
         AnaSigSampleStart();
@@ -161,21 +160,16 @@ void  AnaSigMonitorTask(void *p_arg)
 
         //监测电堆是否被拉停
         if(g_u8StackIsPulledStoppedMonitorHookSw == DEF_ENABLED) {
-//            JudgeWhetherTheStackIsPulledStoppedMonitorHook();
+            JudgeWhetherTheStackIsPulledStoppedMonitorHook();
         }
 
         if(g_u8HydrgProducerPumpRunningStartAutoAdjHookSw == DEF_ENABLED) {
             HydrgProducerPumpRunningStartAutoAdjHook();//液压大于4公斤，制氢机自动调节泵速，只调节一次
         }
 
-        if(SocketRecv(1, Uatr_RxBuf)) {
+        if(SocketRecv(SOCKET_ID, Uart2RxBuf)) {
             RespondRemoteControlCmd();    //接收服务器控制指令
         }
-
-        //制氢泵速根据排气次数动态调整
-//        if(g_u8HydrgProducerPumpAutoAdjByDecompressCountHookSw == DEF_ENABLED) {
-//            HydrgProducerPumpAutoAdjByDecompressCountHook();
-//        }
     }
 }
 
@@ -311,9 +305,7 @@ static void StackHydrgPressHighEnoughWaitHook(uint8_t i_u8WaitStatus)
 
     //等待气压达到电堆进入工作状态
     if((fHydrgPress >= 45.0) && (WAIT_FOR_45KPA == i_u8WaitStatus)) {
-        OSTaskSemPost(&StackManagerTaskTCB,
-                      OS_OPT_POST_NO_SCHED,
-                      &err);
+		OSSemPost(&StackStartSem, OS_OPT_POST_1, &err);
         g_u8StackHydrgPressArriveWaitSw = DO_NOT_WAIT;
     } else {
     }
@@ -362,8 +354,6 @@ void StackAnaSigAlarmRunningMonitorHook(void)
             }
         } else if(fStackTemp < 10) {
             AlarmCmd(STACK_TEMP_LOW_ALARM, GENERAL_GRADE, ON);
-
-//            CmdShutDown();      //关机命令
             APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
         } else {
             if((fStackTemp >= 20) && (fStackTemp <= 55)) {//系统恢复到正常温度,恢复输出
@@ -398,12 +388,12 @@ void StackAnaSigAlarmRunningMonitorHook(void)
             AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, SERIOUS_GRADE, ON);
             g_u16StackHydrgPressBelow10KPaHoldSeconds++;
 
-            if(g_u16StackHydrgPressBelow10KPaHoldSeconds >= 30) {//气压过低超过3s,电堆停止输出
+            if(g_u16StackHydrgPressBelow10KPaHoldSeconds >= 30) {//气压小于10超过3s,电堆停止输出
                 BSP_DCConnectValvePwrOff();
                 StackHydrogenPressLowFlag = YES;
                 g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;
                 APP_TRACE_INFO(("Stack hydrogen press is below the low temp protect line...\n\r"));
-                //            CmdShutDown();      //关机命令
+                CmdShutDown();      //关机命令
             }
         }
 
@@ -539,45 +529,28 @@ static void JudgeWhetherTheStackIsPulledStoppedMonitorHook(void)
 
     u16RestartLimitCurrentCount ++;
 
-    if(u16RestartLimitCurrentCount >= 30)//每3秒监测一次是否需要开始重新限流
-        if(EN_IN_WORK == GetStackWorkStatu()) {
-            if((fStackVoltage >= 51.0) && (fStackCurrent <= 3.0)) {
+	if( g_u8StackNeedRestartLimitCurrentFlag != DEF_SET){
+		if(u16RestartLimitCurrentCount >= 30){//每3秒监测一次是否需要开始重新限流
+			if(EN_IN_WORK == GetStackWorkStatu()) {
+				
+				if((fStackVoltage >= 51.0) && (fStackCurrent <= 7.0)) {
 
-                g_u8StackNeedRestartLimitCurrentFlag = DEF_SET;
-                SetDCModuleAutoAdjustTaskSwitch(DEF_DISABLED);
-                OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB, &err);
+					g_u8StackNeedRestartLimitCurrentFlag = DEF_SET;
+					OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB, &err);
 
-            } else {
-                g_u8StackNeedRestartLimitCurrentFlag = DEF_CLR;
-            }
-        }
+				} else {
+					g_u8StackNeedRestartLimitCurrentFlag = DEF_CLR;
+				}
+			}
+			u16RestartLimitCurrentCount = 0;
+		}
+	}
 }
 
 uint8_t GetStackNeedRestartLimitCurrentFlag(void)
 {
     return g_u8StackNeedRestartLimitCurrentFlag;
 }
-/*
-***************************************************************************************************
-*                          HydrgProducerPumpAutoAdjByDecompressCountHook()
-*
-* Description : open the switch of the stack analog signal alarm manager switch.
-*
-* Arguments   : none.
-*
-* Returns     : none.
-*
-* Notes       : none.
-***************************************************************************************************
-*/
-//static void HydrgProducerPumpAutoAdjByDecompressCountHook(void)
-//{
-//    if((GetSrcAnaSig(STACK_VOLTAGE) <= 51.0) && (GetSrcAnaSig(STACK_CURRENT) >= 3.0) && (GetSrcAnaSig(LIQUID_PRESS) <= 17.5 )){
-//
-//    }else{
-//
-//    }
-//}
 
 /*
 ***************************************************************************************************

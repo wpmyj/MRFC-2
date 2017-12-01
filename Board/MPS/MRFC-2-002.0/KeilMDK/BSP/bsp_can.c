@@ -24,12 +24,13 @@
 */
 #include "bsp_can.h"
 #include "app_system_run_cfg_parameters.h"
+#include "bsp_delay_task_timer.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-//CANWorkFlag 标志位掩码定义
+//CANResetFlag 标志位掩码定义
 #define       CAN_INIT_COMPLETE            0x80   //CAN1初始化完成标志
 //#define       CAN_BUS_ERROR                0x40   //CAN总线错误标志
 #define       CAN_RESET_COMPLETE           0x40   //CAN1控制器复位完成标志
@@ -44,27 +45,28 @@
 ***************************************************************************************************
 */
 static void CAN1_RX0_IRQHandler(void);
-static void CAN1_SCE_IRQHandler(void);
-
-static void CanErrorProcess(void);
 /*
 ***************************************************************************************************
 *                                           LOCAL VARIABLES
 ***************************************************************************************************
 */
 static uint8_t  g_u8CanMsgRxBuff[PRGM_RX_BUFF_SIZE];//从CAN接口接收到的待汇总的数据的缓冲区
-static uint8_t  CanMsgRxStatu = NOT_STARTED;       //CAN总线接收状态
-static uint8_t  CANWorkFlag = 0;//CAN工作状态标志的定义
+static uint8_t  CanMsgRxStatu = NOT_STARTED;        //CAN总线接收状态
+
 /*
 ***************************************************************************************************
 *                                           GLOBAL VARIABLES
 ***************************************************************************************************
 */
-WHETHER_TYPE_VARIABLE_Typedef       g_eCAN_BusOnLineFlag = YES;
-WHETHER_TYPE_VARIABLE_Typedef       g_eCanMsgRxStatu = NO;//是否接收到信息
+uint8_t     g_eCAN_BusOnLineFlag = DEF_YES;
+uint8_t     g_eCanMsgRxStatu = DEF_NO;//是否接收到信息
 
 uint8_t     g_u8CanRxMsg[PRGM_RX_BUFF_SIZE];//汇总后CAN接收数据
-uint8_t     g_u8CanErrorCode = 0;//CAN总线错误码
+
+uint8_t     g_u8CanErrorCode = 0;
+
+
+
 /*
 ***************************************************************************************************
 *                                          CAN1_Init()
@@ -91,7 +93,7 @@ void CAN1_Init(void)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOD, ENABLE);
 
     GPIO_PinRemapConfig(GPIO_Remap2_CAN1, ENABLE);  //开重映射
-
+    
     //CAN1 TX
     GPIO_InitStructure.GPIO_Pin = BSP_GPIOD_PIN1_CAN1_TX_PORT_NMB;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -111,20 +113,21 @@ void CAN1_Init(void)
     CAN_InitStructure.CAN_RFLM = DISABLE; /* 接收FIFO锁定, 1--锁定后接收到新的报文摘不要，0--接收到新的报文则覆盖前一报文   */
     CAN_InitStructure.CAN_TXFP = ENABLE;  /* 发送优先级  0---由标识符决定  1---由发送请求顺序决定   */
     CAN_InitStructure.CAN_Mode = CAN_Mode_Normal; /*工作模式*/ //CAN_Mode_LoopBack、CAN_Mode_Normal
-    CAN_InitStructure.CAN_SJW = CAN_SJW_1tq;        //BTR-SJW 重新同步跳跃宽度 1个时间单元
-    CAN_InitStructure.CAN_BS1 = CAN_BS1_3tq;        //BTR-TS1 时间段1 占用了12个时间单元
-    CAN_InitStructure.CAN_BS2 = CAN_BS2_2tq;        //BTR-TS1 时间段2 占用了3个时间单元
-    CAN_InitStructure.CAN_Prescaler = 120;          //BTR-BRP 波特率分频器  定义了时间单元的时间长度 36MHz/(1 + 3 + 2) / 120 = 50KHZ
-    CAN_Init(CAN1, &CAN_InitStructure);
+    
+    CAN_InitStructure.CAN_SJW = CAN_SJW_1tq;		//BTR-SJW 重新同步跳跃宽度 1个时间单元
+    CAN_InitStructure.CAN_BS1 = CAN_BS1_3tq;		//BTR-TS1 时间段1 占用了12个时间单元
+    CAN_InitStructure.CAN_BS2 = CAN_BS2_2tq;		//BTR-TS1 时间段2 占用了3个时间单元
+    CAN_InitStructure.CAN_Prescaler = 120;		   	//BTR-BRP 波特率分频器  定义了时间单元的时间长度 36MHz/(1 + 3 + 2) / 120 = 50KHZ
+    CAN_Init(CAN1, &CAN_InitStructure);	
 
     CAN_FilterInitStructure.CAN_FilterNumber = 0;     //过滤器组编号
     CAN_FilterInitStructure.CAN_FilterMode = CAN_FilterMode_IdMask; //工作在屏蔽位模式
-    CAN_FilterInitStructure.CAN_FilterScale = CAN_FilterScale_32bit;
-
-    CAN_FilterInitStructure.CAN_FilterIdHigh = ((((u32)g_u16GlobalNetWorkId << 21) & 0xFFFF0000) >> 16); //过滤掉不是发送给本机的数据帧
+    CAN_FilterInitStructure.CAN_FilterScale = CAN_FilterScale_32bit;                 
+    
+    CAN_FilterInitStructure.CAN_FilterIdHigh =((((u32)g_u16GlobalNetWorkId << 21) & 0xFFFF0000) >>16); //过滤掉不是发送给本机的数据帧
     CAN_FilterInitStructure.CAN_FilterIdLow = ((((u32)g_u16GlobalNetWorkId << 21) | CAN_ID_STD | CAN_RTR_DATA) & 0xFFFF); //确保收到的是标准数据帧
     CAN_FilterInitStructure.CAN_FilterMaskIdHigh = 0xFFFF;//所有的位全部必须匹配
-    CAN_FilterInitStructure.CAN_FilterMaskIdLow = 0xFFFF;
+    CAN_FilterInitStructure.CAN_FilterMaskIdLow = 0xFFFF; 
 
     CAN_FilterInitStructure.CAN_FilterFIFOAssignment = CAN_FIFO0;  //过滤器0关联到FIFO0
     CAN_FilterInitStructure.CAN_FilterActivation = ENABLE;//激活过滤器0，激活后会自动退出初始化模式
@@ -140,12 +143,6 @@ void CAN1_Init(void)
     CAN_ITConfig(CAN1, CAN_IT_FMP0, ENABLE);/* 挂号中断, 进入中断后读FIFO的报文函数释放报文清中断标志 */
     BSP_IntVectSet(BSP_INT_ID_CAN1_RX0, CAN1_RX0_IRQHandler);
     BSP_IntEn(BSP_INT_ID_CAN1_RX0);
-#endif
-
-#if CAN1_ERR_INT_ENABLE
-    CAN_ITConfig(CAN1, CAN_IT_EWG | CAN_IT_EPV | CAN_IT_BOF | CAN_IT_BOF | CAN_IT_LEC | CAN_IT_ERR, ENABLE);//开启错误中断
-    BSP_IntVectSet(BSP_INT_ID_CAN1_SCE, CAN1_SCE_IRQHandler);
-    BSP_IntEn(BSP_INT_ID_CAN1_SCE);
 #endif
 }
 
@@ -163,12 +160,11 @@ void CAN1_Init(void)
 *
 ***************************************************************************************************
 */
-uint8_t CANx_Send_Msg(CAN_TypeDef *CANx, Message *m)
+uint8_t CANx_Send_Msg(CAN_TypeDef * CANx, Message *m)
 {
-    uint8_t  u8SendStatu = 0;
-    uint8_t  ret;
-    uint8_t  i;
-	  uint16_t u16SendErrCount = 0;
+    uint8_t u8SendStatu = 0;
+    uint8_t i;
+    uint16_t u16SendErrCount = 0;
     CanTxMsg TxMessage;
 
     TxMessage.StdId = (uint32_t)(m->cob_id);// 标准标识符11位,即发送优先级
@@ -181,17 +177,16 @@ uint8_t CANx_Send_Msg(CAN_TypeDef *CANx, Message *m)
         TxMessage.Data[i] = m->data[i];
     }
 
-    ret = CAN_Transmit(CAN1, &TxMessage);
-
-    while(CAN_TxStatus_NoMailBox == CAN_Transmit(CANx, &TxMessage)) {
-        if(u16SendErrCount >= 0xFFF) {
-            u8SendStatu = 1;
-            APP_TRACE_INFO(("CAN send error..\r\n"));
-            break;
-        } else {
-            u16SendErrCount ++;
-        }
-    }
+    while(CAN_TxStatus_NoMailBox == CAN_Transmit(CANx, &TxMessage))
+	{	
+		if(u16SendErrCount >= 0xFFF){
+			u8SendStatu = 1;
+//            APP_TRACE_INFO(("CAN send error..\r\n"));
+			break;
+		}else{
+			u16SendErrCount ++;
+		}
+	}
 
     return u8SendStatu;
 }
@@ -216,9 +211,9 @@ uint8_t SendCanMsgContainNodeId(uint32_t i_Msglen, uint8_t *msg, uint8_t i_NodeI
     uint32_t i, j;
     uint8_t  u8SendErrCount = 0;
     uint8_t  LastTimeSendErrFlag = NO;
-    Message ProcessedData;
+    Message ProcessedData;   
 
-    ProcessedData.cob_id = i_NodeId ;//合并后的ID
+    ProcessedData.cob_id = i_NodeId ;//CAN ID
     ProcessedData.rtr = CAN_RTR_DATA;
 
     for(i = 0; i < (i_Msglen / 8 + ((i_Msglen % 8) ? 1 : 0)); i++) { //长消息拆包的分包数,8为CAN消息的标准包长度
@@ -227,7 +222,7 @@ uint8_t SendCanMsgContainNodeId(uint32_t i_Msglen, uint8_t *msg, uint8_t i_NodeI
 
             for(j = 0; j < ProcessedData.len; j++) {
                 ProcessedData.data[j] = msg[i * 8 + j];
-            }
+            }        
         } else {
             //上次发送出错，直接发送数组即可，不需要重新复制
         }
@@ -244,13 +239,13 @@ uint8_t SendCanMsgContainNodeId(uint32_t i_Msglen, uint8_t *msg, uint8_t i_NodeI
             if(++u8SendErrCount >= 10) {
                 g_eCAN_BusOnLineFlag = NO;
                 APP_TRACE_INFO(("CAN bus has dropped,send err..\r\n"));
+                StartTim6DelayTask(CAN_BUS_AUTO_RECONNECT_AFTER_30_SEC, 30000); //掉线后定时监测是否在线
                 break;
             }
         } else {
             LastTimeSendErrFlag = NO;//发送成功，清零该标志，进入下一次循环，发送该数据
-        }
+        }   
     }
-
     return ret;
 }
 
@@ -308,14 +303,14 @@ static void CAN1_RX0_IRQHandler(void)
     CanRxMsg CAN1_Rx_Msg; //数据链路层的数据包定义
     OS_ERR err;
     CPU_SR_ALLOC();
-
+    
     CAN_Receive(CAN1, CAN_FIFO0, &(CAN1_Rx_Msg));//从CAN1 FIFO0接收数据链路层的CAN数据,注意此处提取报文后会自动清除中断
-
-    if((CAN1_Rx_Msg.DLC == 8)
-            && (CAN1_Rx_Msg.Data[0] == 0xFC)
-            && (CAN1_Rx_Msg.Data[1] == 0xFD)
-            && (CAN1_Rx_Msg.Data[2] == 0xFE)) { //收到的是报头帧数据
-
+    
+    if((CAN1_Rx_Msg.DLC == 8) 
+        && (CAN1_Rx_Msg.Data[0] == 0xFC) 
+        && (CAN1_Rx_Msg.Data[1] == 0xFD) 
+        && (CAN1_Rx_Msg.Data[2] == 0xFE)) { //收到的是报头帧数据
+            
         for(i = 0; i < CAN1_Rx_Msg.DLC; i++) {
             g_u8CanMsgRxBuff[i] = CAN1_Rx_Msg.Data[i];
         }
@@ -341,12 +336,11 @@ static void CAN1_RX0_IRQHandler(void)
     if(CanMsgRxStatu == READY) {//汇总后的数据包接收完成后再发送到上位机
         if(g_eCanMsgRxStatu == NO) {
             CPU_CRITICAL_ENTER();
-
             for(j = 0; j < PRGM_RX_BUFF_SIZE; j++) {
                 g_u8CanRxMsg[j] = g_u8CanMsgRxBuff[j];
             }
 
-            OSTimeDlyResume(&CommunicateTaskTCB,
+            OSTimeDlyResume(&CommTaskTCB,
                             &err);
             g_eCanMsgRxStatu = YES;
             CPU_CRITICAL_EXIT();
@@ -361,40 +355,26 @@ static void CAN1_RX0_IRQHandler(void)
 
 #endif
 
-
-#if CAN1_ERR_INT_ENABLE
-/*CAN错误中断服务函数*/
-static void CAN1_SCE_IRQHandler(void)
+/*
+***************************************************************************************************
+*                                          SetCanBusOnlineFlag()
+*
+* Description : The use of this funciton is to check the authorization of the system.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
+void SetCanBusOnlineFlag(uint8_t i_NewStatus)
 {
-    CANWorkFlag &= ~CAN_RESET_COMPLETE;//清零复位完成标志
-
-    if(CAN_GetFlagStatus(CAN1, CAN_FLAG_BOF) == SET) {
-        CAN_ClearITPendingBit(CAN1, CAN_IT_BOF);
-    } else if(CAN_GetITStatus(CAN1, CAN_IT_ERR)) {
-        CAN_ClearITPendingBit(CAN1, CAN_IT_ERR);
-    } else if(CAN_GetFlagStatus(CAN1, CAN_FLAG_EPV) == SET) {
-        CAN_ClearITPendingBit(CAN1, CAN_IT_EPV);
-    } else if(CAN_GetFlagStatus(CAN1, CAN_FLAG_EWG) == SET) {
-        CAN_ClearITPendingBit(CAN1, CAN_IT_EWG);
-    } else {
-        CAN_ClearITPendingBit(CAN1, CAN_IT_EWG);
-        CAN_ClearITPendingBit(CAN1, CAN_IT_EPV);
-        CAN_ClearITPendingBit(CAN1, CAN_IT_BOF);
-        CAN_ClearITPendingBit(CAN1, CAN_IT_ERR);
-    }
-
-    g_u8CanErrorCode = CAN_GetLastErrorCode(CAN1);
-    CanErrorProcess();
+    g_eCAN_BusOnLineFlag = i_NewStatus;
 }
 
-/*CAN错误处理函数*/
-static void CanErrorProcess(void)
+uint8_t GetCanBusOnlineFlag(void)
 {
-    if((CANWorkFlag & CAN_RESET_COMPLETE) == 0) {
-        CAN1_Init();
-        CANWorkFlag |= CAN_RESET_COMPLETE;//置位复位完成标志
-    }
+    return g_eCAN_BusOnLineFlag;
 }
-
-#endif
 /******************* (C) COPYRIGHT 2016 Guangdong ENECO *****END OF FILE****/

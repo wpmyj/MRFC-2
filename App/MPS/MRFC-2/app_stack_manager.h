@@ -48,11 +48,10 @@
 *                                    EXPORTED OS VARIABLE DECLARATIONS
 ***************************************************************************************************
 */
-
+extern      OS_SEM      StackStartSem;
 extern      OS_TCB      StackManagerTaskTCB;
 extern      OS_TCB      StackManagerDlyStopTaskTCB;
 extern      OS_TCB      StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB;
-extern      OS_TCB      StackProgramControlAirPressureReleaseTaskTCB;
 
 
 /*
@@ -71,31 +70,28 @@ extern      uint8_t                                g_u8DecompressCountPerMinute;
 */
 void    StackManagerTaskCreate(void);
 void    StackManagerDlyStopTaskCreate(void);
-void    StackHydrogenYieldMatchingOffsetValueMonitorTaskCreate(void);
-void    StackProgramControlPressureReleaseTaskCreate(void);
-
-
-uint8_t GetStackProgramControlAirPressureReleaseTaskSwitch(void);
+void	StackHydrogenYieldMatchingOffsetValueMonitorTaskCreate(void);
 
 void    SetStackAnaSigAlarmRunningMonitorHookSwitch(u8);
 void    SetStackOutAirValveStatus(SWITCH_TYPE_VARIABLE_Typedef i_NewStatu);
 
 uint8_t GetPassiveDecompressCountPerMinutes(void);
 
-float   GetStackHydrogenYieldMatchOffsetValue(void);
 
 uint8_t GetStackStartPurifySwitchStatus(void);
 
 void SetStackNeedVentByAmpIntegralSumSwitch(uint8_t i_NewStatu);
 uint8_t GetStackNeedVentByAmpIntegralSumSwitch(void);
 
-uint8_t GetSStackHydrogenMarginMonitorTaskSwitchStatus(void);
 SWITCH_TYPE_VARIABLE_Typedef GetStackOutAirValveStatus(void);
 
 uint8_t GetStackStopDlyStatu(void);
 
 void  SetStackAmpIntegralSum(float i_NewValue);
 float GetStackAmpIntegralSum(void);
+
+uint8_t GetStackFanSpdPidControlSwitchStatus(void);
+void SetStackFanSpdPidControlSwitch(uint8_t i_NewStatu);
 /*
 ***************************************************************************************************
 *                                             MODULE END

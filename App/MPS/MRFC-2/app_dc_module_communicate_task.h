@@ -38,11 +38,16 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define VOLTAGE_LIMIT_MAX  (53.50)
-
-#define CURRENT_LIMIT_MAX  (30.00)//最大33A
-#define CURRENT_LIMIT_MIN  (5.00)
-
+#define VOLTAGE_LIMIT_MAX  (53.5)
+//正常金威源参数
+#if 	1
+#define CURRENT_LIMIT_MAX                            38.0 
+#define LIMIT_POINT_1_IN_SHORT_PRGM                  30.0
+#define LIMIT_POINT_2_IN_SHORT_PRGM                  20.0
+#define HOLD_LIMIT_POINT                             13.0
+#define CURRENT_LIMIT_MIN                             5.0
+#endif
+ 
 /*
 ***************************************************************************************************
 *                                    EXPORTED OS VARIABLE DECLARATIONS
@@ -55,24 +60,32 @@ extern      OS_TCB      DCModuleDynamicAdjustTaskTCB;
 *                                   EXPORTED GLOABLE VARIABLE DECLARATIONS
 ***************************************************************************************************
 */
-extern      float   fIvalueNow;
-extern      float   fVvalueNow;
+extern      float   g_fIvalueNow;
+extern      float   g_fVvalueNow;
+
+/*
+***************************************************************************************************
+*                                           EXPORTED TYPE
+***************************************************************************************************
+*/
+typedef enum {
+
+    NONE_SMOOTHLY_RUSUME = 0,
+    START_STEP_RESUME,
+    AFTER_SHORT_CIRCUIT_RESUME,
+
+} SMOOTHLY_RESUME_Typedef;
 /*
 ***************************************************************************************************
 *                                           EXPORTED FUNCTION
 ***************************************************************************************************
 */
 
-void DcModuleDynamicAdjustTaskCreate(void);
+void CurrentLimitTaskCreate(void);
 
-void SetDCModuleCurrentLimitingPointImproveFlag(uint8_t i_NewStatu);
-uint8_t GetDcModuleCurrentLimitingPointImproveFlagStatus(void);
-
-void SetDcModuleCurrentLimitingPointReduceFlag(uint8_t i_NewStatu);
-uint8_t GetDcModuleCurrentLimitingPointReduceFlagStatus(void);
-
-void SetDCModuleAutoAdjustTaskSwitch(uint8_t i_NewStatu);
 void SetDCModuleLimitCurrentSmoothlyTaskSwitch(uint8_t i_NewStatu);
+
+void CurrentSmoothlyLimitTaskCreate(void);
 /*
 ***************************************************************************************************
 *                                             MODULE END

@@ -566,7 +566,7 @@ void StackFanSpdInc()
         u16StackFanCtlSpd += 100;
     }
 
-    SetStackFanCtlSpd(u16StackFanCtlSpd);
+    SetStackFanCtrlSpd(u16StackFanCtlSpd);
 }
 
 /*
@@ -593,7 +593,7 @@ void StackFanSpdDec()
         u16StackFanCtlSpd -= 100;
     }
 
-    SetStackFanCtlSpd(u16StackFanCtlSpd);
+    SetStackFanCtrlSpd(u16StackFanCtlSpd);
 }
 
 
@@ -616,7 +616,7 @@ uint16_t GetStackFanCtlSpd(void)
 }
 /*
 ***************************************************************************************************
-*                                         SetStackFanCtlSpd()
+*                                         SetStackFanCtrlSpd()
 *
 * Description : set the stack fan speed grade.
 *
@@ -627,7 +627,7 @@ uint16_t GetStackFanCtlSpd(void)
 * Notes       : the speed grade whole number is 2000.
 ***************************************************************************************************
 */
-void SetStackFanCtlSpd(uint16_t i_u16NewSpd)
+void SetStackFanCtrlSpd(uint16_t i_u16NewSpd)
 {
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();

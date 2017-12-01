@@ -281,7 +281,6 @@ static void HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook(void)
 
     if(GetReformerTemp() >= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt) {
         OSSemPost(&IgniteFirstBehindWaitSem, OS_OPT_POST_1, &err);
-        OSTaskSemPost(&Make_Vaccuum_FunctionTaskTCB, OS_OPT_POST_NO_SCHED, &err);//发送给抽真空任务结束抽真空
         g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw = DEF_DISABLED;
     }
 

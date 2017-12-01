@@ -101,7 +101,7 @@ typedef struct {
 //系统运行状态状态
 typedef enum {
 
-    EN_WAITTING_COMMAND = 0,            //待机状态
+    EN_WAIT_CMD = 0,            //待机状态
     EN_START_PRGM_ONE_FRONT,        //加热准备(快速启动阶段即电加热阶段)
     EN_START_PRGM_ONE_BEHIND ,       //加热中(第一次点火后采用火焰加热阶段)
     EN_START_PRGM_TWO ,          //第二次点火
@@ -109,7 +109,7 @@ typedef enum {
     EN_KEEPING_WARM,                //保温状态
     EN_ALARMING,                     //故障状态
     EN_SHUTTING_DOWN = 7,               //关机状态
-} SYSTEM_WORK_STATU_Typedef;
+} SYS_WORK_STATU_Typedef;
 
 typedef enum {
     EN_NOT_IN_WORK = 0,
@@ -128,6 +128,11 @@ typedef enum {
     EN_CONTROL_MODE_AUTO = 0,
     EN_CONTROL_MODE_MANNUAL = !EN_CONTROL_MODE_AUTO,
 } SYSTEM_CONTROL_MODE_Typedef;
+
+typedef enum {
+    PURE_HYDROGEN_MODE = 0,
+    RICH_HYDROGEN_MODE = !PURE_HYDROGEN_MODE,
+} HYDROGEN_WORK_MODE_Typedef;
 
 typedef enum {
     OFF = 0,
@@ -343,11 +348,11 @@ typedef struct {
 #define RuningStatuCodeHydrgenProducerRuningStatuBit_4      31
 #define RuningStatuCodeHydrgenProducerRuningStatuBit_3      30
 #define RuningStatuCodeHydrgenProducerRuningStatuBit_2      29
-#define RuningStatuCodeHydrgenProducerRuningStatuBit_1      28
+#define RuningStatuCodeHydrgenProducerRuningMode      		28
 #define RuningStatuCodeFuelCellRuningStatuBit_4             27
 #define RuningStatuCodeFuelCellRuningStatuBit_3             26
 #define RuningStatuCodeFuelCellRuningStatuBit_2             25
-#define RuningStatuCodeFuelCellRuningStatuBit_1             24
+#define RuningStatuCodeFuelCellRuningStatuBit_1            24
 
 #define RuningStatuCodeGrpHydrgSwitchOutRsvdBit_6           23
 #define RuningStatuCodeGrpHydrgSwitchOutRsvdBit_5           22
@@ -385,7 +390,7 @@ AUTHORIZATION_CODE_Typedef GetAuthorizationCode(void);
 
 
 //控制通信状态码相关管理函数
-uint16_t GetConrolAndCommunicateStatuCode(void);
+uint16_t GetConrolAndCommStatuCode(void);
 
 //工作模式相关函数
 SYSTEM_WORK_MODE_Typedef        GetWorkMode(void);
@@ -431,8 +436,8 @@ void                    StackWorkTimesInc(void);
 uint16_t                GetStackWorkTimes(void);
 
 //系统工作状态管理相关函数
-void                    SetSystemWorkStatu(SYSTEM_WORK_STATU_Typedef);
-SYSTEM_WORK_STATU_Typedef       GetSystemWorkStatu(void);
+void                    SetSystemWorkStatu(SYS_WORK_STATU_Typedef);
+SYS_WORK_STATU_Typedef       GetSystemWorkStatu(void);
 
 //串口显示屏工作状态管理函数
 void SetExternalScreenUpdateStatu(WHETHER_TYPE_VARIABLE_Typedef i_NewStatu);
@@ -473,7 +478,7 @@ u32     GetSystemRunningStatuCode(void);
 void    SetSystemRunningStatuCodeBit(uint8_t);
 void    ResetSystemRunningStatuCodeBit(uint8_t);
 void    ResetSystemRunningStatuCode(void);
-void    SetSystemRunningStatuCodeSysWorkStatuSection(SYSTEM_WORK_STATU_Typedef);
+void    SetSystemRunningStatuCodeSysWorkStatuSection(SYS_WORK_STATU_Typedef);
 
 //控制通信状态码相关管理函数
 void SetConrolAndCommunicateStatuCodeBit(uint8_t i_u8BitNmb);

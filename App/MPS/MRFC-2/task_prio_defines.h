@@ -29,8 +29,8 @@
 */
 //前面的1-3优先级分配给系统时钟任务、定时器和统计任务
 #define  SYSTEM_TIME_STATISTIC_TASK_PRIO            4
-#define  COMMUNICATE_TASK_PRIO                      5
-#define  COMMUNICATE_DATA_SEND_TASK_PRIO            6
+#define  COMM_TASK_PRIO                      5
+#define  COMM_DATA_SEND_TASK_PRIO            6
 #define  COMMUNICATE_REQUEST_SEND_TASK_PRIO         7
 #define  MF210_COMMUNICATE_TASK_PRIO                8
 

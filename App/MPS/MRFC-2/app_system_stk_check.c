@@ -41,7 +41,7 @@
 ***************************************************************************************************
 */
 
-#define  SYSTEM_STACK_USAGE_CHECK_TASK_STK_SIZE       128 // 任务的堆栈大小
+#define  SYSTEM_STACK_USAGE_CHECK_TASK_STK_SIZE       200 // 任务的堆栈大小
 
 /*
 ***************************************************************************************************
@@ -102,36 +102,39 @@ static void  SystemStackUsageCheckTask (void *p_arg)
 		{          
 				OSTaskStkChk (&SystemStackUsageCheckTaskTCB,&free,&used,&err);//统计任务本身的堆栈使用量                              
 				APP_TRACE_INFO(("SystemStackUsageCheck------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
-
+				
+				OSTaskStkChk (&AppTaskStartTCB,&free,&used,&err);                        
+				APP_TRACE_INFO(("AppTaskStartTCB------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free))); 
+				
 				OSTaskStkChk (&HydrgProducerManagerTaskTCB,&free,&used,&err);  
 				APP_TRACE_INFO(("HydrgProducerManagerTask--->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+			
+				OSTaskStkChk (&StackManagerTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("StackManagerTaskTCB--->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+			
+				OSTaskStkChk (&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("StackHYMOValueMonitorTaskTCB--->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 				
-				OSTaskStkChk (&CommunicateDataSendTaskTCB,&free,&used,&err);  
+				OSTaskStkChk (&CommDataSendTaskTCB,&free,&used,&err);  
 				APP_TRACE_INFO(("CommunicateTask------------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 				
-				OSTaskStkChk (&CommunicateDataSendTaskTCB,&free,&used,&err);  
+				OSTaskStkChk (&CommDataSendTaskTCB,&free,&used,&err);  
 				APP_TRACE_INFO(("CommunicateDataSendTask---->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 
 				OSTaskStkChk (&MF210_CommunicateTaskTCB,&free,&used,&err);  
 				APP_TRACE_INFO(("MF210_CommunicateTask------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 
 				OSTaskStkChk (&Make_Vaccuum_FunctionTaskTCB,&free,&used,&err);  
-				APP_TRACE_INFO(("Make_Vaccuum_FunctionTask-->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
-
-				OSTaskStkChk (&CommunicateDataSendTaskTCB,&free,&used,&err);  
-				APP_TRACE_INFO(("StackManagerTask----------->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+				APP_TRACE_INFO(("Make_Vaccuum_FunctionTask-->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  				
 				
 				OSTaskStkChk (&DCLimitCurrentSmoothlyTaskTCB,&free,&used,&err);  
 				APP_TRACE_INFO(("DCLimitCurrentSmoothlyTask-->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
-				
-				OSTaskStkChk (&DCModuleDynamicAdjustTaskTCB,&free,&used,&err);  
-				APP_TRACE_INFO(("DCModuleDynamicAdjustTask--->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
-				
+								
 				OSTaskStkChk (&DigSigMonitorTaskTCB,&free,&used,&err);  
 				APP_TRACE_INFO(("DigSigMonitorTaskTCB-------->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 								
-				OSTaskStkChk (&StackShortCircuitTaskTCB,&free,&used,&err);  
-				APP_TRACE_INFO(("StackShortCircuitTaskTCB---->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));
+				OSTaskStkChk (&StackRunningShortTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("AnaSigMonitorTaskTCB---->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));
 				
 				APP_TRACE_INFO(("\r\n\r\n"));  
 				

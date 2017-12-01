@@ -22,14 +22,14 @@
 ***************************************************************************************************
 */
 #include "bsp_dc_module_adjust.h"
+#include "app_dc_module_communicate_task.h"
+#include "bsp_crc16.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-//转发、查询命令格式
-//   命令长度   单板类型 命令类型   握手字节    ------信息域--------   校验字
-// {0x00,0x08,    0xC8,   0x01,   0x55,0x55,  0x00,0x00,  0x00,0x00,  0x00};
+
 /*
 ***************************************************************************************************
 *                                           LOCAL VARIABLES
@@ -48,10 +48,17 @@ OS_MUTEX        Rs485RxFiniehedMutex;
 *                                           GLOBAL VARIABLES
 ***************************************************************************************************
 */
-uint16_t    g_u16CommandAdress = 0x1C7; //默认为转发命令
 uint16_t    RS485_RX_BUF[64] = {0};     //接收缓冲区,最大64个字节
 uint8_t     RS485_RX_CNT = 0;           //接收到的数据长度
 uint8_t     g_u8RS485TxDateType = 0;    //485发送数据的类型
+
+float       g_fDCInputVoltageA = 0;     //DC-A路输入电压  [10-11]
+float       g_fDCTemp = 0;              //DC内部环境温度  [18-19]
+float       g_fDCOutputVoltage = 0;     //DC输出电压      [23-24]
+float       g_fDCOutputCurrent = 0;     //DC输出电流      [25-26]
+uint16_t    g_u16DCOutputPower = 0;       //DC输出功率      [27-28]
+
+
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
@@ -95,7 +102,7 @@ void Bsp_DcModuleConmunicateInit(void)
     USART_DeInit(UART5);  //复位串口5
 
     USART_InitStructure.USART_BaudRate = 9600;
-    USART_InitStructure.USART_WordLength = USART_WordLength_9b;//注意这里是9位,通讯协议所规定
+    USART_InitStructure.USART_WordLength = USART_WordLength_8b;//注意这里是9位,通讯协议所规定
     USART_InitStructure.USART_StopBits = USART_StopBits_1;//一个停止位
     USART_InitStructure.USART_Parity = USART_Parity_No;//无奇偶校验位
     USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;//无硬件数据流控制
@@ -130,33 +137,22 @@ void Bsp_DcModuleConmunicateInit(void)
 static void RS485Rx_IRQHandler(void)
 {
     uint16_t res;
-    OS_ERR  err;
 
     if(USART_GetITStatus(UART5, USART_IT_RXNE) != RESET) {
-        res = (USART_ReceiveData(UART5) & 0xFFFF);
+        res = (USART_ReceiveData(UART5) & 0xFF);
 
         if(RS485_RX_CNT < 64) {
             RS485_RX_BUF[RS485_RX_CNT] = res;   //记录接收到的值
             RS485_RX_CNT++;
-
-            if((TYPE_IS_ADRESS == GetRS485TxDateType()) || (TYPE_IS_TRANSPOND_CMD == GetRS485TxDateType())) {
-
-                if((RS485_RX_BUF[0] == 0x7F) || (RS485_RX_BUF[0] == 0x07)) { //返回地址或转发数据校验正确
-                    OSMutexPost(&Rs485RxFiniehedMutex,//发送完+接收完后才进行下一个发收流程
-                                OS_OPT_POST_1,
-                                &err);
-                }
-            } else if(TYPE_IS_INQUIRY_CMD == GetRS485TxDateType()) {
-                if(RS485_RX_CNT >= (RS485_RX_BUF[3] + 3)) { //查询到的数据帧接收完毕
-                    OSMutexPost(&Rs485RxFiniehedMutex,//发送完+接收完后才进行下一个发收流程
-                                OS_OPT_POST_1,
-                                &err);
-                }
-            }
+        } else {
+            RS485_RX_CNT = 0;
         }
 
         USART_ClearITPendingBit(UART5, USART_IT_RXNE);
     }
+
+
+
 }
 
 /*
@@ -173,7 +169,7 @@ static void RS485Rx_IRQHandler(void)
 *
 ***************************************************************************************************
 */
-void Bsp_RS485_Send_Data(u16 *buf, u8 len)
+void Bsp_RS485_Send_Data(u8 *buf, u8 len)
 {
     uint8_t i = 0;
     OS_ERR      err;
@@ -219,7 +215,7 @@ void Bsp_RS485_Send_Data(u16 *buf, u8 len)
 ***************************************************************************************************
 */
 
-void Bsp_RS485_Receive_Data(u16 *buf, u8 *len)
+void Bsp_RS485_Receive_Data(u8 *buf, u8 *len)
 {
     uint8_t rxlen = RS485_RX_CNT;
     uint16_t nullnum = 0;
@@ -237,127 +233,61 @@ void Bsp_RS485_Receive_Data(u16 *buf, u8 *len)
         RS485_RX_CNT = 0;   //清零
     }
 }
-
-
-
 /*
 ***************************************************************************************************
-*                           Bsp_SetAddressByDifferentCmdType()
+*                            DCToStm32Message()
 *
-* Description : 根据不同类型命令发送不同的寻址地址.
+* Description:  DC to Stm32 message.
 *
-* Arguments   : i_u8CmdType :INQUIRY_COMMAND、TRANSPOND_COMMAND、BROADCAST_COMMAND
+* Arguments  :  none
 *
-* Returns     : none.
-*
-* Notes       : none.
+* Returns    :  none
 ***************************************************************************************************
 */
-void Bsp_SendAddressByDifferentCmdType(uint8_t i_u8CmdType)
+void DCToStm32Message()
 {
-    switch((uint8_t)i_u8CmdType) {
-        case INQUIRY_COMMAND:
-            g_u16CommandAdress = INQUIRY_COMMAND_ADRESS  & 0xFFFF;
-            break;
+    u16         u16DCInputVoltageA;
+    u16         u16DCOutputCurrent;
+//  u16         u16DCInputVoltageB;
+//  float       DCInputVoltageB;     //DC-A路输入电压  [12-13]
 
-        case TRANSPOND_COMMAND:
-            g_u16CommandAdress = TRANSPOND_COMMAND_ANDRESS & 0xFFFF;
-            break;
+    u16         u16DCTemp;
 
-        case BROADCAST_COMMAND:
-            g_u16CommandAdress = BROADCAST_COMMAND_ADRESS & 0xFFFF;
-            break;
+    u16         u16DCOutputVoltage;
 
-        default:
-            break;
+    u16         u16DCOutputPower;
+    uint8_t     DCAlarm_1;           //DC告警1         [20] bit[7]为1表示A路输入过压告警  bit[6]为1表示A路输入低压告警
+    uint8_t     DCAlarm_2;           //DC告警2         [21] bit[3]为1表示限流标志
+
+    uint8_t u8RxLength = 0;
+    uint8_t u8Rs485RxBuf[64] = {0};
+
+    Bsp_RS485_Receive_Data(u8Rs485RxBuf, &u8RxLength);
+
+    if((u8Rs485RxBuf[0] == 0xA0) &&
+            (u8Rs485RxBuf[1] == 0xA0) &&
+            (u8Rs485RxBuf[2] == 0xA0)) {
+        u16DCInputVoltageA = (u8Rs485RxBuf[10] << 8) + u8Rs485RxBuf[11];
+        g_fDCInputVoltageA = (float)u16DCInputVoltageA / 100;;              //DC-A路输入电压[10-11]
+
+        u16DCTemp = (u8Rs485RxBuf[18] << 8) +  u8Rs485RxBuf[19];
+        g_fDCTemp = (float)u16DCTemp / 100;                                 //DC内部环境温度[18-19]
+
+        u16DCOutputVoltage = (u8Rs485RxBuf[23] << 8) + u8Rs485RxBuf[24];
+        g_fDCOutputVoltage = (float)u16DCOutputVoltage / 100;               //DC输出电压 [23-24]
+
+        u16DCOutputCurrent = (u8Rs485RxBuf[25] << 8) + u8Rs485RxBuf[26];
+        g_fDCOutputCurrent = (float)u16DCOutputCurrent / 100;               //DC输出电流 [25-26]
+
+        u16DCOutputPower = (u8Rs485RxBuf[27] << 8) + u8Rs485RxBuf[28];
+        g_u16DCOutputPower  = (uint16_t)u16DCOutputPower / 100;             //DC输出功率 [27-28]
+
+        DCAlarm_1 = u8Rs485RxBuf[20];                                       //DC告警1 [20] bit[7]为1表示A路输入过压告警  bit[6]为1表示A路输入低压告警
+        DCAlarm_2 = u8Rs485RxBuf[21];                                       //DC告警2 [21] bit[3]为1表示限流标志
     }
-
-    SetRS485TxDateType(TYPE_IS_ADRESS);
-    Bsp_RS485_Send_Data(&g_u16CommandAdress, 1); //发送寻址地址
 }
 
 
-/*
-***************************************************************************************************
-*                           Bsp_SendRequestCmdToDcModule()
-*
-* Description :发送转发指令.
-*
-* Arguments   :i_u8CmdType :CMD_REGISTER_RESPONSE、CMD_GET_ALARM_INFO、
-*                           CMD_GET_CURRENT_VI_VALUE、CMD_GET_MODULE_VI_SET_PARA.
-*
-* Returns     : none.
-*
-* Notes       : none.
-***************************************************************************************************
-*/
-void Bsp_SendTransportCmdToHuaWeiDC(uint8_t i_u8CmdType)
-{
-    uint8_t i = 0;
-    uint8_t u8CheckSumValue = 0;
-    uint16_t DCModuleTxBuf[7] = {0x00, 0x04, 0xC8, 0x00, 0x66, 0x66, 0x00};
-
-    DCModuleTxBuf[3] = i_u8CmdType & 0xFF;
-
-    for(i = 0; i < 7; i++) {
-        u8CheckSumValue = u8CheckSumValue + DCModuleTxBuf[i];
-    }
-
-    DCModuleTxBuf[6] = u8CheckSumValue & 0xFF;//校验和
-
-    SetRS485TxDateType(TYPE_IS_TRANSPOND_CMD);
-    Bsp_RS485_Send_Data(DCModuleTxBuf, 7);
-}
-
-/*
-***************************************************************************************************
-*                           Bsp_GetReportInformationAfterTransportCmd()
-*
-* Description :发送查询指令获取转发指令生效后的上报信息.
-*
-* Arguments   : none.
-*
-* Returns     : none.
-*
-* Notes       : none.
-***************************************************************************************************
-*/
-void Bsp_GetReportInformationAfterTransportCmd(void)
-{
-    SetRS485TxDateType(TYPE_IS_INQUIRY_CMD);
-    Bsp_SendAddressByDifferentCmdType(INQUIRY_COMMAND);
-
-}
-/*
-***************************************************************************************************
-*                           Bsp_SendRequestCmdToDcModule()
-*
-* Description : 发送指令让华为模块开关机.
-*
-* Arguments   : i_u8PowerStatus :0-开机;1-关机;i_u8StatusChangeDly:关机后自动开机延时时间.
-*
-* Returns     : none.
-*
-* Notes       : none.
-***************************************************************************************************
-*/
-void Bsp_SendCmdControlDcModulePowerOnOrDown(uint8_t i_u8PowerStatus, uint8_t i_u8StatusChangeDly)
-{
-    uint8_t i = 0;
-    uint8_t u8CheckSumValue = 0;
-    uint16_t DCModuleTxBuf[9] = {0x00, 0x06, 0xC8, 0x29, 0x66, 0x66, 0x00, 0x00, 0x00};
-
-    DCModuleTxBuf[6] = i_u8PowerStatus & 0xFF;
-    DCModuleTxBuf[7] = i_u8StatusChangeDly & 0xFF;
-
-    for(i = 0; i < 8; i++) {
-        u8CheckSumValue = u8CheckSumValue + DCModuleTxBuf[i];
-    }
-
-    DCModuleTxBuf[8] = u8CheckSumValue & 0xFF;//校验和
-
-    Bsp_RS485_Send_Data(DCModuleTxBuf, 9);
-}
 
 /*
 ***************************************************************************************************
@@ -374,34 +304,52 @@ void Bsp_SendCmdControlDcModulePowerOnOrDown(uint8_t i_u8PowerStatus, uint8_t i_
 */
 void Bsp_SetDcModuleOutPutVIvalue(float i_fVvalue, float i_fIvalue)
 {
-    uint8_t i = 0;
-    uint8_t u8CheckSumValue = 0;
+    uint16_t u16CheckSumValue = 0;
     uint16_t Value_temp = 0, Ivalue_temp = 0;
-    uint16_t DCModuleTxBuf[11] = {0x00, 0x08, 0xC8, 0x42, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t DCModuleTxBuf[13] = {0xA0, 0xA0, 0xA0, 0xFF, 0x08, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-//    APP_TRACE_INFO(("Set DC module Out Put VI value...\n\r"));
     Value_temp = (uint16_t)(i_fVvalue * 100);
     Ivalue_temp = (uint16_t)(i_fIvalue * 100);
 
-    DCModuleTxBuf[6] = (Value_temp & 0xFF00) >> 8;
-    DCModuleTxBuf[7] = (Value_temp & 0x00FF);
-    DCModuleTxBuf[8] = (Ivalue_temp & 0xFF00) >> 8;
-    DCModuleTxBuf[9] = (Ivalue_temp & 0x00FF);
+    DCModuleTxBuf[7] = (Value_temp & 0xFF00) >> 8;
+    DCModuleTxBuf[8] = (Value_temp & 0x00FF);
+    DCModuleTxBuf[9] = (Ivalue_temp & 0xFF00) >> 8;
+    DCModuleTxBuf[10] = (Ivalue_temp & 0x00FF);
 
-    for(i = 0; i < 10; i++) {
-        u8CheckSumValue = u8CheckSumValue + DCModuleTxBuf[i];
-    }
+    u16CheckSumValue = GetXmodemCrc16Code(&DCModuleTxBuf[4], 7);
 
-    DCModuleTxBuf[10] = u8CheckSumValue & 0xFF;//校验和
+    DCModuleTxBuf[11] = (u16CheckSumValue & 0xFF00) >> 8;    // CRC-16校验
+    DCModuleTxBuf[12] = (u16CheckSumValue & 0x00FF);         // CRC-16校验
+
+    Bsp_RS485_Send_Data(&DCModuleTxBuf[0], 13);
 
 
-    SetRS485TxDateType(TYPE_IS_TRANSPOND_CMD);
-    Bsp_RS485_Send_Data(&DCModuleTxBuf[0], 11);
 }
+
+
+
+void Bsp_SendReqCmdToDcModule(void)
+{
+    uint16_t u16CheckSumValue = 0;
+    //A0 A0 A0 F0 04 00 00 +校验和
+
+    uint8_t DCModuleTxBuf[9] = {0xA0, 0xA0, 0xA0, 0xFF, 0x04, 0x00, 0x00, 0x00, 0x00};
+
+    //GetXmodemCrc16Code
+    u16CheckSumValue = GetXmodemCrc16Code(&DCModuleTxBuf[4], 3); 
+
+    DCModuleTxBuf[7] = (u16CheckSumValue & 0xFF00) >> 8;              // CRC-16校验
+    DCModuleTxBuf[8] = (u16CheckSumValue & 0x00FF);                   // CRC-16校验
+
+    Bsp_RS485_Send_Data(DCModuleTxBuf, 9);
+}
+
+
+
 
 /*
 ***************************************************************************************************
-*                           Bsp_SetDcModuleOutPutVIvalue()
+*                           Bsp_CmdDcModuleStartUp()
 *
 * Description : set hua wei module current voletage and current.
 *
@@ -412,13 +360,71 @@ void Bsp_SetDcModuleOutPutVIvalue(float i_fVvalue, float i_fIvalue)
 * Notes       : none.
 ***************************************************************************************************
 */
-
-void SetRS485TxDateType(uint8_t i_u8Rs485TxType)
+void Bsp_CmdDcModuleStartUp(void)
 {
-    g_u8RS485TxDateType = i_u8Rs485TxType;
+    uint16_t u16CheckSumValue = 0;
+    uint8_t DCModuleTxBuf[10] = {0xA0, 0xA0, 0xA0, 0xFF, 0x05, 0x00, 0x02, 0x88, 0x00, 0x00};
+
+    u16CheckSumValue = GetXmodemCrc16Code(&DCModuleTxBuf[4], 4);
+
+    DCModuleTxBuf[8] = (u16CheckSumValue & 0xFF00) >> 8;// CRC-16校验
+    DCModuleTxBuf[9] = (u16CheckSumValue & 0x00FF);// CRC-16校验
+
+    Bsp_RS485_Send_Data(&DCModuleTxBuf[0], 10);
 }
 
-uint8_t GetRS485TxDateType(void)
+
+
+/*
+***************************************************************************************************
+*                           Bsp_CmdDcModuleShutDown()
+*
+* Description : set hua wei module current voletage and current.
+*
+* Arguments   : i_fVvalue:set volatage value;i_fIvalue:set current value;Support two decimal places.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
+void Bsp_CmdDcModuleShutDown(void)
 {
-    return g_u8RS485TxDateType;
+    uint16_t u16CheckSumValue = 0;
+
+    uint8_t DCModuleTxBuf[10] = {0xA0, 0xA0, 0xA0, 0xFF, 0x05, 0x00, 0x02, 0x00, 0x00, 0x00};
+
+
+    u16CheckSumValue = GetXmodemCrc16Code(&DCModuleTxBuf[4], 4);
+
+    DCModuleTxBuf[8] = (u16CheckSumValue & 0xFF00) >> 8;              // CRC-16校验
+    DCModuleTxBuf[9] = (u16CheckSumValue & 0x00FF);                   // CRC-16校验
+
+    Bsp_RS485_Send_Data(DCModuleTxBuf, 10);
 }
+
+
+
+
+
+
+
+/*
+***************************************************************************************************
+*                     SetDcModeOutPutNominalVoltageButDifferentCurrent()
+*
+* Description : set hua wei module current voletage and current.
+*
+* Arguments   : i_fIvalue:set current value.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
+void SetDcModeOutPutNominalVoltageButDifferentCurrent(float i_fIvalue)
+{
+    g_fIvalueNow = i_fIvalue;//刷新全局限流点
+    Bsp_SetDcModuleOutPutVIvalue(VOLTAGE_LIMIT_MAX, i_fIvalue);
+}
+

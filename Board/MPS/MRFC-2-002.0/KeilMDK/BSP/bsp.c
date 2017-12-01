@@ -30,6 +30,7 @@
 #include "app_top_task.h"
 #include "app_system_run_cfg_parameters.h"
 #include "bsp_can.h"
+#include "bsp_delay_task_timer.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -259,6 +260,7 @@ void  BSP_Init(void)
     BSP_CmdButtonInit();            // 硬件按钮
     BSP_ImpulseInputPortInit();     //外部脉冲输入引脚初始化
     CAN1_Init();                    //CAN总线配置，波特率50K
+	Delay_Queue_Timer6_Init();
 //    AT25256B_Init();              //外部EEPROM初始化
 
     BSP_VentingIntervalRecordTimerInit();//电堆排气时间参数定时器初始化
@@ -511,13 +513,13 @@ static void BSP_AdcNormalConvertStart(vu16 *i_pBuffAddr, uint8_t i_u8ChUsedNmb)
     ADC_RegularChannelConfig(ADC1, ADC_Channel_8, 5, ADC_SampleTime_239Cycles5);    // 气压1
     ADC_RegularChannelConfig(ADC1, ADC_Channel_7, 6, ADC_SampleTime_239Cycles5);    // 气压2
     ADC_RegularChannelConfig(ADC1, ADC_Channel_0, 7, ADC_SampleTime_239Cycles5);    // 液位
-//    ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 8, ADC_SampleTime_239Cycles5);    // 电池电压
-//    ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 9, ADC_SampleTime_239Cycles5);    // 氢气浓度
-//    ADC_RegularChannelConfig(ADC1, ADC_Channel_11, 10, ADC_SampleTime_239Cycles5);    // 电池电流
-//    ADC_RegularChannelConfig(ADC1, ADC_Channel_12, 11, ADC_SampleTime_239Cycles5);    // 快速加热器电流
-//    ADC_RegularChannelConfig(ADC1, ADC_Channel_13, 12, ADC_SampleTime_239Cycles5);    // 负压传感器
-//    ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 13, ADC_SampleTime_239Cycles5);    // 预留电流型传感器
-//    ADC_RegularChannelConfig(ADC1, ADC_Channel_15, 14, ADC_SampleTime_239Cycles5);    // 预留电流型传感器
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_6, 8, ADC_SampleTime_239Cycles5);    // 电池电压
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_10, 9, ADC_SampleTime_239Cycles5);    // 氢气浓度
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_11, 10, ADC_SampleTime_239Cycles5);    // 电池电流
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_12, 11, ADC_SampleTime_239Cycles5);    // 快速加热器电流
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_13, 12, ADC_SampleTime_239Cycles5);    // 负压传感器
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 13, ADC_SampleTime_239Cycles5);    // 预留电流型传感器
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_15, 14, ADC_SampleTime_239Cycles5);    // 预留电流型传感器
 
     /* Enable ADC1 DMA */
     ADC_DMACmd(ADC1, ENABLE);
@@ -594,7 +596,7 @@ static void  BSP_DigSensorInit(void)
     GPIO_InitTypeDef GPIO_InitStructure;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOB , ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);    //使能功能复用IO
-    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);    //SWJ调试接口完全失能
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);    //SWJ调试接口完全失能
 
     /******配置GPIOB口引脚*********/
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
@@ -717,48 +719,6 @@ void BSP_MAX6675_Temp_Read(float *i_fTemp, uint8_t *err)
 */
 /*
 ***************************************************************************************************
-*                                             BSP_BuzzerInit()()
-*
-* Description : Initialize the I/O for the buzzer.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : BSP_Init().
-*
-* Note(s)     : none.
-***************************************************************************************************
-*/
-//不要调用这个函数
-void  BSP_BuzzerInit(void)
-{
-    GPIO_InitTypeDef  GPIO_InitStructure;
-
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA
-                           | RCC_APB2Periph_GPIOB
-                           | RCC_APB2Periph_GPIOC
-                           | RCC_APB2Periph_GPIOD
-                           , ENABLE);//使能所有GPIO口时钟
-
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
-
-//    PWR_BackupAccessCmd(ENABLE);//允许修改RTC 和后备寄存器
-//    RCC_LSEConfig(RCC_LSE_OFF);//关闭外部低速外部时钟信号功能 后，PC13 PC14 PC15 才可以当普通IO用。
-//    BKP_TamperPinCmd(DISABLE);//关闭入侵检测功能，也就是 PC13，也可以当普通IO 使用
-//    PWR_BackupAccessCmd(DISABLE);//禁止修改后备寄存器
-
-
-    GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_BUZZER_CTRL_PORT_NMB;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
-    GPIO_ResetBits(GPIOB, BSP_GPIOB_BUZZER_CTRL_PORT_NMB);
-
-}
-/*
-***************************************************************************************************
 *                                             BSP_BuzzerOn()
 *
 * Description : Turn ON the buzzer on the board.
@@ -812,7 +772,7 @@ static void BSP_SwTypePwrDeviceStatuInit(void)
                            , ENABLE);//使能所有GPIO口时钟
 
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);//部分引脚占用了SW调试口或JTAG口，需要将其先关闭
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);//部分引脚占用了SW调试口或JTAG口，需要将其先关闭
 
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOB_BUZZER_CTRL_PORT_NMB;//蜂鸣器
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
@@ -1001,7 +961,6 @@ void  BSP_IgniterPwrOff(void)
 */
 void  BSP_FastHeaterPwrOn(void)
 {
-
     SetSystemRunningStatuCodeBit(RuningStatuCodeGrpHydrgOut1_Bit);
     GPIO_SetBits(GPIOC, BSP_GPIOC_FAST_HEATER_PWR_CTRL_PORT_NMB);
 }
@@ -1331,7 +1290,7 @@ static  void  BSP_DeviceSpdCheckPortInit(u16 arr, u16 psc)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOE | RCC_APB2Periph_TIM1 | RCC_APB2Periph_AFIO, ENABLE);
 
     GPIO_PinRemapConfig(GPIO_FullRemap_TIM1, ENABLE); //定时器一完全重映射
-    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);  //SWJ完全失能
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);  //SWJ完全失能
     /*初始化IO口*/
     //初始化水泵速度检测引脚
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOE_PIN9_PUMP_SPEED_CHECK_PORT_NMB;
@@ -1445,7 +1404,7 @@ static void  BSP_PumpCtrlInit(void)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD
                            | RCC_APB2Periph_AFIO , ENABLE);//使能所有GPIO口时钟
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);       //使能DAC通道时钟
-    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
 
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN4_PUMP_SPD_ANA_SIGNAL_CTRL_PORT_NMB;   //水泵速度控制引脚
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AIN;
@@ -1561,7 +1520,7 @@ static void  BSP_HydrgFanCtrInit(void)
     /*时钟使能*/
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);
-    GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
 
     /*GPIO使能*/
     GPIO_InitStructure.GPIO_Pin   = BSP_GPIOA_PIN5_HYDROGEN_FAN_SPD_ANA_SIGNAL_CTRL_PORT_NMB;//制氢风机速度控制引脚
@@ -1893,7 +1852,6 @@ static void EXTI15_10_StatusCheck_IRQHandler()
 
     if(EXTI_GetITStatus(EXTI_Line12) != RESET) {//PDPulse2-电堆后端的泄压阀状态
         if(1 == GPIO_ReadInputDataBit(GPIOE, BSP_GPIOE_PIN12_PD_PULSE2_PORT_NMB)) {
-//            DecompressCountPerMinuteInc();
             BSP_StartRunningVentingTimeRecord(); //Start recording the exhaust time parameter
             StackVentAirTimeParameter.fVentAirTimeIntervalValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录排气间隔时间
             StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num
@@ -1919,10 +1877,13 @@ static void EXTI15_10_StatusCheck_IRQHandler()
 
     if(EXTI_GetITStatus(EXTI_Line13) != RESET) {//开关按键
 
-        CmdButtonFuncDisable();
-        StartCmdButtonActionCheckDly(); //定时器定时0.5后的中断中判断按钮按下，然后执行相应流程
-        EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE10上的中断标志位
-
+		CmdButtonFuncDisable();   
+        if(EN_WAIT_CMD == GetSystemWorkStatu()) {
+            StartTim6DelayTask(START_UP_SWITCH_CHECK_DELAY_1S, 1000); //定时1s后进行开机动作检测
+        } else {
+            StartTim6DelayTask(SHUT_DOWN_SWITCH_CHECK_DELAY_3S, 3000);; //关机动作检测
+        }
+        EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE13上的中断标志位
     }
 }
 /*
@@ -1961,48 +1922,6 @@ void CmdButtonFuncEnable(void)
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_Init(&EXTI_InitStructure);
 }
-
-void StartCmdButtonActionCheckDly(void)
-{
-    if(EN_WAITTING_COMMAND == GetSystemWorkStatu()) {
-        TIM7_DlyMilSecondsInit(500);
-    } else {
-        TIM7_DlyMilSecondsInit(3000);//关机动作检测
-    }
-}
-void TIM7_DlyMilSecondsInit(u16 i_u16DlyMilSeconds)
-{
-    NVIC_InitTypeDef NVIC_InitStructure;
-    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
-
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);    //使能TIM7时钟，APB1=72MHz
-
-    //初始化定时器7
-    TIM_DeInit(TIM7);
-    TIM_TimeBaseStructure.TIM_Period = (i_u16DlyMilSeconds * 2 - 1); //设定计数器自动重装值,0.5秒后产生中断
-    TIM_TimeBaseStructure.TIM_Prescaler = 35999;                     //预分频器,将72MHz降为2KHz
-    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;          //设置时钟分割:TDTS = Tck_tim,对于TIM6、7无效
-    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;      //TIM向上计数模式
-    TIM_TimeBaseInit(TIM7, &TIM_TimeBaseStructure);                  //根据TIM_TimeBaseInitStruct中指定的参数初始化TIMx的时间基数单位
-
-    //中断分组初始化
-    NVIC_InitStructure.NVIC_IRQChannel = TIM7_IRQn;             //TIM7中断
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;   //先占优先级2级
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;          //从优先级0级
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;             //IRQ通道被使能
-    NVIC_Init(&NVIC_InitStructure);                             //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
-
-    TIM_GenerateEvent(TIM7, TIM_EventSource_Update);   // 产生软件更新事件，立即更新数据
-    TIM_ClearFlag(TIM7, TIM_FLAG_Update);             //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
-
-    TIM_ITConfig(TIM7, TIM_IT_Update, ENABLE);
-
-    BSP_IntVectSet(BSP_INT_ID_TIM7, CmdButtonStatuCheck);
-    BSP_IntEn(BSP_INT_ID_DMA2_CH3);
-
-    TIM_Cmd(TIM7, ENABLE);  //使能定时器7
-}
-
 /*
 ***************************************************************************************************
 *                                            BSP_HydorgenFanPwrOff()
@@ -2018,266 +1937,22 @@ void TIM7_DlyMilSecondsInit(u16 i_u16DlyMilSeconds)
 * Note(s)     : none.
 ***************************************************************************************************
 */
+
 void CmdButtonStatuCheck(void)
 {
-    OS_ERR      err;
-    SYSTEM_WORK_STATU_Typedef eSysRunningStatu;
-
+    SYS_WORK_STATU_Typedef eSysRunningStatu;
+    
     if(GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13) == 0) {
         eSysRunningStatu = GetSystemWorkStatu();
-
-        if((EN_WAITTING_COMMAND == eSysRunningStatu) || (eSysRunningStatu == EN_ALARMING)) {
-
-            if(DEF_ENABLED == GetWorkModeWaittingForSelectFlag()) {//内部调试模式下
-                //硬件启动暂时默认为一体机模式
-                g_u8SerRxMsgBuff[4] = EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL;
-                SetWorkMode((SYSTEM_WORK_MODE_Typedef)g_u8SerRxMsgBuff[4]);
-                OSSemPost(&WaitSelcetWorkModeSem,        //发送工作模式的选择等待信号量
-                          OS_OPT_POST_1,
-                          &err);
-                ResetWorkModeWaittingForSelectFlag();   //复位等待选择标志
-                CmdStart();
-
-            } else {//已经设置好工作模式
-
-                CmdStart();
-            }
+        if((EN_WAIT_CMD == eSysRunningStatu) || (eSysRunningStatu == EN_ALARMING)) {    
+            CmdStart();  
         } else {
             CmdShutDown();
-        }
-
+        }               
     }
-
     CmdButtonFuncEnable();
-    TIM_ITConfig(TIM7, TIM_IT_Update, DISABLE);
-    TIM_ClearITPendingBit(TIM7, TIM_IT_Update); //清除中断标志位
 }
 
-
-/*
-***************************************************************************************************
-*                                            BSP_CmdButtonInit()
-*
-* Description : 脉冲输入引脚初始化.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Note(s)     : none.
-***************************************************************************************************
-*/
-void DiagnosticFeedBack_0_IRQHandler(void);
-void DiagnosticFeedBack_1_IRQHandler(void);
-void DiagnosticFeedBack_2_IRQHandler(void);
-void DiagnosticFeedBack_3_IRQHandler(void);
-void DiagnosticFeedBack_4_IRQHandler(void);
-void DiagnosticFeedBack_9_5_IRQHandler(void);
-
-
-//诊断检测引脚初始化
-void BSP_DiagnosticFeedBackPortInit(void)
-{
-    GPIO_InitTypeDef GPIO_InitStructure;
-    EXTI_InitTypeDef EXTI_InitStructure;
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOE, ENABLE); //使能复用功能时钟
-
-    //加热器和点火器诊断检测
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN0_HEATER_AND_IGNITER_DIAGNOSTIC_FEEDBACK_PORT_NMB;
-    GPIO_Init(GPIOE, &GPIO_InitStructure);
-
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource0);
-    EXTI_InitStructure.EXTI_Line = EXTI_Line0;
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-
-    //预留1和直流接触器诊断
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN1_RVD1_AND_DC_OUTPUT_DIAGNOSTIC_FEEDBACK_PORT_NMB;
-    GPIO_Init(GPIOE, &GPIO_InitStructure);
-
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource1);
-    EXTI_InitStructure.EXTI_Line = EXTI_Line1;
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-
-    //进气电磁阀和出气电磁阀诊断监测引脚
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN2_HYDROGEN_OUTPUT_AND_INPUT_VALVE_DIAGNOSTIC_FEEDBACK_PORT_NMB;
-    GPIO_Init(GPIOE, &GPIO_InitStructure);
-
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource2);
-    EXTI_InitStructure.EXTI_Line = EXTI_Line2;
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-
-    //预留控制点4和预留控制点3诊断监测引脚
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN3_RVD4_AND_RVD3_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB;
-    GPIO_Init(GPIOE, &GPIO_InitStructure);
-
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource3);
-    EXTI_InitStructure.EXTI_Line = EXTI_Line3;
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-
-    //预留控制点2和进液电磁阀2诊断监测引脚
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN4_RVD2_AND_WATER_INPUT_VALVE2_DIAGNOSTIC_FEEDBACK_PORT_NMB;
-    GPIO_Init(GPIOE, &GPIO_InitStructure);
-
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource4);
-    EXTI_InitStructure.EXTI_Line = EXTI_Line4;
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-
-    //预留控制点7和预留控制点8诊断监测引脚
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN5_RVD7_AND_RVD8_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB;
-    GPIO_Init(GPIOE, &GPIO_InitStructure);
-
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource5);
-    EXTI_InitStructure.EXTI_Line = EXTI_Line5;
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-
-    //预留控制点5和预留控制点6诊断监测引脚
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN6_RVD5_AND_RVD6_CTRL_DIAGNOSTIC_FEEDBACK_PORT_NMB;
-    GPIO_Init(GPIOE, &GPIO_InitStructure);
-
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource6);
-    EXTI_InitStructure.EXTI_Line = EXTI_Line6;
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-
-    //点火状态监测引脚
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOE_PIN7_FIRE_STATUS_FEEDBACK_PORT_NMB;
-    GPIO_Init(GPIOE, &GPIO_InitStructure);
-
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource7);
-    EXTI_InitStructure.EXTI_Line = EXTI_Line7;
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-    EXTI_Init(&EXTI_InitStructure);
-
-    //泵和进液电磁阀1诊断检测
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   //上拉输入
-    GPIO_InitStructure.GPIO_Pin = BSP_GPIOB_PUMP_AND_WATER_INPUT_VALVE_ONE_DIAGNOSTIC_FEEDBACK_PORT_NMB;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource9);
-    EXTI_InitStructure.EXTI_Line = EXTI_Line9;
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-
-    BSP_IntVectSet(BSP_INT_ID_EXTI0, DiagnosticFeedBack_0_IRQHandler);
-    BSP_IntEn(BSP_INT_ID_EXTI0);
-
-    BSP_IntVectSet(BSP_INT_ID_EXTI1, DiagnosticFeedBack_1_IRQHandler);
-    BSP_IntEn(BSP_INT_ID_EXTI1);
-
-    BSP_IntVectSet(BSP_INT_ID_EXTI2, DiagnosticFeedBack_2_IRQHandler);
-    BSP_IntEn(BSP_INT_ID_EXTI2);
-
-    BSP_IntVectSet(BSP_INT_ID_EXTI3, DiagnosticFeedBack_3_IRQHandler);
-    BSP_IntEn(BSP_INT_ID_EXTI3);
-
-    BSP_IntVectSet(BSP_INT_ID_EXTI4, DiagnosticFeedBack_4_IRQHandler);
-    BSP_IntEn(BSP_INT_ID_EXTI4);
-
-    BSP_IntVectSet(BSP_INT_ID_EXTI9_5, DiagnosticFeedBack_9_5_IRQHandler);
-    BSP_IntEn(BSP_INT_ID_EXTI9_5);
-
-}
-
-
-void DiagnosticFeedBack_0_IRQHandler(void)
-{
-    if((GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13) == 0)) {
-        if(1 == GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_7)) { //输出控制脚为高
-
-        } else {
-
-        }
-
-        if(1 == GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_7)) {
-
-        } else {
-
-        }
-    }
-
-    EXTI_ClearITPendingBit(EXTI_Line0);
-}
-
-void DiagnosticFeedBack_1_IRQHandler(void)
-{
-    if((GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13) == 0)) {
-        if(1 == GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_7)) { //输出控制脚为高
-
-        } else {
-
-        }
-
-        if(1 == GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_7)) {
-
-        }
-    }
-
-    EXTI_ClearITPendingBit(EXTI_Line1);
-}
-
-void DiagnosticFeedBack_2_IRQHandler(void)
-{
-
-    EXTI_ClearITPendingBit(EXTI_Line2);
-}
-
-void DiagnosticFeedBack_3_IRQHandler(void)
-{
-
-    EXTI_ClearITPendingBit(EXTI_Line3);
-}
-
-void DiagnosticFeedBack_4_IRQHandler(void)
-{
-
-    EXTI_ClearITPendingBit(EXTI_Line4);
-}
-
-void DiagnosticFeedBack_9_5_IRQHandler(void)
-{
-
-    EXTI_ClearITPendingBit(EXTI_Line5);
-
-    EXTI_ClearITPendingBit(EXTI_Line5);
-
-    EXTI_ClearITPendingBit(EXTI_Line5);
-
-    EXTI_ClearITPendingBit(EXTI_Line5);
-
-}
 
 /*
 *********************************************************************************************************

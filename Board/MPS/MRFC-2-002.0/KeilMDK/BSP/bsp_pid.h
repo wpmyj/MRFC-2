@@ -1,4 +1,3 @@
-
 /*
 ***************************************************************************************************
 *                                         APPLICATION CODE
@@ -9,85 +8,80 @@
 *               Knowledge of the source code may NOT be used without authorization.
 ***************************************************************************************************
 */
-/********************************************************************************************************
-* Filename      :  app_mf210_communicate_task.h
-* Programmer(s) :  JiaCai.He
-* Version       :  V1.0
-* data          :  2017.1.5
-* brief         :  This file contains all the functions prototypes for the can communicaion.
-*
-*********************************************************************************************************/
-/* Define to prevent recursive inclusion -------------------------------------*/
 
-#ifndef __APP_MF210_COMMUNICATE_H_
-#define __APP_MF210_COMMUNICATE_H_
+/********************************************************************************
+  * @file    bsp_pid.h
+  * @author  Fanjun
+  * @version V1.0
+  * @date    3-May-2016
+  * @brief   This file contains all the functions prototypes for the pid control
+  *          firmware library.
+*********************************************************************************/
+
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __BSP_PID_H__
+#define __BSP_PID_H__
 /*
 ***************************************************************************************************
 *                                           INCLUDE FILES
 ***************************************************************************************************
 */
-#include "stm32f10x.h"
-#include "os.h"
 /*
 ***************************************************************************************************
-*                                           EXPORTED MACRO
+*                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define PRGM_3G_TX_BUFF_SIZE       64
-#define PRGM_3G_RX_BUFF_SIZE       128
 /*
 ***************************************************************************************************
 *                                           EXPORTED TYPE
 ***************************************************************************************************
 */
 
+typedef struct {
+    uint8_t Sv;   //设定温度
+    uint8_t Pv;  //当前温度
+
+    int8_t Err;//本次偏差
+    int8_t Err_Next;//上次偏差
+    int8_t Err_Last;//上上次偏差
+
+
+    float Kp, Ki, Kd;//定义比例propotion、积分Integral、微分Differential系数
+
+    uint8_t Tsam; //采样周期---控制周期，每隔Tsam控制器输出一次PID运算结果
+
+    uint16_t OutValueMax;                   //控制量最大值
+    uint16_t OutValueMin;                   //控制量最小值
+    uint16_t OutValue;
+
+    uint16_t CalcCycleCnt; //PID计算周期
+
+} INCREMENT_TYPE_PID_PARAMETER_Typedef;
+
+
+
+extern INCREMENT_TYPE_PID_PARAMETER_Typedef IPID;
+
 /*
 ***************************************************************************************************
-*                                           EXPORTED VARIABLE
+*                                           EXPORTED CONSTANTS
 ***************************************************************************************************
 */
-extern OS_TCB     MF210_CommunicateTaskTCB;
 
-extern u8  HydrogenProducerTxBuf[32]; //制氢半机实时数据
-extern u8  FuelCellTxBuf[32]; //发电半机实时数据
-extern u8  Uart2RxBuf[PRGM_3G_RX_BUFF_SIZE];//注意变量数组不要溢出
+/*
+***************************************************************************************************
+*                                           EXPORTED MACRO
+***************************************************************************************************
+*/
+
 /*
 ***************************************************************************************************
 *                                           EXPORTED FUNCTION
 ***************************************************************************************************
 */
 
-void MF210_CommunicateTaskCreate(void);
-
-void SendConsolidatedRealTimeInfo(void);
-
-void RespondRemoteControlCmd(void);
-
-uint8_t *GetPrgm3GRxBuffAddr(void);
-/*
-***************************************************************************************************
-*                                            FUNCTION PROTOTYPES
-***************************************************************************************************
-*/
-
-
+void IncrementType_PID_Init(void);
+uint16_t IncrementType_PID_Process(uint8_t i_OptimumTemperature);
 
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

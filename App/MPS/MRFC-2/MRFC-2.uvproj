@@ -10,6 +10,7 @@
       <TargetName>MRFC-2</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
+      <pCCUsed>5060422::V5.06 update 4 (build 422)::ARMCC</pCCUsed>
       <TargetOption>
         <TargetCommonOption>
           <Device>STM32F105VC</Device>
@@ -45,7 +46,7 @@
             <InvalidFlash>1</InvalidFlash>
           </TargetStatus>
           <OutputDirectory>.\OBJ\</OutputDirectory>
-          <OutputName>MRFC-2--0010-V085-uCos</OutputName>
+          <OutputName>MRFC-2--0020-V087-uCos</OutputName>
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>1</CreateHexFile>
@@ -82,6 +83,8 @@
             <UserProg2Name></UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
+            <nStopA1X>0</nStopA1X>
+            <nStopA2X>0</nStopA2X>
           </AfterMake>
           <SelectedForBatchBuild>0</SelectedForBatchBuild>
           <SVCSIdString></SVCSIdString>
@@ -143,10 +146,9 @@
             <RestoreToolbox>1</RestoreToolbox>
             <RestoreTracepoints>0</RestoreTracepoints>
             <RestoreSysVw>1</RestoreSysVw>
-            <UsePdscDebugDescription>1</UsePdscDebugDescription>
           </Target>
           <RunDebugAfterBuild>0</RunDebugAfterBuild>
-          <TargetSelection>11</TargetSelection>
+          <TargetSelection>5</TargetSelection>
           <SimDlls>
             <CpuDll></CpuDll>
             <CpuDllArguments></CpuDllArguments>
@@ -226,6 +228,7 @@
             <useUlib>0</useUlib>
             <EndSel>0</EndSel>
             <uLtcg>0</uLtcg>
+            <nSecure>0</nSecure>
             <RoSelD>3</RoSelD>
             <RwSelD>3</RwSelD>
             <CodeSel>0</CodeSel>
@@ -360,11 +363,18 @@
             <uSurpInc>0</uSurpInc>
             <uC99>1</uC99>
             <useXO>0</useXO>
+            <v6Lang>1</v6Lang>
+            <v6LangP>1</v6LangP>
+            <vShortEn>1</vShortEn>
+            <vShortWch>1</vShortWch>
+            <v6Lto>0</v6Lto>
+            <v6WtE>0</v6WtE>
+            <v6Rtti>0</v6Rtti>
             <VariousControls>
               <MiscControls></MiscControls>
               <Define>USE_STDPERIPH_DRIVER,STM32F10X_CL,STACK_FAN_PID_CONTROL</Define>
               <Undefine></Undefine>
-              <IncludePath>..\MRFC-2;..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\OS\uCOS-III;..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP;..\..\..\CPU\ST\STM32F10x_StdPeriph_Lib_V3.5.0\Libraries\STM32F10x_StdPeriph_Driver\inc;..\..\..\CPU\ST\STM32F10x_StdPeriph_Lib_V3.5.0\Libraries\CMSIS\CM3\CoreSupport;..\..\..\uC-CPU;..\..\..\uC-CPU\ARM-Cortex-M3\RealView;..\..\..\uC-LIB;..\..\..\uCOS-III\Source;..\..\..\uCOS-III\Ports\ARM-Cortex-M3\Generic\RealView;..\..\..\uCOS-III\Cfg</IncludePath>
+              <IncludePath>..\MRFC-2;..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\OS\uCOS-III;..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP;..\..\..\CPU\ST\STM32F10x_StdPeriph_Lib_V3.5.0\Libraries\STM32F10x_StdPeriph_Driver\inc;..\..\..\CPU\ST\STM32F10x_StdPeriph_Lib_V3.5.0\Libraries\CMSIS\CM3\CoreSupport;..\..\..\uC-CPU;..\..\..\uC-CPU\ARM-Cortex-M3\RealView;..\..\..\uC-LIB;..\..\..\uCOS-III\Source;..\..\..\uCOS-III\Ports\ARM-Cortex-M3\Generic\RealView;..\..\..\uCOS-III\Cfg</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -377,6 +387,7 @@
             <NoWarn>0</NoWarn>
             <uSurpInc>0</uSurpInc>
             <useXO>0</useXO>
+            <uClangAs>0</uClangAs>
             <VariousControls>
               <MiscControls></MiscControls>
               <Define></Define>
@@ -485,87 +496,97 @@
             <File>
               <FileName>bsp.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp.c</FilePath>
             </File>
             <File>
               <FileName>bsp_ana_sensor.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_ana_sensor.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_ana_sensor.c</FilePath>
             </File>
             <File>
               <FileName>bsp_atmel_25256b_sshl.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_atmel_25256b_sshl.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_atmel_25256b_sshl.c</FilePath>
             </File>
             <File>
               <FileName>bsp_can.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_can.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_can.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_crc16.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_crc16.c</FilePath>
             </File>
             <File>
               <FileName>bsp_dc_module_adjust.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_dc_module_adjust.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_dc_module_adjust.c</FilePath>
             </File>
             <File>
               <FileName>bsp_i2c.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_i2c.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_i2c.c</FilePath>
             </File>
             <File>
               <FileName>bsp_int.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_int.c</FilePath>
-            </File>
-            <File>
-              <FileName>bsp_MF210.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_MF210.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_int.c</FilePath>
             </File>
             <File>
               <FileName>bsp_ntc.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_ntc.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_ntc.c</FilePath>
             </File>
             <File>
               <FileName>bsp_periph.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_periph.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_periph.c</FilePath>
             </File>
             <File>
               <FileName>bsp_pid.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_pid.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_pid.c</FilePath>
             </File>
             <File>
               <FileName>bsp_scale_data_read.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_scale_data_read.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_scale_data_read.c</FilePath>
             </File>
             <File>
               <FileName>bsp_ser.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_ser.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_ser.c</FilePath>
             </File>
             <File>
               <FileName>bsp_speed_adjust_device.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_speed_adjust_device.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_speed_adjust_device.c</FilePath>
             </File>
             <File>
               <FileName>bsp_spi.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\bsp_spi.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_spi.c</FilePath>
             </File>
             <File>
               <FileName>cstartup.s</FileName>
               <FileType>2</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\KeilMDK\cstartup.s</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\KeilMDK\cstartup.s</FilePath>
             </File>
             <File>
               <FileName>bsp_os.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\Board\MPS\HJDHMf-009.1.1\KeilMDK\BSP\OS\uCOS-III\bsp_os.c</FilePath>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\OS\uCOS-III\bsp_os.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_delay_task_timer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_delay_task_timer.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_MF210v2.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\Board\MPS\MRFC-2-002.0\KeilMDK\BSP\bsp_MF210v2.c</FilePath>
             </File>
           </Files>
         </Group>
