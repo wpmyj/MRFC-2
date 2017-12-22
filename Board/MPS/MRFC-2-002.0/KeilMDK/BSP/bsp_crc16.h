@@ -11,7 +11,7 @@
 
 /********************************************************************************************************
 * Filename      :  bsp_crc16.h
-* Programmer(s) :  Fanjun
+* Programmer(s) :  JasonFan
 * Version       :  V2.0
 * data          :  8/Aug/2017
 * brief         :  none.

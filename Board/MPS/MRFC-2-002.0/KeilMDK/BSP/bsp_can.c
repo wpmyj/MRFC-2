@@ -13,7 +13,7 @@
 *********************************************************************************************************
 * Filename      : bsp_can.c
 * Version       : V1.00
-* Programmer(s) : FanJun
+* Programmer(s) : JasonFan
 *********************************************************************************************************
 */
 
@@ -30,10 +30,6 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-//CANResetFlag 标志位掩码定义
-#define       CAN_INIT_COMPLETE            0x80   //CAN1初始化完成标志
-//#define       CAN_BUS_ERROR                0x40   //CAN总线错误标志
-#define       CAN_RESET_COMPLETE           0x40   //CAN1控制器复位完成标志
 
 //CAN总线数据发送状态
 #define NOT_STARTED     0
@@ -62,10 +58,6 @@ uint8_t     g_eCAN_BusOnLineFlag = DEF_YES;
 uint8_t     g_eCanMsgRxStatu = DEF_NO;//是否接收到信息
 
 uint8_t     g_u8CanRxMsg[PRGM_RX_BUFF_SIZE];//汇总后CAN接收数据
-
-uint8_t     g_u8CanErrorCode = 0;
-
-
 
 /*
 ***************************************************************************************************
@@ -239,7 +231,7 @@ uint8_t SendCanMsgContainNodeId(uint32_t i_Msglen, uint8_t *msg, uint8_t i_NodeI
             if(++u8SendErrCount >= 10) {
                 g_eCAN_BusOnLineFlag = NO;
                 APP_TRACE_INFO(("CAN bus has dropped,send err..\r\n"));
-                StartTim6DelayTask(CAN_BUS_AUTO_RECONNECT_AFTER_30_SEC, 30000); //掉线后定时监测是否在线
+                StartTimerDelayTask(CAN_BUS_AUTO_RECONNECT_AFTER_30_SEC, 30000); //掉线后定时监测是否在线
                 break;
             }
         } else {
@@ -377,4 +369,4 @@ uint8_t GetCanBusOnlineFlag(void)
 {
     return g_eCAN_BusOnLineFlag;
 }
-/******************* (C) COPYRIGHT 2016 Guangdong ENECO *****END OF FILE****/
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

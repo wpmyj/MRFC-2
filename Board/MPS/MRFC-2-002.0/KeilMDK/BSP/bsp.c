@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : app_analog_signal_monitor_task.c
 * Version       : V1.00
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 *
 ***************************************************************************************************
 */
@@ -88,7 +88,7 @@
 */
 CPU_INT32U      BSP_CPU_ClkFreq_MHz;
 
-
+static		uint8_t 	g_u8PassiveDecompressCnt = 0;
 /*
 ***************************************************************************************************
 *                                      LOCAL FUNCTION PROTOTYPES
@@ -260,7 +260,7 @@ void  BSP_Init(void)
     BSP_CmdButtonInit();            // 硬件按钮
     BSP_ImpulseInputPortInit();     //外部脉冲输入引脚初始化
     CAN1_Init();                    //CAN总线配置，波特率50K
-	Delay_Queue_Timer6_Init();
+	DelayQueueTimerInit();
 //    AT25256B_Init();              //外部EEPROM初始化
 
     BSP_VentingIntervalRecordTimerInit();//电堆排气时间参数定时器初始化
@@ -1108,6 +1108,7 @@ void  BSP_StackShortCircuitActivationOff(void)
 * Note(s)     : none.
 ***************************************************************************************************
 */
+
 void  BSP_TailGasOutValvePwrOn(void)
 {
     GPIO_SetBits(GPIOE, BSP_GPIOE_PIN8_RSVD3_OUTPUT_PWR_CTRL_PORT_NMB);
@@ -1131,16 +1132,27 @@ void  BSP_PureHydrogenGasOutValvePwrOff(void)
     APP_TRACE_INFO(("Pure Hydrogen Gas Out Valve power off...\n\r"));
 }
 
-void  BSP_MakeVavuumValve2PwrOn(void)
+void  BSP_ShortProtectValvePwrOn(void)
 {
     GPIO_SetBits(GPIOE, BSP_GPIOE_PIN14_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
-    APP_TRACE_INFO(("Bsp Make Vavuum Valve2 power on...\n\r"));
+    APP_TRACE_INFO(("Bsp Short Protect Valve power on...\n\r"));
 }
-void  BSP_MakeVavuumValve2PwrOff(void)
+void  BSP_ShortProtectValvePwrOff(void)
 {
     GPIO_ResetBits(GPIOE, BSP_GPIOE_PIN14_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
-    APP_TRACE_INFO(("Bsp Make Vavuum Valve2 power off...\n\r"));
+    APP_TRACE_INFO(("Bsp Short Protect Valve power off...\n\r"));
 }
+
+//void  BSP_MakeVavuumValve2PwrOn(void)
+//{
+//    GPIO_SetBits(GPIOE, BSP_GPIOE_PIN14_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
+//    APP_TRACE_INFO(("Bsp Make Vavuum Valve2 power on...\n\r"));
+//}
+//void  BSP_MakeVavuumValve2PwrOff(void)
+//{
+//    GPIO_ResetBits(GPIOE, BSP_GPIOE_PIN14_RSVD5_OUTPUT_PWR_CTRL_PORT_NMB);
+//    APP_TRACE_INFO(("Bsp Make Vavuum Valve2 power off...\n\r"));
+//}
 
 void  BSP_MakeVavuumValve3PwrOn(void)
 {
@@ -1153,17 +1165,29 @@ void  BSP_MakeVavuumValve3PwrOff(void)
     APP_TRACE_INFO(("Bsp Make Vavuum Valve3 power off...\n\r"));
 }
 
-void  BSP_MakeVavuumValve4PwrOn(void)
+void  BSP_DcOutPutValvePwrOn(void)
 {
     GPIO_SetBits(GPIOD, BSP_GPIOD_PIN15_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
-    APP_TRACE_INFO(("Bsp Make Vavuum Valve4 power on...\n\r"));
+    APP_TRACE_INFO(("Dc Out Put Valve power on...\n\r"));
 }
 
-void  BSP_MakeVavuumValve4PwrOff(void)
+void  BSP_DcOutPutValvePwrOff(void)
 {
     GPIO_ResetBits(GPIOD, BSP_GPIOD_PIN15_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
-    APP_TRACE_INFO(("Bsp Make Vavuum Valve4 power off...\n\r"));
+    APP_TRACE_INFO(("Dc Out Put Valve power off...\n\r"));
 }
+
+//void  BSP_MakeVavuumValve4PwrOn(void)
+//{
+//    GPIO_SetBits(GPIOD, BSP_GPIOD_PIN15_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
+//    APP_TRACE_INFO(("Bsp Make Vavuum Valve4 power on...\n\r"));
+//}
+
+//void  BSP_MakeVavuumValve4PwrOff(void)
+//{
+//    GPIO_ResetBits(GPIOD, BSP_GPIOD_PIN15_RSVD7_OUTPUT_PWR_CTRL_PORT_NMB);
+//    APP_TRACE_INFO(("Bsp Make Vavuum Valve4 power off...\n\r"));
+//}
 
 void  BSP_MakeVavuumPumpPwrOn(void)
 {
@@ -1204,39 +1228,19 @@ void BSP_VentingIntervalRecordTimerInit(void)
 
     TIM_TimeBaseInit(TIM5, &TIM_TimeBaseStructure);
 
-    TIM_ARRPreloadConfig(TIM5, ENABLE);                                 // 使能TIM5重载寄存器
+    TIM_ARRPreloadConfig(TIM5, ENABLE);                 // 使能TIM5重载寄存器
     TIM_GenerateEvent(TIM5, TIM_EventSource_Update);    // 定时器事件由软件更新事件产生，立即更新数据
     TIM_ClearFlag(TIM5, TIM_FLAG_Update);               //清除标志位。定时器一打开便产生更新事件，若不清除，将会直接进入中断
-    TIM_ITConfig(TIM5, TIM_IT_Update, DISABLE);                 //禁能更新中断
+    TIM_ITConfig(TIM5, TIM_IT_Update, DISABLE);         //禁能更新中断
 
     BSP_IntVectSet(BSP_INT_ID_TIM5, BSP_VentingTimeRecordHandler);//更新中断产生进入中断服务函数
     BSP_IntEn(BSP_INT_ID_TIM5);
+	
+	TIM_ITConfig(TIM5, TIM_IT_Update, ENABLE);          //使能更新中断
+    TIM_Cmd(TIM5, ENABLE);
 }
 
-/*
-***************************************************************************************************
-*                                            BSP_StartRunningVentingTimeRecord()
-*
-* Description : 开始电堆尾部排气时间参数记录.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Note(s)     : none.
-***************************************************************************************************
-*/
-void BSP_StartRunningVentingTimeRecord()
-{
-    TIM_ITConfig(TIM5, TIM_IT_Update, ENABLE);                  //使能更新中断
-    TIM_Cmd(TIM5, ENABLE);                                      //使能定时器5
-}
 
-void BSP_StopRunningVentingTimeRecord()
-{
-    TIM_ITConfig(TIM5, TIM_IT_Update, DISABLE); //禁能更新中断
-    TIM_Cmd(TIM5, DISABLE);                   //禁能定时器5
-}
 /*
 ***************************************************************************************************
 *                                            PassiveDecompressCurrentNmbInc()
@@ -1254,10 +1258,12 @@ static void BSP_VentingTimeRecordHandler(void)
 {
     if(TIM_GetITStatus(TIM5, TIM_IT_Update) != RESET) {
 
-        StackVentAirTimeParameter.u32_TimeRecordNum++;    //排气时间参数计数,加一次加0.001s
+					//更新排气次数
         TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
     }
 }
+
+
 /*
 ***************************************************************************************************
 ***************************************************************************************************
@@ -1841,9 +1847,6 @@ static void BSP_ImpulseInputPortInit(void)
 */
 static void EXTI15_10_StatusCheck_IRQHandler()
 {
-    OS_ERR      err;
-    static uint8_t u8VentAirTimeIntervalRecordFlag = NO;
-    static uint8_t u8DecompressVentTimeRecordFlag = NO;
 
     if(EXTI_GetITStatus(EXTI_Line10) != RESET) {//PDPulse1-电堆前端的泄压阀状态
 
@@ -1852,26 +1855,9 @@ static void EXTI15_10_StatusCheck_IRQHandler()
 
     if(EXTI_GetITStatus(EXTI_Line12) != RESET) {//PDPulse2-电堆后端的泄压阀状态
         if(1 == GPIO_ReadInputDataBit(GPIOE, BSP_GPIOE_PIN12_PD_PULSE2_PORT_NMB)) {
-            BSP_StartRunningVentingTimeRecord(); //Start recording the exhaust time parameter
-            StackVentAirTimeParameter.fVentAirTimeIntervalValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录排气间隔时间
-            StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num
-            u8VentAirTimeIntervalRecordFlag = YES;
-
-        } else {
-            StackVentAirTimeParameter.fDecompressVentTimeValue = StackVentAirTimeParameter.u32_TimeRecordNum;//记录泄压时间
-            StackVentAirTimeParameter.u32_TimeRecordNum = 0;//reset time record num
-            u8DecompressVentTimeRecordFlag = YES;
-        }
-
-        //排气参数记录完发送到匹氢偏移量监测任务
-        if((u8VentAirTimeIntervalRecordFlag == YES) && (u8DecompressVentTimeRecordFlag == YES)) {
-            OSTaskSemPost(&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,
-                          OS_OPT_POST_NO_SCHED,
-                          &err);
-            u8VentAirTimeIntervalRecordFlag = NO;
-            u8DecompressVentTimeRecordFlag = NO;
-        }
-
+            
+			g_u8PassiveDecompressCnt++;
+		}
         EXTI_ClearITPendingBit(EXTI_Line12);
     }
 
@@ -1879,18 +1865,41 @@ static void EXTI15_10_StatusCheck_IRQHandler()
 
 		CmdButtonFuncDisable();   
         if(EN_WAIT_CMD == GetSystemWorkStatu()) {
-            StartTim6DelayTask(START_UP_SWITCH_CHECK_DELAY_1S, 1000); //定时1s后进行开机动作检测
+            StartTimerDelayTask(START_UP_SWITCH_CHECK_DELAY_1S, 1000); //定时1s后进行开机动作检测
         } else {
-            StartTim6DelayTask(SHUT_DOWN_SWITCH_CHECK_DELAY_3S, 3000);; //关机动作检测
+            StartTimerDelayTask(SHUT_DOWN_SWITCH_CHECK_DELAY_3S, 3000);; //关机动作检测
         }
         EXTI_ClearITPendingBit(EXTI_Line13);  //清除LINE13上的中断标志位
     }
+}
+
+/*
+***************************************************************************************************
+*                            GetPassiveDecompressCnt()
+*
+* Description : get the passive decompress count.
+*
+* Argument(s) : none.
+*
+* Return(s)   : none.
+*
+* Note(s)     : none.
+***************************************************************************************************
+*/
+uint8_t GetPassiveDecompressCnt(void)
+{
+	return g_u8PassiveDecompressCnt;
+}
+
+void ResetPassiveDecompressCnt(void)
+{
+	g_u8PassiveDecompressCnt = 0;
 }
 /*
 ***************************************************************************************************
 *                                            CmdButtonFuncDisable()
 *
-* Description : 脉冲输入引脚初始化.
+* Description : Disable the button function.
 *
 * Argument(s) : none.
 *
@@ -1924,9 +1933,9 @@ void CmdButtonFuncEnable(void)
 }
 /*
 ***************************************************************************************************
-*                                            BSP_HydorgenFanPwrOff()
+*                                            CmdButtonStatuCheck()
 *
-* Description : 硬件按钮动作检测函数.
+* Description : Check the button .
 *
 * Argument(s) : none.
 *
@@ -2233,3 +2242,5 @@ CPU_TS_TMR  CPU_TS_TmrRd(void)
     return ((CPU_TS_TMR)DWT_CYCCNT);
 }
 #endif
+
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : app_wireness_communicate_task.c
 * Version       : V1.00
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 ***************************************************************************************************
 */
 
@@ -32,6 +32,9 @@
 #include "app_stack_manager.h"
 #include "app_system_run_cfg_parameters.h"
 #include "bsp_scale_data_read.h"
+#include "bsp_dc_module_adjust.h"
+#include "app_dc_module_communicate_task.h"
+#include "app_stack_short_circuit_task.h"
 #include "bsp_can.h"
 
 /*
@@ -39,8 +42,8 @@
 *                                       MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define COMM_TASK_STK_SIZE               200
-#define COMM_DATA_SEND_TASK_STK_SIZE     200
+#define COMM_TASK_STK_SIZE               128
+#define COMM_DATA_SEND_TASK_STK_SIZE     128
 
 #define  TX_MSG_MEM_BLK_NUM             30    //内存分区的内存块数量
 #define  TX_MSG_MEM_BLK_SIZE            60    //内存分区的内存块大小
@@ -78,7 +81,7 @@ static   uint32_t                    g_u32TxMsgDataTagNumber[EN_SEND_DATA_TYPE_M
 static      void        CommTask(void *p_arg);
 static      void        CommDataSendTask(void *p_arg);
 static      void        ResponsePrgmCmd(uint8_t *);
-static      void        SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg);
+static      void        SendAPrgmMsgFrame(uint8_t i_u8TxMsgLen, uint8_t *i_pTxMsg);
 
 static      void        AddRealTimeWorkInfoPartA1ToSendQueue(void);
 static      void        AddRealTimeWorkInfoPartB1ToSendQueue(void);
@@ -209,8 +212,7 @@ void  CommTask(void *p_arg)
        
 		if(g_u8WifiCmdRec == DEF_YES) { //收到串口指令而提前结束延时，响应上位机指令
             ResponsePrgmCmd(g_u8SerRxMsgBuff);
-            g_u8WifiCmdRec = DEF_NO;
-		
+            g_u8WifiCmdRec = DEF_NO;		
 //WIFI_RX_DATA_TEST
 #if     0  
             APP_TRACE_INFO(("WIFI Rx data:"));
@@ -222,7 +224,6 @@ void  CommTask(void *p_arg)
 		}
 			
         if(g_eCanMsgRxStatu == DEF_YES){//是否因收到CAN接口指令而提前结束延时
-		
 			ResponsePrgmCmd(g_u8CanRxMsg);
 			g_eCanMsgRxStatu = DEF_NO;
 		}
@@ -362,7 +363,7 @@ static void AddRealTimeWorkInfoPartA1ToSendQueue(void)
         *(pTxBlkPtr + HYDROGEN_FAN_SPD_FEEDBACK_HIGH) = (uint8_t)((u16HydrgFeedbackFanSpd & 0xFF00) >> 8);
         *(pTxBlkPtr + HYDROGEN_FAN_SPD_FEEDBACK_LOW) = (uint8_t)((u16HydrgFeedbackFanSpd & 0xFF));
         //水泵控制速度
-        u16PumpCtlSpeed = GetPumpCtlSpd();
+        u16PumpCtlSpeed = GetPumpCurrentCtrlSpd();
         *(pTxBlkPtr + PUMP_SPD_CONTROL_HIGH) = (uint8_t)((u16PumpCtlSpeed & 0xFF00) >> 8);
         *(pTxBlkPtr + PUMP_SPD_CONTROL_LOW) = (uint8_t)(u16PumpCtlSpeed & 0xFF);
         //水泵反馈速度
@@ -389,7 +390,7 @@ static void AddRealTimeWorkInfoPartA1ToSendQueue(void)
         *(pTxBlkPtr + HYDROGEN_PRODUCT_TOTAL_TIMES_LOW) = (uint8_t)(u16HydrgWorkTimes & 0xFF);
 
         //液位数据
-        u16LiquidLevel = (uint16_t)GetSrcAnaSig(LIQUID_LEVEL);
+        u16LiquidLevel = (uint16_t)GetSrcAnaSig(LIQUID_LEVEL1);
         *(pTxBlkPtr + LIQUID_LEVEL_INTEGER_PART) = (uint8_t)((u16LiquidLevel & 0xFF00) >> 8);
         *(pTxBlkPtr + LIQUID_LEVEL_DECIMAL_PART) = (uint8_t)(u16LiquidLevel & 0xFF);
 		
@@ -405,7 +406,7 @@ static void AddRealTimeWorkInfoPartA1ToSendQueue(void)
         *(pTxBlkPtr + VACUUM_NEGATIVE_PRESSURE_LOW) = (uint8_t)(u16VacuumNetativePressure % 100);
 
         //氢气浓度
-//        u16HydrogenGasConcentration = (uint16_t)(GetSrcAnaSig(HYDROGEN_CONCENTRATION) * 100);
+//        u16HydrogenGasConcentration = (uint16_t)(GetSrcAnaSig(LIQUID_LEVEL2) * 100);
 //        u16HydrogenGasConcentration = 0;
 //        *(pTxBlkPtr + HYDROGEN_PRODUCT_GAS_CONCENTRATION_INTEGER_PART) = (uint8_t)(u16HydrogenGasConcentration / 100);
 //        *(pTxBlkPtr + HYDROGEN_PRODUCT_GAS_CONCENTRATION_DECIMAL_PART) = (uint8_t)(u16HydrogenGasConcentration % 100);
@@ -461,7 +462,6 @@ static void AddRealTimeWorkInfoPartB1ToSendQueue(void)
     pTxBlkPtr = OSMemGet(&CommInfoMem,&err);
     
     if(err == OS_ERR_NONE){
-//        APP_TRACE_INFO(("Load Fuel cell real time part A work info...\r\n"));
         //数据报头段
         *(pTxBlkPtr + HEAD_BYTE_ONE) = 0xF1;
         *(pTxBlkPtr + HEAD_BYTE_TWO) = 0xF2;
@@ -566,13 +566,13 @@ static void AddRealTimeWorkInfoPartB1ToSendQueue(void)
 		i16HydrogYieldMatchOffsetValue = 0;
 //        i16HydrogYieldMatchOffsetValue = (int16_t)(GetStackHydrogenYieldMatchOffsetValue() * 100);
 
-//        if(i16HydrogYieldMatchOffsetValue > 0 || i16HydrogYieldMatchOffsetValue < -100) { //整数位带符号位
-//            *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_INTEGER_PART_MUL100) = (int8_t)(i16HydrogYieldMatchOffsetValue / 100);
-//            *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_DECIMAL_PART_MUL100_HIGH) = (uint8_t)(((i16HydrogYieldMatchOffsetValue % 100)) & 0xFF);
-//        } else { //小数位带符号位
-//            *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_INTEGER_PART_MUL100) = (uint8_t)(i16HydrogYieldMatchOffsetValue / 100);
-//            *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_DECIMAL_PART_MUL100_HIGH) = (int8_t)((i16HydrogYieldMatchOffsetValue % 100) & 0xFF);
-//        }
+        if(i16HydrogYieldMatchOffsetValue > 0 || i16HydrogYieldMatchOffsetValue < -100) { //整数位带符号位
+            *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_INTEGER_PART_MUL100) = (int8_t)(i16HydrogYieldMatchOffsetValue / 100);
+            *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_DECIMAL_PART_MUL100_HIGH) = (uint8_t)(((i16HydrogYieldMatchOffsetValue % 100)) & 0xFF);
+        } else { //小数位带符号位
+            *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_INTEGER_PART_MUL100) = (uint8_t)(i16HydrogYieldMatchOffsetValue / 100);
+            *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_DECIMAL_PART_MUL100_HIGH) = (int8_t)((i16HydrogYieldMatchOffsetValue % 100) & 0xFF);
+        }
 
         //子模块ID号
 //        *(pTxBlkPtr + SUB_MODULE_ID_OF_THE_MULTI_MODULE_TYPE) = SUB_MODULE_ID;
@@ -617,7 +617,6 @@ static void AddRealTimeWorkInfoPartB2ToSendQueue(void)
     
     if(err == OS_ERR_NONE){
 
-//        APP_TRACE_INFO(("Load Fuel cell real time part B work info...\r\n"));
         //数据报头段
         *(pTxBlkPtr + HEAD_BYTE_ONE) = 0xF1;
         *(pTxBlkPtr + HEAD_BYTE_TWO) = 0xF2;
@@ -636,7 +635,7 @@ static void AddRealTimeWorkInfoPartB2ToSendQueue(void)
         *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_B_PART_A] & 0xFF);
 
         //电堆一分钟内实时的泄压排气次数
-        u8DecompressCountPerMin = GetPassiveDecompressCountPerMinutes();
+        u8DecompressCountPerMin = GetPassiveDecompressCntPerMin();
         *(pTxBlkPtr + STACK_DECOMPRESS_COUNT_PER_MINUTES_HIGH) = 0;
         *(pTxBlkPtr + STACK_DECOMPRESS_COUNT_PER_MINUTES_LOW) = (uint8_t)(u8DecompressCountPerMin & 0xFF);
 
@@ -827,7 +826,7 @@ static void AddNonRealTimeWorkInfoToSendQueue(uint8_t i_eSendDataType, uint8_t i
 * Returns    :  none.
 ***************************************************************************************************
 */
-void StoreCfgParaBySingleAndReport(uint8_t *i_PrgmRxMsg,uint16_t *i_StoreData,StoreParaBySingleType fp_StoreType,uint8_t i_StoreAddr)
+void StoreCfgParaBySingleAndReport(uint8_t *i_PrgmRxMsg,uint16_t *i_StoreData,StoreParaBySingleType_t fp_StoreType,uint8_t i_StoreAddr)
 {
     OS_ERR      err;  
     OSSchedLock(&err);
@@ -854,9 +853,9 @@ void StoreCfgParaBySingleAndReport(uint8_t *i_PrgmRxMsg,uint16_t *i_StoreData,St
 * Returns    :  none
 ***************************************************************************************************
 */
-static void SendAPrgmMsgFrame(uint8_t i_uint8_tTxMsgLen, uint8_t *i_pTxMsg)
+static void SendAPrgmMsgFrame(uint8_t i_u8TxMsgLen, uint8_t *i_pTxMsg)
 {
-    BSP_PrgmDataDMASend(i_uint8_tTxMsgLen, i_pTxMsg);
+    BSP_PrgmDataDMASend(i_u8TxMsgLen, i_pTxMsg);
 
 	if(g_eCAN_BusOnLineFlag == DEF_YES)//CAN总线在线
 	{
@@ -942,7 +941,7 @@ static void ResponsePrgmCmd(uint8_t *i_PrgmRxMsg)
                         break;
 
                     case DBG_PUMP1_SPEED_SET_WITH_PARAMETERS:
-                        SetPumpCtlSpd((uint16_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_1) << 8) + * (i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_2));
+                        SetPumpCurrentCtrlSpd((uint16_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_1) << 8) + * (i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_2));
                         break;
 
                     case DBG_HYDRG_SPEED_INC:
@@ -1039,7 +1038,7 @@ static void ResponsePrgmCmd(uint8_t *i_PrgmRxMsg)
                                                 break;
                                             
                                             case CONFIG_RICH_HYDROG_ACTIVE_STEP_FAN_SPD:
-//                                                StoreRichHydrogenModeFanPara(i_PrgmRxMsg,(uint8_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_4)));
+                                                StoreRichHydrogenModeFanPara(i_PrgmRxMsg,(uint8_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_4)));
                                                 break;
                                             
                                             case CONFIG_RICH_HYDROG_ACTIVE_STEP_HOLD_TIME:
@@ -1077,6 +1076,19 @@ static void ResponsePrgmCmd(uint8_t *i_PrgmRxMsg)
                     case INQUIRE_HYDROGEN_RUNNING_PARAMETERS:
                         SendInquireOrConfigurationInfo();//上报运行参数
                         break;
+					
+					case REQ_INC_DC_OUT_CURRENT_LIMIT_POINT:
+						
+						APP_TRACE_INFO(("Req inc dc out current limit point cmd recived...\n\r"));
+						SetDlyShortCtrlFlagStatus(DEF_CLR);
+						SetDcOutPutCurrentLimitPoint(CURRENT_LIMIT_MAX);//请求增加限流点
+                        break;
+					
+					case REQ_DEC_DC_OUT_CURRENT_LIMIT_POINT:
+						APP_TRACE_INFO(("Req dec dc out current limit point cmd recived...\n\r"));
+						SetDlyShortCtrlFlagStatus(DEF_SET);
+                        SetDcOutPutCurrentLimitPoint(CURRENT_LIMIT_MAX - 10);
+                        break;
 
                     default:
                         break;
@@ -1113,15 +1125,13 @@ static void ResponsePrgmCmd(uint8_t *i_PrgmRxMsg)
 
                                 while(u32ErrCode) {
                                     if((u32ErrCode % 2) == 1) {
-                                        SetShutDownRequestMaskStatu((SYSTEM_ALARM_ADDR_Typedef)i, EN_UN_MASK, 0);//对应的错误屏蔽位清零
+//                                        SetShutDownRequestMaskStatu((SYSTEM_ALARM_ADDR_Typedef)i, EN_UN_MASK, 0);//对应的错误屏蔽位清零
                                     }
 
                                     i++;
                                     u32ErrCode >>= 1;
                                 }
 
-//                              BSP_BuzzerOn();
-                                CmdShutDown();
                                 break;
 
                             case RESPONSE_SLAVE_SHUT_DOWN_CMD_DELAY:
@@ -1129,7 +1139,7 @@ static void ResponsePrgmCmd(uint8_t *i_PrgmRxMsg)
 
                                 while(u32ErrCode) {
                                     if((u32ErrCode % 2) == 1) {
-                                        SetShutDownRequestMaskStatu((SYSTEM_ALARM_ADDR_Typedef)i, EN_DELAY, (uint16_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_6) * 60));//对应的错误屏蔽位清零
+//                                        SetShutDownRequestMaskStatu((SYSTEM_ALARM_ADDR_Typedef)i, EN_DELAY, (uint16_t)(*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_6) * 60));//对应的错误屏蔽位清零
                                     }
 
                                     i++;
@@ -1137,7 +1147,6 @@ static void ResponsePrgmCmd(uint8_t *i_PrgmRxMsg)
                                 }
 
 //                              APP_TRACE_INFO(("Err bit %d, %d...\r\n",i, *(i_PrgmRxMsg + REDEIVE_DATA_BYTE_CMD_PARAMETER_SECTION_6)));
-//                              BSP_BuzzerOn();
                                 break;
 
                             default:
@@ -1346,4 +1355,4 @@ uint8_t GetPrgmRxBuffLen(void)
 
 
 
-/******************* (C) COPYRIGHT 2016 Guangdong ENECO *****END OF FILE****/
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

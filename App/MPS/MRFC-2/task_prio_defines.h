@@ -11,7 +11,7 @@
 
 /********************************************************************************
   * @file    task_prio_defines.h
-  * @author  Fanjun
+  * @author  JasonFan
   * @version V1.0
   * @date    3-March-2016
   * @brief   This file contains all the macro define about task priority.
@@ -53,7 +53,7 @@
 #define  MAKE_VACCUUM_TASK_PRIO                             18
 #define  STACK_SHORT_CIRCUIT_TASK_PRIO                      19
 #define  IGNITER_WORK_TASK_PRIO                             20
-#define  SERIAL_SCREEN_DISPLAY_TASK_PRIO                    21
+#define  STACK_START_UP_CRTL_TASK_PRO                       21
 
 
 #define  SPEED_CONTROL_DEVICE_MANAGE_TASK_PRIO              22

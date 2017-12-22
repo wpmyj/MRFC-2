@@ -86,46 +86,7 @@ static  STACK_WORK_STATU_Typedef        g_eStackWorkStatu = EN_NOT_IN_WORK;
 
 static  WHETHER_TYPE_VARIABLE_Typedef g_eExternalScreenUpdateStatu = YES;
 
-static          uint16_t                g_u16StartRemainSecond = 900;//冷启动剩余时间
 static          float                   g_fSystemIsolatedGeneratedEnergyThisTime = 0.0;
-
-static          uint8_t                 g_u8WaitWorkModeSelectSwitch = DEF_DISABLED;
-
-static          uint32_t                                g_u32SysErrCode = 0;
-//系统预定错误类型有32种，对应g_u32ErrCode中的32位
-static  SHUT_DOWN_REQUEST_RESPONSE_WAIT_MASK_Typedef    g_stShutDownRequestWaitMask[32] = {{EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-    {EN_UN_MASK, 0 , {0 , 0, 0}},
-};
 
 /*
 ***************************************************************************************************
@@ -177,54 +138,6 @@ void SetWorkMode(SYSTEM_WORK_MODE_Typedef i_eNewWorkModeStatu)
     g_eSystemWorkMode = i_eNewWorkModeStatu;
     SetCtlAndCommunicaeCodeWorkModeSection(i_eNewWorkModeStatu);
     CPU_CRITICAL_EXIT();
-}
-
-
-/*
-***************************************************************************************************
-*                                      SetWorkModeWaittingForSelectFlag()
-*
-* Description:  Set the flag that the system is waitting for the control side to select the work mode.
-*
-* Arguments  :  none.
-*
-* Returns    :  none.
-*
-* Note(s)    :  The flag is included in the message that will send to the control side.
-***************************************************************************************************
-*/
-void SetWorkModeWaittingForSelectFlag(void)
-{
-    CPU_SR_ALLOC();
-    CPU_CRITICAL_ENTER();
-    g_u8WaitWorkModeSelectSwitch = DEF_ENABLED;
-    CPU_CRITICAL_EXIT();
-}
-
-void ResetWorkModeWaittingForSelectFlag(void)
-{
-    CPU_SR_ALLOC();
-    CPU_CRITICAL_ENTER();
-    g_u8WaitWorkModeSelectSwitch = DEF_DISABLED;
-    CPU_CRITICAL_EXIT();
-}
-
-/*
-***************************************************************************************************
-*                                      GetWorkModeWaittingForSelectFlag()
-*
-* Description:  Get the flag that the system is waitting for the control side to select the work mode.
-*
-* Arguments  :  none.
-*
-* Returns    :  none.
-*
-* Note(s)    :  The flag is included in the message that will send to the control side.
-***************************************************************************************************
-*/
-uint8_t GetWorkModeWaittingForSelectFlag(void)
-{
-    return g_u8WaitWorkModeSelectSwitch;
 }
 
 /*
@@ -544,37 +457,13 @@ void ResetHydrgProducerWorkTimes(void)
     g_u16HydrgProducerWorkTimes = 0;
 }
 
-/*
-***************************************************************************************************
-*                                      LoadHydrgProducerWorkTimes()
-*
-* Description:  load the hydrogen produce times.
-*
-* Arguments  :  newest the work time number.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+
 void LoadHydrgProducerWorkTimes(u16 u16WorkTimes)
 {
     g_u16HydrgProducerWorkTimes = u16WorkTimes;
 }
 
-/*
-***************************************************************************************************
-*                                      HydrgProducerWorkTimesInc()
-*
-* Description:  increase the hydrogen produce times.
-*
-* Arguments  :  none.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+
 void HydrgProducerWorkTimesInc(void)
 {
     g_u16HydrgProducerWorkTimes ++;
@@ -598,73 +487,24 @@ uint16_t GetHydrgProducerWorkTimes()
     return g_u16HydrgProducerWorkTimes;
 }
 
-/*
-***************************************************************************************************
-*                                      ResetStackWorkTimes()
-*
-* Description:  reset the stack produce times.
-*
-* Arguments  :  none.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+/* Description:  set the system work statu. */
 void ResetStackWorkTimes(void)
 {
     g_u16StackWorkTimes = 0;
 }
 
-/*
-***************************************************************************************************
-*                                      LoadStackWorkTimes()
-*
-* Description:  get the stack produce times.
-*
-* Arguments  :  unsigned short int.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+/* Description:  set the system work statu. */
 void LoadStackWorkTimes(u16 u16WorkTimes)
 {
     g_u16StackWorkTimes = u16WorkTimes;
 }
 
-/*
-***************************************************************************************************
-*                                      StackWorkTimesInc()
-*
-* Description:  increase the stack produce times.
-*
-* Arguments  :  none.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+/* Description:  set the system work statu. */
 void StackWorkTimesInc(void)
 {
     g_u16StackWorkTimes ++;
 }
-
-/*
-***************************************************************************************************
-*                                      GetStackWorkTimes()
-*
-* Description:  get the stack produce times.
-*
-* Arguments  :  none.
-*
-* Returns    :  unsigned short int.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+/* Description:  get the stack work times. */
 uint16_t GetStackWorkTimes()
 {
     return g_u16StackWorkTimes;
@@ -708,19 +548,7 @@ WHETHER_TYPE_VARIABLE_Typedef GetExternalScreenUpdateStatu(void)
     return g_eExternalScreenUpdateStatu;
 }
 
-/*
-***************************************************************************************************
-*                                      SetSystemWorkStatu()
-*
-* Description:  set the system work statu.
-*
-* Arguments  :  enum type.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+/* Description:  set the system work statu. */
 void SetSystemWorkStatu(SYS_WORK_STATU_Typedef m_enNewStatu)
 {
     CPU_SR_ALLOC();
@@ -736,37 +564,13 @@ void SetSystemWorkStatu(SYS_WORK_STATU_Typedef m_enNewStatu)
     CPU_CRITICAL_EXIT();
 }
 
-/*
-***************************************************************************************************
-*                                      GetSystemWorkStatu()
-*
-* Description:  get the system work statu.
-*
-* Arguments  :  none.
-*
-* Returns    :  enum type.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+/* Description:  get the system work statu. */
 SYS_WORK_STATU_Typedef GetSystemWorkStatu(void)
 {
     return g_eSystemWorkStatu;
 }
 
-/*
-***************************************************************************************************
-*                                      SetStackWorkStatu()
-*
-* Description:  set the stack work statu.
-*
-* Arguments  :  enum type.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+/* Description:  set the stack work statu. */
 void SetStackWorkStatu(STACK_WORK_STATU_Typedef i_eNewStatu)
 {
     CPU_SR_ALLOC();
@@ -776,37 +580,13 @@ void SetStackWorkStatu(STACK_WORK_STATU_Typedef i_eNewStatu)
     CPU_CRITICAL_EXIT();
 }
 
-/*
-***************************************************************************************************
-*                                      GetStackWorkStatu()
-*
-* Description:  get the stack work statu.
-*
-* Arguments  :  none.
-*
-* Returns    :  enum type.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+/* Description:  get the stack work statu. */
 STACK_WORK_STATU_Typedef GetStackWorkStatu(void)
 {
     return g_eStackWorkStatu;
 }
 
-/*
-***************************************************************************************************
-*                                      ResetAllAlarms()
-*
-* Description:  reset the all alarms statu.
-*
-* Arguments  :  none.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+/* Description:  reset the all alarms statu. */
 void ResetAllAlarms()
 {
     int i;
@@ -893,19 +673,7 @@ SYSTEM_TIME_Typedef GetAlarmHoldTime(SYSTEM_ALARM_ADDR_Typedef m_enSystemAlarmKi
     return g_stSystemAlarmsInf.HoldTime[m_enSystemAlarmKind];
 }
 
-/*
-***************************************************************************************************
-*                                      GetRunAlarmCode()
-*
-* Description:  get the alarm time.
-*
-* Arguments  :  none.
-*
-* Returns    :  the alarm code.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
+/* Description:  get the running alarm code */
 uint32_t GetRunAlarmCode(void)
 {
     return g_stSystemAlarmsInf.AlarmCode;
@@ -950,19 +718,6 @@ void UpdateSystemIsolatedGeneratedEnergyThisTime()
     }
 }
 
-/*
-***************************************************************************************************
-*                                      GetIsolatedGenratedEnergyThisTime()
-*
-* Description:  get the isolated generated energy this time.
-*
-* Arguments  :  none.
-*
-* Returns    :  double.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
 float GetIsolatedGenratedEnergyThisTime()
 {
     return g_fSystemIsolatedGeneratedEnergyThisTime;
@@ -1153,20 +908,6 @@ void ResetSystemRunningStatuCodeBit(uint8_t i_u8BitNmb)
     g_SystemRunningStatuCode &= ~(1u << i_u8BitNmb);
 }
 
-
-/*
-***************************************************************************************************
-*                                      ResetSystemRunningStatuCode()
-*
-* Description:  reset the system running statu code.
-*
-* Arguments  :  none.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
 void ResetSystemRunningStatuCode(void)
 {
     g_SystemRunningStatuCode = 0;
@@ -1240,37 +981,11 @@ void SetConrolAndCommunicateStatuCodeBit(uint8_t i_u8BitNmb)
     g_u16CtlAndCommunicateCode |= (1u << i_u8BitNmb);
 }
 
-/*
-***************************************************************************************************
-*                                      ResetConrolAndCommunicateStatuCodeBit()
-*
-* Description:  reset specified bit of the system running statu code.
-*
-* Arguments  :  select the bit of the code.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
 void ResetConrolAndCommunicateStatuCodeBit(uint8_t i_u8BitNmb)
 {
     g_u16CtlAndCommunicateCode &= ~(1u << i_u8BitNmb);
 }
 
-/*
-***************************************************************************************************
-*                                      GetConrolAndCommStatuCode()
-*
-* Description:  reset specified bit of the system running statu code.
-*
-* Arguments  :  select the bit of the code.
-*
-* Returns    :  none.
-*
-* Note(s)    :  none.
-***************************************************************************************************
-*/
 uint16_t GetConrolAndCommStatuCode()
 {
     return g_u16CtlAndCommunicateCode;
@@ -1359,76 +1074,6 @@ uint8_t CalcStackMinimumTemperatureByCurrent(void)
     return (uint8_t)fStackMinTemperature;
 }
 
-
-
-/*
-***************************************************************************************************
-*                               GetSysErrCode()
-*
-* Description : Calculate the minimum temperature that the stack can withstand from the current.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Note(s)     : none.
-***************************************************************************************************
-*/
-uint32_t GetSysErrCode()
-{
-    return g_u32SysErrCode;
-}
-
-void SysErrStatuCmd(SYSTEM_ALARM_ADDR_Typedef i_eErrKind, SWITCH_TYPE_VARIABLE_Typedef i_eNewStatu)
-{
-    if((g_u32SysErrCode ^ (i_eNewStatu << (uint8_t)i_eErrKind)) != 0) {
-        if(i_eNewStatu == ON) {
-            g_u32SysErrCode |= (1 << i_eErrKind);
-        } else {
-            g_u32SysErrCode &= ~(1 << i_eErrKind);
-        }
-    }
-}
-
-void SetShutDownRequestMaskStatu(SYSTEM_ALARM_ADDR_Typedef i_ErrKind, REAL_TIME_REQUEST_MASK_Typedef i_eNewStatu, uint16_t i_u8DelaySeconds)
-{
-    if(i_eNewStatu == EN_DELAY) { //若更新至延时状态，则开启计时，若延时状态未变，则更新延时时间即可
-        g_stShutDownRequestWaitMask[i_ErrKind].MaskStatu = i_eNewStatu;
-        g_stShutDownRequestWaitMask[i_ErrKind].DelaySecond = i_u8DelaySeconds;//记录延时等待的时间
-        g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime = GetSystemTime();//记录延时开始的时间
-    } else { //切换为非延时状态，则清零计时
-        g_stShutDownRequestWaitMask[i_ErrKind].MaskStatu = i_eNewStatu;
-        g_stShutDownRequestWaitMask[i_ErrKind].DelaySecond = 0;
-        g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.hour = 0;
-        g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.minute = 0;
-        g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.second = 0;
-    }
-}
-
-REAL_TIME_REQUEST_MASK_Typedef GetShutDownRequestMaskStatu(SYSTEM_ALARM_ADDR_Typedef i_ErrKind)
-{
-    SYSTEM_TIME_Typedef stCurrentTime;
-
-    if(g_stShutDownRequestWaitMask[i_ErrKind].MaskStatu == EN_DELAY) {
-        stCurrentTime = GetSystemTime();
-
-        if((g_stShutDownRequestWaitMask[i_ErrKind].DelaySecond > 0)
-                && ((((stCurrentTime.hour - g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.hour) * 60
-                      + stCurrentTime.minute - g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.minute) * 60
-                     + stCurrentTime.second - g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.second)
-                    >= g_stShutDownRequestWaitMask[i_ErrKind].DelaySecond)) { //若延时到达，这自动切换为非屏蔽状态
-            g_stShutDownRequestWaitMask[i_ErrKind].MaskStatu = EN_UN_MASK;
-            g_stShutDownRequestWaitMask[i_ErrKind].DelaySecond = 0;
-            g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.hour = 0;
-            g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.minute = 0;
-            g_stShutDownRequestWaitMask[i_ErrKind].RecordStartTime.second = 0;
-            BSP_BuzzerOff();
-        } else { //否则继续等待
-        }
-    }
-
-    return g_stShutDownRequestWaitMask[i_ErrKind].MaskStatu;
-}
 /*
 ***************************************************************************************************
 *                             SystemTimeStatTaskCreate()
@@ -1495,15 +1140,15 @@ static  void  SysTimeStatTask(void *p_arg)
 
         if(err == OS_ERR_NONE) {
             UpdateSysTime(&g_stSystemTime);
-            UpdateSystemIsolatedGeneratedEnergyThisTime();
 
-            if((g_eSystemWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL)
-                    || (g_eSystemWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER)) {
+            if((g_eSystemWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL) ||
+               (g_eSystemWorkMode == EN_WORK_MODE_HYDROGEN_PRODUCER)) {
+				   
                 if((g_eSystemWorkStatu == EN_START_PRGM_ONE_FRONT)
-                        || (g_eSystemWorkStatu == EN_START_PRGM_ONE_BEHIND)
-                        || (g_eSystemWorkStatu == EN_START_PRGM_TWO)
-                        || (g_eSystemWorkStatu == EN_RUNNING)) {
-                    //更新制氢时间
+				|| (g_eSystemWorkStatu == EN_START_PRGM_ONE_BEHIND)
+				|| (g_eSystemWorkStatu == EN_START_PRGM_TWO)
+				|| (g_eSystemWorkStatu == EN_RUNNING)) {
+                    
                     UpdateSysTime(&g_stHydrgProduceTimeThisTime);
                     UpdateSysTime(&g_stHydrgProduceTimeTotal);
 
@@ -1520,17 +1165,15 @@ static  void  SysTimeStatTask(void *p_arg)
                         u32AlarmCode >>= 1;
                         i++;
                     }
-
-                    //          if(g_stSystemAlarmsInf.HoldTime[FUEL_SHORTAGE_ALARM].minute >= 30)//液位低持续超过30分钟
-                    //          {
-                    //              CmdShutDown();
-                    //          }
                 }
             }
 
             if(g_eStackWorkStatu == EN_IN_WORK) {
+				
                 UpdateSysTime(&g_stStackProductTimeThisTime);
                 UpdateSysTime(&g_stStackProductTimeTotal);
+				UpdateSystemIsolatedGeneratedEnergyThisTime();
+				
                 u32AlarmCode = g_stSystemAlarmsInf.AlarmCode;
 
                 i = 0;
@@ -1598,22 +1241,5 @@ float GetCurrentPower(void)
     return GetSrcAnaSig(STACK_VOLTAGE) * GetSrcAnaSig(STACK_CURRENT);
 }
 
-/*
-*********************************************************************************************************
-*                          uint16_t GetStartRemainSencond(void)
-*
-* Description : The use of the funciton is to get the start remain sencond.
-*
-* Arguments   : none.
-*
-* Returns     : none.
-*
-* Notes       : none.
-*********************************************************************************************************
-*/
-uint16_t GetStartRemainSencond(void)
-{
-    return g_u16StartRemainSecond;
-}
-/******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/
 

@@ -21,7 +21,7 @@
 */
 /********************************************************************************
   * @file    bsp_ans_senor.h
-  * @author  Fanjun
+  * @author  JasonFan
   * @version V1.0
   * @date    6-December-2016
   * @brief   This file contains all the functions prototypes for the analog sensor
@@ -526,15 +526,25 @@ void  BSP_PureHydrogenGasOutValvePwrOff(void);
 void  BSP_TailGasOutValvePwrOn(void);
 void  BSP_TailGasOutValvePwrOff(void);
 
-void  BSP_MakeVavuumValve2PwrOn(void);
+
+
+//void  BSP_MakeVavuumValve2PwrOn(void);
+void  BSP_ShortProtectValvePwrOn(void);
+
 void  BSP_MakeVavuumValve3PwrOn(void);
-void  BSP_MakeVavuumValve4PwrOn(void);
+//void  BSP_MakeVavuumValve4PwrOn(void);
+void  BSP_DcOutPutValvePwrOn(void);
+
 void  BSP_MakeVavuumPumpPwrOn(void);
 
-void  BSP_MakeVavuumValve2PwrOff(void);
+//void  BSP_MakeVavuumValve2PwrOff(void);
+void  BSP_ShortProtectValvePwrOff(void);
+
 void  BSP_MakeVavuumValve3PwrOff(void);
-void  BSP_MakeVavuumValve4PwrOff(void);
+//void  BSP_MakeVavuumValve4PwrOff(void);
+void  BSP_DcOutPutValvePwrOff(void);
 void  BSP_MakeVavuumPumpPwrOff(void);
+
 
 /*
 ***************************************************************************************************
@@ -569,6 +579,9 @@ void  TIM7_DlyMilSecondsInit(u16 i_u16DlyMilSeconds);
 void  CmdButtonStatuCheck(void);
 void  StartCmdButtonActionCheckDly(void);
 void  TIM7_DlyMilSecondsInit(u16 i_u16DlyMilSeconds);
+
+uint8_t GetPassiveDecompressCnt(void);//获取排气次数
+void ResetPassiveDecompressCnt(void);
 /*
 ***************************************************************************************************
 *                                              STATUS INPUTS

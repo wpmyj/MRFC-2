@@ -11,7 +11,7 @@
 
 /********************************************************************************************************
 * Filename      :  app_stack_manager.h
-* Programmer(s) :  Fanjun
+* Programmer(s) :  JasonFan
 * Version       :  V1.0
 * data          :  2016.4.4
 * brief         :  This file contains all the functions prototypes for the system run
@@ -43,6 +43,10 @@
 #define  WAIT_FOR_36KPA   1
 #define  WAIT_FOR_45KPA   2
 
+
+
+#define  STACK_FAN_SPOOL_UP_SPD       800
+#define  STACK_FAN_SPOOL_DOWN_SPD     200
 /*
 ***************************************************************************************************
 *                                    EXPORTED OS VARIABLE DECLARATIONS
@@ -60,9 +64,7 @@ extern      OS_TCB      StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB;
 ***************************************************************************************************
 */
 extern      uint16_t                                u16AmpIntegralTimeCount;
-extern      STACK_VENTING_TIME_PARAMETER_Typedef    StackVentAirTimeParameter;
-
-extern      uint8_t                                g_u8DecompressCountPerMinute;
+extern      uint8_t                                 g_u8DecompressCountPerMinute;
 /*
 ***************************************************************************************************
 *                                           EXPORTED FUNCTION
@@ -70,20 +72,14 @@ extern      uint8_t                                g_u8DecompressCountPerMinute;
 */
 void    StackManagerTaskCreate(void);
 void    StackManagerDlyStopTaskCreate(void);
-void	StackHydrogenYieldMatchingOffsetValueMonitorTaskCreate(void);
+void 	StackStartUpCtrlTaskCreate(void);
 
 void    SetStackAnaSigAlarmRunningMonitorHookSwitch(u8);
-void    SetStackOutAirValveStatus(SWITCH_TYPE_VARIABLE_Typedef i_NewStatu);
 
-uint8_t GetPassiveDecompressCountPerMinutes(void);
-
+uint8_t GetPassiveDecompressCntPerMin(void);
+void 	UpdatePassiveDecompressCntPerMin(void);
 
 uint8_t GetStackStartPurifySwitchStatus(void);
-
-void SetStackNeedVentByAmpIntegralSumSwitch(uint8_t i_NewStatu);
-uint8_t GetStackNeedVentByAmpIntegralSumSwitch(void);
-
-SWITCH_TYPE_VARIABLE_Typedef GetStackOutAirValveStatus(void);
 
 uint8_t GetStackStopDlyStatu(void);
 
@@ -92,6 +88,9 @@ float GetStackAmpIntegralSum(void);
 
 uint8_t GetStackFanSpdPidControlSwitchStatus(void);
 void SetStackFanSpdPidControlSwitch(uint8_t i_NewStatu);
+
+void SetStackStartUpShortTaskSwitch(uint8_t i_NewStatu);
+uint8_t GetStackStartUpShortTaskSwitchStatus(void);
 /*
 ***************************************************************************************************
 *                                             MODULE END

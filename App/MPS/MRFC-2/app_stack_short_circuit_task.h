@@ -11,7 +11,7 @@
 
 /********************************************************************************
   * @file    app_stack_short_circuit_task.h
-  * @author  Fanjun
+  * @author  JasonFan
   * @version V1.0
   * @date    2017.1.1
   * @brief   This file contains all the functions prototypes for the analog sensor
@@ -70,4 +70,7 @@ void SetStackShortCtrlTaskSwitch(uint8_t i_NewStatu);
 
 uint8_t StackShortCtrl(void);
 
+
+uint8_t GetDlyShortCtrlFlagStatus(void);
+void SetDlyShortCtrlFlagStatus(uint8_t i_NewStatu);
 #endif

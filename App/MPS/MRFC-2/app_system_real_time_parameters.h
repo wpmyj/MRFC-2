@@ -11,7 +11,7 @@
 
 /********************************************************************************************************
 * Filename      :  bsp_ans_senor.h
-* Programmer(s) :  Fanjun
+* Programmer(s) :  JasonFan
 * Version       :  V1.0
 * data          :  2016.4.4
 * brief         :  This file contains all the functions prototypes for the analog sensor
@@ -179,12 +179,6 @@ typedef enum {
 
 } SYSTEM_ALARM_GRADE_Typedef;
 
-typedef struct {
-    uint64_t u32_TimeRecordNum; //计时基数,加1为加0.001s
-    float  fVentAirTimeIntervalValue;//排气间隔
-    float  fDecompressVentTimeValue;//泄压时间
-
-} STACK_VENTING_TIME_PARAMETER_Typedef;
 
 typedef struct {
     uint32_t    AlarmCode;

@@ -11,7 +11,7 @@
 /*
 ***************************************************************************************************
 * Filename      : bsp_crc16.c
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 * Version       : V2.00
 * Data          : 8/Aug/2017
 ***************************************************************************************************
@@ -173,3 +173,5 @@ uint16_t GetModbusCrc16Code(uint8_t *puchMsg, uint16_t usDataLen)
 {
     return GetRevCrc_16(puchMsg, usDataLen, 0x0FFFF, MODBUS_CRC16Table);
 }
+
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : app_top_task.c
 * Version       : V1.00
-* Programmer(s) : FanJun
+* Programmer(s) : JasonFan
 ***************************************************************************************************
 */
 /*
@@ -250,15 +250,14 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
     VERIFY_RESULT_TYPE_VARIABLE_Typedef WaitCmdStatu;
  
     SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL);
-    OSTaskResume(&Make_Vaccuum_FunctionTaskTCB, &err); //开始抽真空
-
+    
     APP_TRACE_INFO(("---HYDROGEN_PRODUCER_AND_FUEL_CELL_MODE---\r\n"));
 
     while(DEF_TRUE) {
         if(EN_THROUGH == DeviceSelfCheck()) {
             APP_TRACE_INFO(("Self-check success...\n\r"));
 
-            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 1, //1分钟自检一次
+            OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 5, //5分钟自检一次
                           OS_OPT_PEND_BLOCKING,
                           NULL,
                           &err);
@@ -276,7 +275,7 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
                 break;
             }
 
-            SendRealTimeAssistInfo();   //每30s向上位机发送一次自检信息
+            SendRealTimeAssistInfo();   //向上位机发送一次自检信息
         } else {
             APP_TRACE_INFO(("Self-check failed...\n\r"));
             WaitCmdStatu = EN_NOT_THROUGH;
@@ -326,7 +325,7 @@ void Starting(void)
         if(EN_START_PRGM_ONE_FRONT == GetSystemWorkStatu()) {
 			
             HydrgProducerWorkTimesInc();
-                
+            OSTaskResume(&MembraneTubeProtectTaskTCB, &err); //重复启动时恢复抽真空任务，若是首次启动则无效
             //第一次点火
             if((EN_PASS == IgniteFirstTime(IgniteCheckTable1, GoToNextStepTempTable1, 3, 1))) {
                 SetSystemWorkStatu(EN_START_PRGM_TWO);
@@ -511,26 +510,21 @@ void ShutDown()
                 break;
 
             case EN_DELAY_STOP_PART_ONE:
-                OSTaskResume(&HydrgProducerManagerDlyStopTaskTCB,   //恢复制氢机延时关闭任务。
-                             &err);
+				
+                OSTaskResume(&HydrgProducerManagerDlyStopTaskTCB,&err);   //恢复制氢机延时关闭任务。
+                             
                 break;
 
             case EN_DELAY_STOP_PART_TWO:
-//                if(EN_IN_WORK == GetStackWorkStatu()) { //电堆有在工作才恢复延时关闭任务
-                OSTaskResume(&StackManagerDlyStopTaskTCB,
-                             &err);
-//                }
 
+                OSTaskResume(&StackManagerDlyStopTaskTCB,&err);
+                             
                 break;
 
             case(u8)EN_DELAY_STOP_BOTH_PARTS:
-                OSTaskResume(&HydrgProducerManagerDlyStopTaskTCB,   //恢复制氢机、电堆延时关闭任务
-                             &err);
-
-                if(EN_IN_WORK == GetStackWorkStatu()) { //电堆有在工作才恢复延时关闭任务
-                    OSTaskResume(&StackManagerDlyStopTaskTCB,
-                                 &err);
-                }
+				
+                OSTaskResume(&HydrgProducerManagerDlyStopTaskTCB,&err);   //恢复制氢机、电堆延时关闭任务 
+                OSTaskResume(&StackManagerDlyStopTaskTCB,&err);                                 
 
                 break;
 
@@ -543,9 +537,7 @@ void ShutDown()
         for(i = 0; i < 4; i++) {
             BSP_BuzzerTurnover();
 
-            OSTimeDlyHMSM(0, 0, 1, 0,
-                          OS_OPT_TIME_HMSM_STRICT,
-                          &err);
+            OSTimeDlyHMSM(0, 0, 1, 0,OS_OPT_TIME_HMSM_STRICT,&err);
         }
 
         switch((u8)g_eShutDownActionFlag) {
@@ -629,4 +621,4 @@ void UpdateBuzzerStatuInCruise(void)
         BSP_BuzzerOff();
     }
 }
-/******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

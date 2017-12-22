@@ -11,7 +11,7 @@
 
 /********************************************************************************
   * @file    app_top_task.h
-  * @author  Fanjun
+  * @author  JasonFan
   * @version V1.0
   * @date    6-March-2016
   * @brief   This file contains all the functions prototypes for the analog sensor

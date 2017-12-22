@@ -11,7 +11,7 @@
 
 /********************************************************************************************************
 * Filename      :  app_system_run_cfg_parameters.h
-* Programmer(s) :  Fanjun
+* Programmer(s) :  JasonFan
 * Version       :  V1.0
 * data          :  2016.12.10
 * brief         :This file contains all the functions prototypes for the system run
@@ -213,7 +213,7 @@ void        LoadDefaultRichHydrogenModeHoldTimePara(void);
 
 
 void        StoreRichHydrogenModePara(RICH_HYDROGEN_ACTIVE_PARA_Typedef *i_RichModePara);
-typedef     void    (*StoreParaBySingleType)(uint16_t *,uint8_t);//存储参数类函数指针类型
+typedef     void    (*StoreParaBySingleType_t)(uint16_t *,uint8_t);//存储参数类函数指针类型
 /*
 ***************************************************************************************************
 *                                             MODULE END

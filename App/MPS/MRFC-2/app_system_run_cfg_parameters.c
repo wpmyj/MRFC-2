@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : app_system_real_time_parameters.c
 * Version       : V1.00
-* Programmer(s) : FanJun
+* Programmer(s) : JasonFan
 ***************************************************************************************************
 */
 /*
@@ -30,14 +30,15 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define STM32_FLASH_SIZE            128             //所用STM32的FLASH容量大小(单位为K)
+#define STM32_FLASH_SIZE            256             //所用STM32的FLASH容量大小(单位为K)
 #define STM32_FLASH_WREN            1               //使能FLASH写入(0:失能;1:使能)
 
 #define STM32_FLASH_BASE            0x08000000      //STM32 FLASH的起始地址
 
-#define SYSTEM_PARA_STORE_SEGMENT_ADDR         0x0801FC00      //地址頂端為0x08020000 设置FLASH 保存地址為最後的1K字節(必须为偶数)
+//0x0801FC00
+#define SYSTEM_PARA_STORE_SEGMENT_ADDR         0x0803F800      //地址頂端為0x0803FFFF 设置FLASH 保存地址為最後的2K字節(必须为偶数)
 
-#define PARAMETERS_STORE_AREA_SIZE                      512 //参数保存区的大小（字节）
+#define PARAMETERS_STORE_AREA_SIZE                      256 //参数保存区的大小（字节）
 
 //下面宏定义表示开机运行的驱动层参数（传感器）和应用层工作参数是采用设定值还是默认值的标志值的偏移地址
 //无符号16位数，擦除后为全0xFFFF
@@ -91,7 +92,6 @@ uint16_t                                   g_ProductsType = 0x1000;
 *                                     LOCAL VARIABLES
 ***************************************************************************************************
 */
-//static     uint16_t      RW_ParametersBuffer[PARAMETERS_STORE_AREA_SIZE / 2];
 
 /*
 ***************************************************************************************************
@@ -210,36 +210,39 @@ void LoadApplicationLayerParameters()
 
     /*使用配置好的应用参数*/
     if(APP_PARAMETERS_SELECT_CFG_VALUE == (APP_PARAMETERS_SELECT_FLAG_CHECK & u16ParametersSelectFlag)) {
+		
         APP_TRACE_INFO(("The machine will work with the configured parameters!...\r\n"));
         GetSystemWorkTimesFromFlash(&u16WorkTimes);
 
-        if(u16WorkTimes != 0xFFFF) {
-            LoadSystemWorkTimesToPrgm(u16WorkTimes);//使用记录的参数
-        } else {
-            LoadSystemWorkTimesToPrgm(0);//历史运行次数自动归零，但暂不保存，机器启动后才增加一次
-        }
-
+        LoadSystemWorkTimesToPrgm(u16WorkTimes);//使用记录的参数,运行次数暂不清零
         APP_TRACE_INFO(("The %d time for the system to boot,loading the parameters..\r\n", u16WorkTimes + 1));
 
         GetTotalWorkTimeFromFlash(&stTotalWorkTime);
+		APP_TRACE_INFO(("stTotalWorkTime:%d...\n\r", stTotalWorkTime.hour));
         LoadTotalWorkTimeToPrgm(stTotalWorkTime);   //传到实时运行参数所在文件对应的程序中去
-
+	
         GetGlobalNetWorkIDFromFlash(&g_u16GlobalNetWorkId);
-        APP_TRACE_INFO(("Load GLOBAL_NET_WORK_ID:%d...\n\r", g_u16GlobalNetWorkId));
+        APP_TRACE_INFO(("Load g_u16GlobalNetWorkId:%d...\n\r", g_u16GlobalNetWorkId));
         GetReformerTempCmpTblFromFlash(&g_stReformerTempCmpTbl);
         GetLqdPressCmpTblFromFlash(&g_stLqdPressCmpTbl);
+		APP_TRACE_INFO(("g_stLqdPressAlarmLower:%d...\n\r", g_stLqdPressCmpTbl.AlarmUpperLimit));
         GetLqdHeightCmpTblFromFlash(&g_stLqdHeightCmpTbl);
+		APP_TRACE_INFO(("stTotalWorkTime:%d...\n\r", stTotalWorkTime.hour));
         GetStartHydrgPumpSpdParaFromFlash(&g_stStartHydrgPumpSpdPara);
         GetStartHydrgFanSpdParaFromFlash(&g_stStartHydrogenFanSpdPara);
         GetRunPurifyAmpIntegralValueFromFlash(&g_u16RunPurifyAmpIntegralValue);
         GetRunningStageDelayAndAdjustSpdFromFlash(&g_stRunningStatusDelayAdjustSpdPara);
         GetFirstTimeHeatHoldSecondsFromFlash(&g_u16FirstTimeHeatHoldSeconds);
+		APP_TRACE_INFO(("g_u16FirstTimeHeatHoldSeconds:%d...\n\r", g_u16FirstTimeHeatHoldSeconds));
+		GetRunningStageDelayAndAdjustSpdFromFlash(&g_stRunningStatusDelayAdjustSpdPara);
+        GetRichHydrogenModeParaFromFlash(&g_stRichHydrogenModePara);
+		APP_TRACE_INFO(("g_stRichHydrogenModePara:%d...\n\r", g_stRichHydrogenModePara.ActiveStep1FanSpd));
 
     } else { //载入默认参数
         APP_TRACE_INFO(("First time run,the machine will work with the default parameters!...\r\n"));
 
         u16ParametersSelectFlag &= ~APP_PARAMETERS_SELECT_DEFAULT_VALUE;//下次启动采用配置好的参数
-        SetParametersSelectFlag(&u16ParametersSelectFlag);//保存参数
+        SetParametersSelectFlag(&u16ParametersSelectFlag);//保存参数设置标志
 
         u16WorkTimes = 0;//系统运行次数为0
         LoadSystemWorkTimesToPrgm(u16WorkTimes);
@@ -257,10 +260,9 @@ void LoadApplicationLayerParameters()
         LoadTotalWorkTimeToPrgm(stTotalWorkTime);
 
         APP_TRACE_INFO(("This is the first time for the system to boot,capturing the parameters...\r\n"));
-
         /*获取默认参数并且存到Flash中*/
         StoreGlobalNetWorkID(&g_u16GlobalNetWorkId);
-        APP_TRACE_INFO(("Default GLOBAL_NET_WORK_ID:%d...\n\r", g_u16GlobalNetWorkId));
+        APP_TRACE_INFO(("Default GlobalNetWorkId:%d...\n\r", g_u16GlobalNetWorkId));
 
         GetDefaultReformerTempCmpTbl(&g_stReformerTempCmpTbl);
         StoreReformerTempCmpTbl(&g_stReformerTempCmpTbl);
@@ -285,6 +287,12 @@ void LoadApplicationLayerParameters()
 
         GetDefaultRunningStatusDelayAdjustSpdPara(&g_stRunningStatusDelayAdjustSpdPara);
         StoreRunningStatusDelayAdjustSpdPara(&g_stRunningStatusDelayAdjustSpdPara);
+		
+		GetDefaultFirstTimeHeatHoldSeconds(&g_u16FirstTimeHeatHoldSeconds);
+        StoreFirstTimeHeatHoldSeconds(&g_u16FirstTimeHeatHoldSeconds);
+        
+        GetDefaultRichHydrogenModePara(&g_stRichHydrogenModePara);
+        StoreRichHydrogenModePara(&g_stRichHydrogenModePara);
     }
 }
 
@@ -814,9 +822,14 @@ static void StoreRunPurifyAmpIntegralValue(u16 *i_RunPurifyAmpIntegralValue)
 * Note(s)    :  none.
 ***************************************************************************************************
 */
-u16 STMFLASH_ReadHalfWord(u32 faddr)
+uint16_t STMFLASH_ReadHalfWord(uint32_t faddr)
 {
     return *(vu16 *)faddr;
+}
+
+uint8_t STMFLASH_ReadByte(uint32_t faddr)
+{
+    return *(vu8 *)faddr;
 }
 
 #if STM32_FLASH_WREN    //如果使能了写功能    
@@ -864,7 +877,7 @@ static void STMFLASH_Write_NoCheck(u32 WriteAddr, u16 *pBuffer, u16 NumToWrite)
 #else
     #define STM_SECTOR_SIZE 2048
 #endif
-static      u16     STMFLASH_BUF[PARAMETERS_STORE_AREA_SIZE];
+static      u16     STMFLASH_BUF[STM_SECTOR_SIZE / 2];
 static void STMFLASH_Write(u32 WriteAddr, u16 *pBuffer, u16 NumToWrite)
 {
     u32 secpos;    //扇区地址
@@ -876,7 +889,7 @@ static void STMFLASH_Write(u32 WriteAddr, u16 *pBuffer, u16 NumToWrite)
     if((WriteAddr >= STM32_FLASH_BASE) && (WriteAddr < (STM32_FLASH_BASE + 1024 * STM32_FLASH_SIZE))) {
         FLASH_Unlock();                                 //解锁
         offaddr = WriteAddr - STM32_FLASH_BASE;         //实际偏移地址.
-        secpos = offaddr / STM_SECTOR_SIZE;             //扇区地址  0~127 共128个扇区，在STM32F105RB中，每个扇区1K
+        secpos = offaddr / STM_SECTOR_SIZE;             //扇区地址  0~127 共128个扇区，每个扇区2K
         secoff = (offaddr % STM_SECTOR_SIZE) / 2;       //在扇区内的偏移(2个字节为基本单位.)
         secremain = STM_SECTOR_SIZE / 2 - secoff;       //扇区剩余空间大小
 
@@ -887,7 +900,7 @@ static void STMFLASH_Write(u32 WriteAddr, u16 *pBuffer, u16 NumToWrite)
         while(1) {
             STMFLASH_Read(secpos * STM_SECTOR_SIZE + STM32_FLASH_BASE, STMFLASH_BUF, STM_SECTOR_SIZE / 2);//读出整个扇区的内容
 
-            for(i = 0; i < secremain; i++) { //校验数据
+            for(i = 0; i < secremain; i++) { //校验数据是否擦除过
                 if(STMFLASH_BUF[secoff + i] != 0XFFFF) {
                     break;//需要擦除
                 }
@@ -953,5 +966,5 @@ void STMFLASH_Read(u32 ReadAddr, u16 *pBuffer, u16 NumToRead)
 }
 
 #endif
-/******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/
 

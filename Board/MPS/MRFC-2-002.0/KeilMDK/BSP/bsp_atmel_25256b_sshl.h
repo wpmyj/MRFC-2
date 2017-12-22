@@ -11,7 +11,7 @@
 
 /********************************************************************************************************
 * Filename      :  bsp_atmel_25256b_sshl.h
-* Programmer(s) :  Fanjun
+* Programmer(s) :  JasonFan
 * Version       :  V1.0
 * data          :  2016.12.27
 * brief         :  This file contains all the functions prototypes for the system run

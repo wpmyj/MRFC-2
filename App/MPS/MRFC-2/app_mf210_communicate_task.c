@@ -34,7 +34,7 @@
 *                                       MICRO DEFINE
 ***************************************************************************************************
 */
-#define MF210_TASK_STK_SIZE 	  200
+#define MF210_TASK_STK_SIZE 	  156
 
 #define PRGM_TX_BUFF_SIZE       	60
 #define PRGM_RX_BUFF_SIZE       	16
@@ -150,6 +150,8 @@ static void LoadHydrogenProducerRealTimeInfo(void)
     uint16_t flqdHeight = 0;
     uint16_t u16ReformerTemp  = 0;
     uint16_t u16FireOrRodTemp  = 0;
+	uint16_t u16BatteryVoltage = 0;
+	uint16_t u16LiquidLevel1 = 0;
 
     HydrogenProducerTxBuf[0] = 0xF7; //信道
     HydrogenProducerTxBuf[1] = 0xF8;
@@ -180,22 +182,26 @@ static void LoadHydrogenProducerRealTimeInfo(void)
     u16PumpFeedbackSpeed = GetPumpFeedBackSpd();                                        		//泵速反馈
     HydrogenProducerTxBuf[19] = (uint8_t)(u16PumpFeedbackSpeed / 100);                         //水泵转速千位百位
     HydrogenProducerTxBuf[20] = (uint8_t)(u16PumpFeedbackSpeed  % 100);                        //水泵转速十位个位
-    HydrogenProducerTxBuf[21] = GetPumpCtlSpd() / 10 ;                                             //Pump_CountValue;
+    HydrogenProducerTxBuf[21] = GetPumpCurrentCtrlSpd() / 10 ;                                             //Pump_CountValue;
     HydrogenProducerTxBuf[22] = 0;                                                                 //Get_H2Concentration1;   //氢气泄露报警值0-50PP
 
-    flqdHeight = GetSrcAnaSig(LIQUID_LEVEL);
+    flqdHeight = GetSrcAnaSig(LIQUID_LEVEL1);
     HydrogenProducerTxBuf[23] = flqdHeight / 2;                                                    //Get_WaterValue1 / 2;  //液位高度: 0-500MM
 
     u8LiquifPress = (uint8_t)((uint16_t)(GetSrcAnaSig(LIQUID_PRESS) * 10));
     HydrogenProducerTxBuf[24] = u8LiquifPress;
-    HydrogenProducerTxBuf[25] = 0;                                                                 //Pump_Blower_Number[0]; //制氢机启动状态反馈信号0x01有效，其他数据无效
-    HydrogenProducerTxBuf[26] = 0;                                                                 //Pump_Blower_Number[1]; //制氢机待机状态反馈信号0x02有效，其他数据无效
-    HydrogenProducerTxBuf[27] = 0;                                                                 //Pump_Blower_Number[2]; //制氢机运行状态反馈信号0x03有效，其他数据无效
-    HydrogenProducerTxBuf[28] = 0;                                                                   //制氢机停机状态反馈信号0x04有效，其他数据无效
-    HydrogenProducerTxBuf[29] = 0;                                                                   //制氢机保养提示！1有效
+    HydrogenProducerTxBuf[25] = 20;                                                                 //预留电池电流
+    HydrogenProducerTxBuf[26] = 20;                                                                 //预留电池电流
+	
+	u16BatteryVoltage = (uint16_t)(GetSrcAnaSig(BATTERY_VOLTAGE) * 100);
+    HydrogenProducerTxBuf[27] = u16BatteryVoltage % 100;                                            //电池电压
+    HydrogenProducerTxBuf[28] = u16BatteryVoltage / 100;                                            //电池电压
+	
+	u16LiquidLevel1 = (uint16_t)(GetSrcAnaSig(LIQUID_LEVEL2) * 0.5);				//大水箱液位要做/2处理
+    HydrogenProducerTxBuf[29] = u16LiquidLevel1;                                                                 //大水箱液位高度
     HydrogenProducerTxBuf[30] = (uint8_t)(GetHydrgFanCurrentCtlSpd() / 100) ;                             //鼓风机值
 
-    u8DecompressCountPerMin = GetPassiveDecompressCountPerMinutes();
+    u8DecompressCountPerMin = GetPassiveDecompressCntPerMin();
     HydrogenProducerTxBuf[31] = (uint8_t)(u8DecompressCountPerMin & 0xFF);
 }
 
@@ -292,7 +298,7 @@ static void  MF210_Communicate_Task(void *p_arg)
 
     while(DEF_TRUE) {
 		
-//		OSTimeDlyHMSM(0, 0, 1, 000,OS_OPT_TIME_HMSM_STRICT,&err);
+		OSTimeDlyHMSM(0, 0, 1, 000,OS_OPT_TIME_HMSM_STRICT,&err);
 //		if(SocketRecv(SOCKET_ID, Uart2RxBuf)) {
 //            RespondRemoteControlCmd();    //接收服务器控制指令
 //        }

@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : app_auto_make_vacuum.c
 * Version       : V1.00
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 *
 ***************************************************************************************************
 */
@@ -34,7 +34,7 @@
 *                                  OS-RELATED    VARIABLES
 ***************************************************************************************************
 */
-OS_TCB     Make_Vaccuum_FunctionTaskTCB;
+OS_TCB     MembraneTubeProtectTaskTCB;
 static CPU_STK    MAKE_VACCUUM_TASK_STK[MAKE_VACCUUM_TASK_STK_SIZE];
 /*
 ***************************************************************************************************
@@ -72,7 +72,7 @@ void Make_Vacuum_FunctionTaskCreate(void)
 {
     OS_ERR  err;
 
-    OSTaskCreate((OS_TCB *)&Make_Vaccuum_FunctionTaskTCB,
+    OSTaskCreate((OS_TCB *)&MembraneTubeProtectTaskTCB,
                  (CPU_CHAR *)"Make Vaccuum Function Task Start",
                  (OS_TASK_PTR)Make_Vacuum_FunctionTask,
                  (void *) 0,
@@ -104,16 +104,18 @@ void Make_Vacuum_FunctionTaskCreate(void)
 ***************************************************************************************************
 */
 
+//抽真空系统部分IO用抽真空小板控制
 static void  Make_Vacuum_FunctionTask(void *p_arg)
 {
     OS_ERR  err;
 	uint8_t InVacuumFlag = DEF_NO;
-	uint8_t SysWorkStatus = 0;
+	SYS_WORK_STATU_Typedef SysWorkStatus;
 	uint8_t WaitSec = 0;
 
     while(DEF_TRUE) {
 		
         OSTaskSuspend(NULL, &err);
+		
         APP_TRACE_INFO(("Start make vacuum task...\n\r"));
 
         while(DEF_TRUE) {
@@ -121,25 +123,37 @@ static void  Make_Vacuum_FunctionTask(void *p_arg)
 			OSTimeDlyHMSM(0, 0, 1, 000,OS_OPT_TIME_HMSM_STRICT,&err);
 			
 			if(InVacuumFlag != DEF_YES){
+				
 				WaitSec ++;
-				if(WaitSec > 60){
+				if(WaitSec >= 60){
+					
 					BSP_PureHydrogenGasOutValvePwrOff();//关闭纯氢出口阀
 					BSP_TailGasOutValvePwrOn();//抽真空小板上电
 					InVacuumFlag = DEF_YES;
 					WaitSec = 0;
 				}
 			}else{
-				if(EN_RUNNING == GetSystemWorkStatu()){
+				SysWorkStatus = GetSystemWorkStatu();
+				if(SysWorkStatus == EN_RUNNING){//切换后关闭抽真空
+
 					BSP_PureHydrogenGasOutValvePwrOn();
 					BSP_TailGasOutValvePwrOff();
+					InVacuumFlag = DEF_NO;
 					break;
-				}
+				}else if(SysWorkStatus == EN_WAIT_CMD){
+
+					if(GetSrcAnaSig(NEGATIVE_PRESSURE) >= 55){//关机够抽到指定值就关停
+						BSP_PureHydrogenGasOutValvePwrOn();
+						BSP_TailGasOutValvePwrOff();
+						InVacuumFlag = DEF_NO;
+						break;
+					}
+				}else{}	
 			}
         }
     }
 }
 
 
-
-
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/
 

@@ -11,7 +11,7 @@
 
 /********************************************************************************
   * @file    app_auto_make_vacuum.h
-  * @author  Fanjun
+  * @author  JasonFan
   * @version V1.0
   * @date    6-December-2016
   * @brief   This file contains all the functions prototypes for the analog sensor
@@ -45,7 +45,7 @@
 *                                           EXPORTED VARIABLE
 ***************************************************************************************************
 */
-extern OS_TCB  Make_Vaccuum_FunctionTaskTCB;
+extern OS_TCB  MembraneTubeProtectTaskTCB;
 /*
 ***************************************************************************************************
 *                                           EXPORTED MACRO

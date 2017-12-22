@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : app_dc_module_485_communicate_task.c
 * Version       : V1.00
-* Programmer(s) : FanJun
+* Programmer(s) : JasonFan
 ***************************************************************************************************
 */
 /*
@@ -25,12 +25,15 @@
 #include "bsp_dc_module_adjust.h"
 #include "app_analog_signal_monitor_task.h"
 #include "app_stack_short_circuit_task.h"
+#include "app_system_run_cfg_parameters.h"
+#include "bsp_can.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
 
+#define CAN_TX_LEN_OF_SHORT_ACT					16
 #define CURRENT_LIMIT_DELAY      				15 //平滑限流延时
 
 #define DC_lIMIT_CURRENT_SMOOTHLY_TASK_SIZE    	200
@@ -123,7 +126,7 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
 		APP_TRACE_INFO(("Smoothly current limit suspend...\n\r"));
 		OSTaskSuspend(NULL, &err);
 		APP_TRACE_INFO(("Resume Limit Current Smoothly Task...\n\r"));
-		SetDcModeOutPutNominalVoltageButDifferentCurrent(HOLD_LIMIT_POINT);
+		SetDcOutPutCurrentLimitPoint(HOLD_LIMIT_POINT);
 
 		while(DEF_TRUE) {
 
@@ -144,12 +147,12 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
 						g_fIvalueNow = CURRENT_LIMIT_MAX;
 					}
 
-					SetDcModeOutPutNominalVoltageButDifferentCurrent(g_fIvalueNow);
+					SetDcOutPutCurrentLimitPoint(g_fIvalueNow);
 					APP_TRACE_INFO(("Smoothly current limit point increase,the IvalueNow is %.2f ...\n\r", g_fIvalueNow));
 
 					if(g_fIvalueNow >= CURRENT_LIMIT_MAX) {
 						
-#ifdef  STACK_SHORT_CONTROL_ENABLE
+#ifdef  STACK_SHORT_CTRL_EN
 						OSTaskResume(&StackRunningShortTaskTCB, &err);//恢复短路活化任务
 #endif
 						u8CurrentLimitDelayCount = 0;
@@ -163,6 +166,32 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
 	}
 }
 
+/*
+***************************************************************************************************
+*                            SendDecDCOutCurrentLimitCmdByCAN()
+*
+* Description:  Enable or Disable the dc module limit current task switch.
+*
+* Arguments  :  none
+*
+* Returns    :  none
+***************************************************************************************************
+*/
+void SendDecDCOutCurrentLimitCmdByCAN(void)
+{	
+	uint8_t TxBuf[CAN_TX_LEN_OF_SHORT_ACT] = {0xFC,0xFD,0xFE,0x20,g_u16GlobalNetWorkId,0x04,0x05,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xAA};
+												/*		 请求code  减  */
+	SendCanMsgContainNodeId(CAN_TX_LEN_OF_SHORT_ACT, TxBuf, g_u16GlobalNetWorkId);
+	APP_TRACE_INFO(("Send Dec DC Out Current Limit Cmd...\n\r"));
+}
+
+void SendIncDCOutCurrentLimitCmdByCAN(void)
+{	
+	uint8_t TxBuf[CAN_TX_LEN_OF_SHORT_ACT] = {0xFC,0xFD,0xFE,0x20,g_u16GlobalNetWorkId,0x04,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xAA};
+												/*		 请求code  减  */
+	SendCanMsgContainNodeId(CAN_TX_LEN_OF_SHORT_ACT,TxBuf,g_u16GlobalNetWorkId);
+	APP_TRACE_INFO(("Send Inc DC Out Current Limit Cmd...\n\r"));
+}
 /*
 ***************************************************************************************************
 *                            SetDCModuleLimitCurrentSmoothlyTaskSwitch()
@@ -179,3 +208,5 @@ void SetDCModuleLimitCurrentSmoothlyTaskSwitch(uint8_t i_NewStatu)
     g_u8DCModuleLimitCurrentSmoothlyTaskSw = i_NewStatu;
 }
 
+
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

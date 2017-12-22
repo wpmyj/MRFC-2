@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : bsp_spi.c
 * Version       : V1.00
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 *
 ***************************************************************************************************
 */
@@ -139,3 +139,4 @@ uint8_t SPI3_ReadWriteByte(uint8_t TxData)
     return SPI_I2S_ReceiveData(SPI3); //返回通过SPIx最近接收的数据
 }
 
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

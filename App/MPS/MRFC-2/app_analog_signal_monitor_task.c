@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : app_analog_signal_monitor_task.c
 * Version       : V1.00
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 *
 ***************************************************************************************************
 */
@@ -38,7 +38,7 @@
 *                                           MACRO DEFINES
 ***************************************************************************************************
 */
-#define         ANA_SIGNAL_MONITOR_TASK_STK_SIZE        256
+#define         ANA_SIGNAL_MONITOR_TASK_STK_SIZE        128
 
 //保护报警开关
 #define         STACK_TEMP_MONITOR_SWITCH                1u
@@ -80,7 +80,7 @@ static      void        HydrgProducerAnaSigAlarmRunningMonitorHook(void);
 static      void        StackAnaSigAlarmRunningMonitorHook(void);
 static      void        JudgeWhetherTheStackIsPulledStoppedMonitorHook(void);
 static      void        HydrgProducerPumpRunningStartAutoAdjHook(void);
-
+static 		void 		StackHydrgPressHighEnoughWaitHook(uint8_t i_u8WaitStatus);
 /*
 ***************************************************************************************************
 *                                 AnaSigMonitorTaskCreate()
@@ -203,7 +203,7 @@ void HydrgProducerAnaSigAlarmRunningMonitorHook(void)
     }
 
 
-    flqdHeight = GetSrcAnaSig(LIQUID_LEVEL);
+    flqdHeight = GetSrcAnaSig(LIQUID_LEVEL1);
 
     if(flqdHeight < g_stLqdHeightCmpTbl.AlarmlowerLiquidLevellimit) {
         AlarmCmd(FUEL_SHORTAGE_ALARM, GENERAL_GRADE, ON);
@@ -247,7 +247,7 @@ void HydrgProducerPumpRunningStartAutoAdjHook(void)
         if((fLqdPress >= 4) && (g_u8PumpAutoAdjFinishStatu == DEF_NO)) {
             PumpSpdDec();
 
-            if(GetPumpCtlSpd() <= g_stStartHydrgPumpSpdPara.PumpSpdAfterLiquidPressExceed4Kg) {
+            if(GetPumpCurrentCtrlSpd() <= g_stStartHydrgPumpSpdPara.PumpSpdAfterLiquidPressExceed4Kg) {
                 g_u8PumpAutoAdjFinishStatu = DEF_YES;
                 SetHydrgProducerPumpRunningStartAutoAdjHookSwitch(DEF_DISABLED);//关调节开关
             }
@@ -295,17 +295,9 @@ static void StackHydrgPressHighEnoughWaitHook(uint8_t i_u8WaitStatus)
     fHydrgPress = GetSrcAnaSig(HYDROGEN_PRESS_1);
 
     //等待气压达到电堆进入排杂状态
-    if((fHydrgPress >= 36.0) && (WAIT_FOR_36KPA == i_u8WaitStatus)) {
-        OSTaskSemPost(&StackManagerTaskTCB,
-                      OS_OPT_POST_NO_SCHED,
-                      &err);
-        g_u8StackHydrgPressArriveWaitSw = DO_NOT_WAIT;
-    } else {
-    }
-
-    //等待气压达到电堆进入工作状态
     if((fHydrgPress >= 45.0) && (WAIT_FOR_45KPA == i_u8WaitStatus)) {
-		OSSemPost(&StackStartSem, OS_OPT_POST_1, &err);
+		
+        OSSemPost(&StackStartSem, OS_OPT_POST_1, &err);
         g_u8StackHydrgPressArriveWaitSw = DO_NOT_WAIT;
     } else {
     }
@@ -393,7 +385,7 @@ void StackAnaSigAlarmRunningMonitorHook(void)
                 StackHydrogenPressLowFlag = YES;
                 g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;
                 APP_TRACE_INFO(("Stack hydrogen press is below the low temp protect line...\n\r"));
-                CmdShutDown();      //关机命令
+//                CmdShutDown();      //关机命令
             }
         }
 
@@ -592,4 +584,4 @@ void StartRunningBeepAlarm(SYSTEM_ALARM_GRADE_Typedef i_AlarmGrade, uint8_t i_u8
         BSP_BuzzerOff();
     }
 }
-/******************* (C) COPYRIGHT 2016 Guangdong Eneco *****END OF FILE****/
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

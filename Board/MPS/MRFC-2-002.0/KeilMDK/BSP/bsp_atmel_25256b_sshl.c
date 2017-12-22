@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : bsp_atmel_25256b_sshl.c
 * Version       : V1.00
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 *
 ***************************************************************************************************
 */
@@ -232,3 +232,4 @@ void AT25256B_Write(u8 *pBuffer, u16 WriteAddr, u16 NumByteToWrite)
     AT25256B_Write_Disable();                   //Ð´½ûÄÜ
 }
 
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

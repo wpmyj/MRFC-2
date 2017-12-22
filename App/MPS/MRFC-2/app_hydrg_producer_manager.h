@@ -11,7 +11,7 @@
 
 /********************************************************************************************************
 * Filename      :  app_hydrg_producer_manager.h
-* Programmer(s) :  Fanjun
+* Programmer(s) :  JasonFan
 * Version       :  V1.0
 * data          :  2016.12.12
 * brief         :  This file contains all the functions prototypes for the system run

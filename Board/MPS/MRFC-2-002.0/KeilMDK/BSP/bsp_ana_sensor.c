@@ -79,15 +79,15 @@ static ANALOG_SIGNAL_SERSOR_PARAMETERS_Typedef g_stAnaSigSensorDefaultParameter[
     {2007.35, 16.059}, //电流
     {794.2, 127.06},   //液压
     {359.86, 33.504},  //气压1:0.58 / 2 * 3.3 * 4095 ~ 4.9/2 *3.3 * 4095   359.86 - 3040.23 LSB,对应0.58 - 4.9输入,经2个5.1K电阻降压至0.29-2.45V（满量程0.29V-3.3V对应0-135Kpa），对应0-80KPa，比例为33.504LSB/KPa
-    {359.86, 33.504},  //气压2-->改为液位2
-    {794.2, 3.1767},  // 液位1
+    {359.86, 33.504},  //气压2
+    {794.2, 3.1767},   // 液位1
     {790, 17.3955},    //电压1.48--4.783.294，(4ma- 12.9277ma)* 370Ω
-    {0, 1241.21},     // 氢气浓度
-	{0, 1241.21},	  //电池电流
-	{0, 1241.21},	  //快速加热器电流
+    {359.86, 33.504},  //氢气浓度改为液位2
+	{0, 1241.21},	   //电池电流
+	{0, 1241.21},	   //快速加热器电流
 	{1578.5, 10.592},  //负压传感器794.375，量程-100Kpa-200Kpa,输出信号是0.64-3.2V，对应794.375-3971.881LSB，量程是0-300Kpa，算出比率
-	{0, 0xFFFF},	  // 预留电流型传感器1
-	{0, 0xFFFF},	  // 预留电流型传感器2
+	{0, 0xFFFF},	   // 预留电流型传感器1
+	{0, 0xFFFF},	   // 预留电流型传感器2
 };
 
 static      float       g_fAnaSigAnaValue[BSP_ANA_SENSORS_NMB] = {0};//产生当前数字信号的源物理信号值（标准单位）
@@ -393,14 +393,10 @@ void UpdateAnaSigDigValue()
 
     //数据滤波算法:滤波值=[(总和-滤波值)+原始值]/采样总数
     for(i = 0; i < BSP_ANA_SENSORS_NMB; i++) {
-        if(i != HYDROGEN_PRESS_1) { //电堆气压值不滤波
-            g_fDigValueSum[i] -= g_u32DigValueFilter[i][g_u8FilterOperationCursor];
-            g_u32DigValueFilter[i][g_u8FilterOperationCursor] = g_u16OriginalDigValue[i];
-            g_fDigValueSum[i] += g_u32DigValueFilter[i][g_u8FilterOperationCursor];
-            g_fDigFilteredValue[i] = g_fDigValueSum[i] / NMB_OF_AVERAGE_ANALOG_SIGNAL_SAMPLE;
-        } else {
-            g_fDigFilteredValue[i] = g_u16OriginalDigValue[i];
-        }
+		g_fDigValueSum[i] -= g_u32DigValueFilter[i][g_u8FilterOperationCursor];
+		g_u32DigValueFilter[i][g_u8FilterOperationCursor] = g_u16OriginalDigValue[i];
+		g_fDigValueSum[i] += g_u32DigValueFilter[i][g_u8FilterOperationCursor];
+		g_fDigFilteredValue[i] = g_fDigValueSum[i] / NMB_OF_AVERAGE_ANALOG_SIGNAL_SAMPLE;
     }
 
     g_u8FilterOperationCursor ++;
@@ -489,11 +485,28 @@ float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
 //            APP_TRACE_INFO(("--> g_fDigFilteredValue[HYDROGEN_PRESS_1]: %f \r\n", g_fDigFilteredValue[HYDROGEN_PRESS_1]));
 //            APP_TRACE_INFO(("--> g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue: %f \r\n", g_stAnaSigSensorParameter[HYDROGEN_PRESS_1].BaseDigValue));
 //            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[HYDROGEN_PRESS_1]: %f \r\n\r\n", g_fAnaSigAnaValue[HYDROGEN_PRESS_1]));
-        } else if(LIQUID_LEVEL == i_eAnaSigKind) {
-            if(g_fDigFilteredValue[LIQUID_LEVEL] <= g_stAnaSigSensorParameter[LIQUID_LEVEL].BaseDigValue) {
-                g_fAnaSigAnaValue[LIQUID_LEVEL] = 0.0;
+		} else if(HYDROGEN_PRESS_2 == i_eAnaSigKind) {
+
+            if(g_fDigFilteredValue[HYDROGEN_PRESS_2] <= g_stAnaSigSensorParameter[HYDROGEN_PRESS_2].BaseDigValue) {
+                g_fAnaSigAnaValue[HYDROGEN_PRESS_2] = 0.0;
+            } else if(g_fDigFilteredValue[HYDROGEN_PRESS_2] >= 3040.23) {
+                g_fAnaSigAnaValue[HYDROGEN_PRESS_2] = 80.0;
             } else {
-                g_fAnaSigAnaValue[LIQUID_LEVEL] = (g_fDigFilteredValue[LIQUID_LEVEL] - g_stAnaSigSensorParameter[LIQUID_LEVEL].BaseDigValue) / g_stAnaSigSensorParameter[LIQUID_LEVEL].AnaToDigRatio;
+                g_fAnaSigAnaValue[HYDROGEN_PRESS_2] = (fabs((g_fDigFilteredValue[HYDROGEN_PRESS_2] - g_stAnaSigSensorParameter[HYDROGEN_PRESS_2].BaseDigValue) + 1) / g_stAnaSigSensorParameter[HYDROGEN_PRESS_2].AnaToDigRatio);
+            }
+
+        } else if(LIQUID_LEVEL1 == i_eAnaSigKind) {
+            if(g_fDigFilteredValue[LIQUID_LEVEL1] <= g_stAnaSigSensorParameter[LIQUID_LEVEL1].BaseDigValue) {
+                g_fAnaSigAnaValue[LIQUID_LEVEL1] = 0.0;
+            } else {
+                g_fAnaSigAnaValue[LIQUID_LEVEL1] = (g_fDigFilteredValue[LIQUID_LEVEL1] - g_stAnaSigSensorParameter[LIQUID_LEVEL1].BaseDigValue) / g_stAnaSigSensorParameter[LIQUID_LEVEL1].AnaToDigRatio;
+            }
+		} else if(LIQUID_LEVEL2 == i_eAnaSigKind) {
+
+            if(g_fDigFilteredValue[LIQUID_LEVEL2] <= g_stAnaSigSensorParameter[LIQUID_LEVEL2].BaseDigValue) {
+                g_fAnaSigAnaValue[LIQUID_LEVEL2] = 0.0;
+            } else {
+                g_fAnaSigAnaValue[LIQUID_LEVEL2] = (g_fDigFilteredValue[LIQUID_LEVEL2] - g_stAnaSigSensorParameter[LIQUID_LEVEL2].BaseDigValue) / g_stAnaSigSensorParameter[LIQUID_LEVEL2].AnaToDigRatio;
             }
 
         } else {}

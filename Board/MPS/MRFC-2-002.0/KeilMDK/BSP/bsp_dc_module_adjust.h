@@ -11,7 +11,7 @@
 
 /********************************************************************************************************
 * Filename      :  bsp_dc_module_485_adjust.h
-* Programmer(s) :  Fanjun
+* Programmer(s) :  JasonFan
 * Version       :  V1.0
 * data          :  2016.11.12
 * brief         :  This file contains all the functions prototypes for the system run
@@ -84,7 +84,7 @@ void Bsp_SendRequestCmdToDcModule(uint8_t i_u8CmdType);
 void    SetRS485TxDateType(uint8_t i_u8Rs485TxType);
 uint8_t GetRS485TxDateType(void);
 
-void SetDcModeOutPutNominalVoltageButDifferentCurrent(float i_fIvalue);
+void SetDcOutPutCurrentLimitPoint(float i_fIvalue);
 
 #endif
 

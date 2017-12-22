@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : app_hydrg_producer_manager.c
 * Version       : V1.00
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 *
 ***************************************************************************************************
 */
@@ -106,7 +106,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
 
 		if(GetReformerTemp() <= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt) {
 			
-			OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 1,//等待任务信号量3
+			OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 3,//快速加热等待三分钟
 						  OS_OPT_PEND_BLOCKING,
 						  NULL,
 						  &err);
@@ -124,7 +124,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
         if(EN_START_PRGM_ONE_BEHIND == GetSystemWorkStatu()) {
             APP_TRACE_INFO(("Ignite first time behind...\n\r"));
             BSP_LqdValve1_PwrOn();
-            SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime);
+            SetPumpCurrentCtrlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime);
             SetHydrgFanCtlSpdSmoothly(g_stStartHydrogenFanSpdPara.FanSpdIgniterFirstTime, 90, 10, g_stStartHydrogenFanSpdPara.FanSpdAfterIgniterFirstSuccessd);
             IgniterWorkForSeconds(240);
 
@@ -148,7 +148,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
 
                     APP_TRACE_INFO(("Ignite first time behind wait has been broken...\n\r"));
                     IgniterWorkForSeconds(0);
-                    SetPumpCtlSpd(0);
+                    SetPumpCurrentCtrlSpd(0);
                     BSP_FastHeaterPwrOff();
                     m_eIgniteStatu = EN_NOT_PASS;
                 }
@@ -156,7 +156,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
 
                 APP_TRACE_INFO(("Ignite first time behind sem wait err...\n\r"));
                 IgniterWorkForSeconds(0);
-                SetPumpCtlSpd(0);
+                SetPumpCurrentCtrlSpd(0);
                 SetHydrgFanCtlSpdSmoothly(0, 0, 0, 0);
                 m_eIgniteStatu = EN_NOT_PASS;
             }
@@ -190,13 +190,12 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
 */
 IGNITE_CHECK_STATU_Typedef IgniteSecondTime(float m_IgniteCheckTable2, float m_GoToNextStepTempTable2, uint8_t maxtrytime, uint8_t m_CheckDelayTimeFlag)
 {
-	OS_ERR      err;
     IGNITE_CHECK_STATU_Typedef m_eIgniteStatu;
 
     APP_TRACE_INFO(("Ignite second time...\n\r"));
     BSP_FastHeaterPwrOff();
     BSP_LqdValve2_PwrOn();
-    SetPumpCtlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime);
+    SetPumpCurrentCtrlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime);
     SetHydrgFanCtlSpdSmoothly(g_stStartHydrogenFanSpdPara.FanSpdIgniterSecondTime, 90, 10, g_stStartHydrogenFanSpdPara.FanSpdAfterIgniterSecondSuccessd);
 
     IgniterWorkForSeconds(180);
@@ -354,7 +353,9 @@ void HydrgProducerDlyStopTaskCreate()
 void HydrgProducerManagerDlyStopTask(void)
 {
     OS_ERR      err;
-    static      uint16_t    u16ShutDownHydrgFanDlySeconds = 0;
+	static      uint8_t     u8WaitLqdPressDecFlag = DEF_NO;
+    static      uint8_t     MakeVacuumWaitSec =0; 
+    static      uint16_t    u16ShutDownDlySeconds = 0;
 
     while(DEF_TRUE) {
 
@@ -368,6 +369,7 @@ void HydrgProducerManagerDlyStopTask(void)
         APP_TRACE_INFO(("The Hydrogen producer manager start to delay stop...\n\r"));
         IgniterWorkForSeconds(0);
         SetPumpExpectSpdSmoothly(0, 10); //关机泵控平滑处理
+		BSP_LqdValve1_PwrOff();
         BSP_LqdValve2_PwrOff();
         SetHydrgFanCtlSpdSmoothly(2000, 0, 0, 2000);
 
@@ -375,9 +377,24 @@ void HydrgProducerManagerDlyStopTask(void)
             OSTimeDlyHMSM(0, 0, 1, 0,
                           OS_OPT_TIME_HMSM_STRICT,
                           &err);
-            u16ShutDownHydrgFanDlySeconds ++;
+            u16ShutDownDlySeconds ++;
+			
+			//压力降到一定值开始抽
+            if((GetSrcAnaSig(LIQUID_PRESS) <= 3) && (u16ShutDownDlySeconds >= 3) && (u8WaitLqdPressDecFlag != DEF_YES)){
+                
+                u8WaitLqdPressDecFlag = DEF_YES;
+                OSTaskResume(&MembraneTubeProtectTaskTCB, &err);
+                MakeVacuumWaitSec = 0;
+                
+            }else{
+                MakeVacuumWaitSec++;
+                if(MakeVacuumWaitSec >= 90){//压力等待超时，强制进行抽真空
+                    OSTaskResume(&MembraneTubeProtectTaskTCB, &err);  
+                    MakeVacuumWaitSec = 0;
+                }
+            }
 
-            if(u16ShutDownHydrgFanDlySeconds >= 180) {
+            if(u16ShutDownDlySeconds >= 180) {
                 //发送给主任务内的shutdown函数任务信号量响应半机1制氢机延时关闭任务
                 OSTaskSemPost(&AppTaskStartTCB,
                               OS_OPT_POST_NO_SCHED,
@@ -386,9 +403,7 @@ void HydrgProducerManagerDlyStopTask(void)
             }
         }
 
-        OSTaskResume(&Make_Vaccuum_FunctionTaskTCB, &err); //关机结束后等制氢机没有压力了才开始抽真空
-        SetHydrgFanCtlSpdSmoothly(0, 0, 0, 0);
-
+        SetHydrgFanCtlSpdSmoothly(0, 0, 0, 0);	
         g_eHydrgProducerManagerStopDlyStatu = OFF;
     }
 }
@@ -517,5 +532,5 @@ void IgniterWorkTask(uint16_t *p_arg)
 }
 
 
-/******************* (C) COPYRIGHT 2016 Guangdong Eneco *****END OF FILE****/
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/
 

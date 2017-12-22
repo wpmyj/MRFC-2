@@ -11,7 +11,7 @@
 
 /********************************************************************************
   * @file    bsp_ans_senor.h
-  * @author  Fanjun
+  * @author  JasonFan
   * @version V1.0
   * @date    12-December-2016
   * @brief   This file contains all the functions prototypes for the analog sensor
@@ -64,9 +64,9 @@ typedef enum {
     HYDROGEN_PRESS_1,
     HYDROGEN_PRESS_2,
 
-    LIQUID_LEVEL = 6,//液位
+    LIQUID_LEVEL1 = 6,//小水箱液位
     BATTERY_VOLTAGE,
-    HYDROGEN_CONCENTRATION,
+    LIQUID_LEVEL2,//LIQUID_LEVEL2
     BATTERY_CURRENT,
     RAPID_HEATER_CURRETN,
     NEGATIVE_PRESSURE,

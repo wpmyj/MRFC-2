@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : bsp_delay_task_timer.c
 * Version       : V1.00
-* Programmer(s) : FanJun
+* Programmer(s) : JasonFan
 ***************************************************************************************************
 */
 /*
@@ -22,11 +22,21 @@
 */
 #include "bsp_delay_task_timer.h"
 #include "bsp_can.h"
+#include "app_stack_manager.h"
 /*
 ***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
 ***************************************************************************************************
 */
+
+/*
+***************************************************************************************************
+*                                           MACRO DEFINITIONS
+***************************************************************************************************
+*/
+#define TASK_TIMER			 TIM6
+#define RCC_PERIPH_TIMER     RCC_APB1Periph_TIM6
+#define BSP_INT_ID           BSP_INT_ID_TIM6
 
 
 /*
@@ -59,7 +69,7 @@ static TIM6_DELAY_TASK_TYPE_AND_TIME_PARA_Typedef st_DelayTaskQueue[20] = {
     {TASK_MAX_NUM, 0xFFFF}
 };
 
-static TIM_TimeBaseInitTypeDef     TIM6_TimeBaseStructure;
+static TIM_TimeBaseInitTypeDef     TimerBaseStructure;
 
 
 /*
@@ -74,13 +84,13 @@ static TIM_TimeBaseInitTypeDef     TIM6_TimeBaseStructure;
 *                                         FUNCTION PROTOTYPES
 ***************************************************************************************************
 */
-static void ResponseTheDelayTaskAndExecuteCmd(TIM6_DELAY_TASK_TYPE_Typedef i_eTaskType);
+static void ResponseTheDelayTaskAndExecuteCmd(TIMER_DELAY_TASK_TYPE_Typedef i_eTaskType);
 
-static void TIM6_IRQHandler(void);
+static void DelayQueue_IRQHandler(void);
 
 /*
 ***************************************************************************************************
-*                                          Delay_Queue_Timer6_Init()
+*                                          DelayQueueTimerInit()
 *
 * Description : Init the timer 6 for delay task queue.
 *
@@ -91,18 +101,18 @@ static void TIM6_IRQHandler(void);
 * Notes       : none.
 ***************************************************************************************************
 */
-void Delay_Queue_Timer6_Init(void)
+void DelayQueueTimerInit(void)
 {
     NVIC_InitTypeDef NVIC_InitStructure;
 
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_PERIPH_TIMER, ENABLE);
 
-    TIM_DeInit(TIM6);
-    TIM6_TimeBaseStructure.TIM_Period = 0; //设定计数器自动重装值,装入2为1ms
-    TIM6_TimeBaseStructure.TIM_Prescaler = 35999;   //预分频器，将72MHz降为2KHz,1000/2000 = 0.5
-    TIM6_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1; //设置时钟分割，定时器6.7无效
-    TIM6_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;  //TIM向上计数模式
-    TIM_TimeBaseInit(TIM6, &TIM6_TimeBaseStructure); //根据TIM_TimeBaseInitStruct中指定的参数初始化TIMx的时间基数单位
+    TIM_DeInit(TASK_TIMER);
+    TimerBaseStructure.TIM_Period = 0; //设定计数器自动重装值,装入2为1ms
+    TimerBaseStructure.TIM_Prescaler = 35999;   //预分频器，将72MHz降为2KHz,1000/2000 = 0.5
+    TimerBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1; //设置时钟分割，定时器6.7无效
+    TimerBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;  //TIM向上计数模式
+    TIM_TimeBaseInit(TASK_TIMER, &TimerBaseStructure); //根据TIM_TimeBaseInitStruct中指定的参数初始化TIMx的时间基数单位
 
     //中断分组初始化
     NVIC_InitStructure.NVIC_IRQChannel = TIM6_IRQn;  //TIM6中断
@@ -111,8 +121,8 @@ void Delay_Queue_Timer6_Init(void)
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;     //IRQ通道被使能
     NVIC_Init(&NVIC_InitStructure);  //根据NVIC_InitStruct中指定的参数初始化外设NVIC寄存器
 
-    BSP_IntVectSet(BSP_INT_ID_TIM6, TIM6_IRQHandler);
-    BSP_IntEn(BSP_INT_ID_TIM6);
+    BSP_IntVectSet(BSP_INT_ID, DelayQueue_IRQHandler);
+    BSP_IntEn(BSP_INT_ID);
 }
 /*
 ***************************************************************************************************
@@ -129,7 +139,7 @@ void Delay_Queue_Timer6_Init(void)
 ***************************************************************************************************
 */
 
-void StartTim6DelayTask(TIM6_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 i_u16TaskDelayMs)
+void StartTimerDelayTask(TIMER_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 i_u16TaskDelayMs)
 {
     vu16  vu16TimerCaptureValue = 0;
     uint8_t i, j;
@@ -140,25 +150,25 @@ void StartTim6DelayTask(TIM6_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 i_u16TaskD
     if(g_u8DelayTaskNum <= 1) {
 
 //        APP_TRACE_INFO(("Start new task %d!<--- \n\r",i_eTaskType));
-        TIM_ITConfig(TIM6, TIM_IT_Update, DISABLE);
-        TIM_Cmd(TIM6, DISABLE); //失能定时器6
+        TIM_ITConfig(TASK_TIMER, TIM_IT_Update, DISABLE);
+        TIM_Cmd(TASK_TIMER, DISABLE); //失能定时器6
 
         st_DelayTaskQueue[0].DelayTask = i_eTaskType;
         st_DelayTaskQueue[0].DelayTime = i_u16TaskDelayMs * 2 - 1;//计算重载值(ms值转换为重载值)Prescaler value
-        TIM6_TimeBaseStructure.TIM_Period = st_DelayTaskQueue[0].DelayTime; //设定自动重载值
-        TIM_TimeBaseInit(TIM6, &TIM6_TimeBaseStructure); //初始化定时器时基参数
+        TimerBaseStructure.TIM_Period = st_DelayTaskQueue[0].DelayTime; //设定自动重载值
+        TIM_TimeBaseInit(TASK_TIMER, &TimerBaseStructure); //初始化定时器时基参数
 
-        TIM_GenerateEvent(TIM6, TIM_EventSource_Update);   // 产生软件更新事件，立即更新数据
-        TIM_ClearFlag(TIM6, TIM_FLAG_Update);             //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
-        TIM_ITConfig(TIM6, TIM_IT_Update, ENABLE);
-        TIM_Cmd(TIM6, ENABLE);
+        TIM_GenerateEvent(TASK_TIMER, TIM_EventSource_Update);   // 产生软件更新事件，立即更新数据
+        TIM_ClearFlag(TASK_TIMER, TIM_FLAG_Update);             //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
+        TIM_ITConfig(TASK_TIMER, TIM_IT_Update, ENABLE);
+        TIM_Cmd(TASK_TIMER, ENABLE);
     } else {
 
-        vu16TimerCaptureValue = TIM_GetCounter(TIM6);
+        vu16TimerCaptureValue = TIM_GetCounter(TASK_TIMER);
 
-        if(i_u16TaskDelayMs * 2 > (TIM6_TimeBaseStructure.TIM_Period - vu16TimerCaptureValue)) { //新加任务在当前任务后响应
+        if(i_u16TaskDelayMs * 2 > (TimerBaseStructure.TIM_Period - vu16TimerCaptureValue)) { //新加任务在当前任务后响应
 
-            m_NewDelayTask.DelayTime = (i_u16TaskDelayMs * 2 - (TIM6_TimeBaseStructure.TIM_Period - vu16TimerCaptureValue)) - 1;//新增任务在当前任务完成后需要延后的时间
+            m_NewDelayTask.DelayTime = (i_u16TaskDelayMs * 2 - (TimerBaseStructure.TIM_Period - vu16TimerCaptureValue)) - 1;//新增任务在当前任务完成后需要延后的时间
 
             //新增任务等待时间最长，若是，则直接添加在队尾
             if((g_u8DelayTaskNum <= 2)
@@ -189,22 +199,22 @@ void StartTim6DelayTask(TIM6_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 i_u16TaskD
             for(i = g_u8DelayTaskNum - 1; i >= 1; i--) {
                 st_DelayTaskQueue[i].DelayTask = st_DelayTaskQueue[i - 1].DelayTask;//任务队列整体后移
                 //任务延时时间需要
-                st_DelayTaskQueue[i].DelayTime = (TIM6_TimeBaseStructure.TIM_Period - vu16TimerCaptureValue - i_u16TaskDelayMs * 2) + st_DelayTaskQueue[i - 1].DelayTime;
+                st_DelayTaskQueue[i].DelayTime = (TimerBaseStructure.TIM_Period - vu16TimerCaptureValue - i_u16TaskDelayMs * 2) + st_DelayTaskQueue[i - 1].DelayTime;
             }
 
-            TIM_ITConfig(TIM6, TIM_IT_Update, DISABLE);
-            TIM_Cmd(TIM6, DISABLE);
+            TIM_ITConfig(TASK_TIMER, TIM_IT_Update, DISABLE);
+            TIM_Cmd(TASK_TIMER, DISABLE);
 
             st_DelayTaskQueue[0].DelayTask = i_eTaskType;
             st_DelayTaskQueue[0].DelayTime = i_u16TaskDelayMs * 2 - 1;
 
-            TIM6_TimeBaseStructure.TIM_Period = st_DelayTaskQueue[0].DelayTime; //设定自动重载值
-            TIM_TimeBaseInit(TIM6, &TIM6_TimeBaseStructure); //初始化定时器时基参数
+            TimerBaseStructure.TIM_Period = st_DelayTaskQueue[0].DelayTime; //设定自动重载值
+            TIM_TimeBaseInit(TASK_TIMER, &TimerBaseStructure); //初始化定时器时基参数
 
-            TIM_GenerateEvent(TIM6, TIM_EventSource_Update);   //产生软件更新事件，立即更新数据
-            TIM_ClearFlag(TIM6, TIM_FLAG_Update);             //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
-            TIM_ITConfig(TIM6, TIM_IT_Update, ENABLE);
-            TIM_Cmd(TIM6, ENABLE);
+            TIM_GenerateEvent(TASK_TIMER, TIM_EventSource_Update);   //产生软件更新事件，立即更新数据
+            TIM_ClearFlag(TASK_TIMER, TIM_FLAG_Update);             //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
+            TIM_ITConfig(TASK_TIMER, TIM_IT_Update, ENABLE);
+            TIM_Cmd(TASK_TIMER, ENABLE);
         }
     }
 }
@@ -212,7 +222,7 @@ void StartTim6DelayTask(TIM6_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 i_u16TaskD
 
 /*
 ***************************************************************************************************
-*                                          AddNewDelayTaskToTimer6Queue()
+*                                          AddNewDelayTaskToTimerQueue()
 *
 * Description : Add the new delay task to the timer6 delay queue.
 *
@@ -224,7 +234,7 @@ void StartTim6DelayTask(TIM6_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 i_u16TaskD
 * Notes       : 用于在已有的延时队列中继续添加延时任务.
 ***************************************************************************************************
 */
-void AddNewDelayTaskToTimer6Queue(TIM6_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 i_u16TaskDelayMs)
+void AddNewDelayTaskToTimerQueue(TIMER_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 i_u16TaskDelayMs)
 {
     uint8_t i, j;
     TIM6_DELAY_TASK_TYPE_AND_TIME_PARA_Typedef m_NewDelayTask;
@@ -254,7 +264,7 @@ void AddNewDelayTaskToTimer6Queue(TIM6_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 
 
 /*
 ***************************************************************************************************
-*                                          TIM6_IRQHandler()
+*                                          DelayQueue_IRQHandler()
 *
 * Description : The use of this funciton is to check the authorization of the system.
 *               s
@@ -265,12 +275,12 @@ void AddNewDelayTaskToTimer6Queue(TIM6_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 
 * Notes       : none.
 ***************************************************************************************************
 */
-static void TIM6_IRQHandler(void)
+static void DelayQueue_IRQHandler(void)
 {
     uint8_t i;
 
-    TIM_ITConfig(TIM6, TIM_IT_Update, DISABLE);
-    TIM_Cmd(TIM6, DISABLE);
+    TIM_ITConfig(TASK_TIMER, TIM_IT_Update, DISABLE);
+    TIM_Cmd(TASK_TIMER, DISABLE);
 
     do {
         if(g_u8DelayTaskNum >= 1) {//对列中只存在一个任务了
@@ -299,21 +309,21 @@ static void TIM6_IRQHandler(void)
         }
     } while(st_DelayTaskQueue[0].DelayTime == 0);//将所有与当前任务同时响应的任务都执行完
 
-    TIM_ITConfig(TIM6, TIM_IT_Update, DISABLE);
-    TIM_Cmd(TIM6, DISABLE); //失能定时器6
+    TIM_ITConfig(TASK_TIMER, TIM_IT_Update, DISABLE);
+    TIM_Cmd(TASK_TIMER, DISABLE); //失能定时器6
 
     //有任务时,
     if(g_u8DelayTaskNum >= 1) {
-        TIM6_TimeBaseStructure.TIM_Period = st_DelayTaskQueue[0].DelayTime; //设定计数器重装值
-        TIM_TimeBaseInit(TIM6, &TIM6_TimeBaseStructure); //根据TIM_TimeBaseInitStruct中指定的参数初始化TIMx的时间基数单位
+        TimerBaseStructure.TIM_Period = st_DelayTaskQueue[0].DelayTime; //设定计数器重装值
+        TIM_TimeBaseInit(TASK_TIMER, &TimerBaseStructure); //根据TIM_TimeBaseInitStruct中指定的参数初始化TIMx的时间基数单位
 
-        TIM_GenerateEvent(TIM6, TIM_EventSource_Update);   //产生软件更新事件，立即更新数据
-        TIM_ClearFlag(TIM6, TIM_FLAG_Update);             //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
-        TIM_ITConfig(TIM6, TIM_IT_Update, ENABLE);
-        TIM_Cmd(TIM6, ENABLE);  //使能定时器6
+        TIM_GenerateEvent(TASK_TIMER, TIM_EventSource_Update);   //产生软件更新事件，立即更新数据
+        TIM_ClearFlag(TASK_TIMER, TIM_FLAG_Update);             //清除标志位。定时器一打开便产生更新事件，若不清除，将会进入中断
+        TIM_ITConfig(TASK_TIMER, TIM_IT_Update, ENABLE);
+        TIM_Cmd(TASK_TIMER, ENABLE);  //使能定时器6
     }
 
-    TIM_ClearITPendingBit(TIM6, TIM_IT_Update); //清除中断标志位
+    TIM_ClearITPendingBit(TASK_TIMER, TIM_IT_Update); //清除中断标志位
 }
 
 
@@ -330,7 +340,7 @@ static void TIM6_IRQHandler(void)
 * Notes       : 在此函数中不能做打印信息操作.
 ***************************************************************************************************
 */
-static void ResponseTheDelayTaskAndExecuteCmd(TIM6_DELAY_TASK_TYPE_Typedef i_eTaskType)
+static void ResponseTheDelayTaskAndExecuteCmd(TIMER_DELAY_TASK_TYPE_Typedef i_eTaskType)
 {
 
     switch((u8)i_eTaskType) {
@@ -347,8 +357,16 @@ static void ResponseTheDelayTaskAndExecuteCmd(TIM6_DELAY_TASK_TYPE_Typedef i_eTa
         case SHUT_DOWN_SWITCH_CHECK_DELAY_3S:
             CmdButtonStatuCheck();
             break;
+		
+		case UPDATE_DECOMPRESS_CNT_EVER_1MIN:
+			UpdatePassiveDecompressCntPerMin();
+            AddNewDelayTaskToTimerQueue(UPDATE_DECOMPRESS_CNT_EVER_1MIN,60000);
+            break;
+		
 
         default:
             break;
     }
 }
+
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

@@ -11,7 +11,7 @@
 
 /********************************************************************************************************
 * Filename      :  app_wireness_communicate_task.h
-* Programmer(s) :  Fanjun
+* Programmer(s) :  JasonFan
 * Version       :  V1.0
 * data          :  2017.4.20
 * brief         :  This file contains all the functions prototypes for the system run
@@ -437,6 +437,8 @@ typedef enum {
 //≤È—Ø°¢«Î«Û÷∏¡Ó
 #define REQUEST_DATA_RETRANSMIT                                 0x02
 #define INQUIRE_HYDROGEN_RUNNING_PARAMETERS                     0x03
+#define REQ_INC_DC_OUT_CURRENT_LIMIT_POINT               		0x04
+#define REQ_DEC_DC_OUT_CURRENT_LIMIT_POINT               		0x05
 
 
 #define RESPONSE_ALLOCATE_ID_NMB_WITH_PARAMETERS                0x02

@@ -11,7 +11,7 @@
 
 /********************************************************************************************************
 * Filename      :  bsp_scale_data_read.h
-* Programmer(s) :  Fanjun
+* Programmer(s) :  JasonFan
 * Version       :  V1.0
 * data          :  2017.1.9
 * brief         :  This file contains all the functions prototypes for the can communicaion.

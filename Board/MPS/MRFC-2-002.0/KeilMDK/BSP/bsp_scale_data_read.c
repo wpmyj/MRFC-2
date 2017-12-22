@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : bsp_scale_data_read.c
 * Version       : V1.00
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 ***************************************************************************************************
 */
 
@@ -339,3 +339,4 @@ u8 ReadLiquidFlowRate(void)
     return u8LiquidFlowRate;
 }
 
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

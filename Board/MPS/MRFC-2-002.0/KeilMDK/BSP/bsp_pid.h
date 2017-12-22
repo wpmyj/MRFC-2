@@ -11,7 +11,7 @@
 
 /********************************************************************************
   * @file    bsp_pid.h
-  * @author  Fanjun
+  * @author  JasonFan
   * @version V1.0
   * @date    3-May-2016
   * @brief   This file contains all the functions prototypes for the pid control
@@ -56,11 +56,11 @@ typedef struct {
 
     uint16_t CalcCycleCnt; //PIDº∆À„÷‹∆⁄
 
-} INCREMENT_TYPE_PID_PARAMETER_Typedef;
+} INC_TYPE_PID_PARA_Typedef;
 
 
 
-extern INCREMENT_TYPE_PID_PARAMETER_Typedef IPID;
+extern INC_TYPE_PID_PARA_Typedef IPID;
 
 /*
 ***************************************************************************************************
@@ -81,6 +81,8 @@ extern INCREMENT_TYPE_PID_PARAMETER_Typedef IPID;
 */
 
 void IncrementType_PID_Init(void);
+
+void ResetPidErr(INC_TYPE_PID_PARA_Typedef * i_PidStruct);
 uint16_t IncrementType_PID_Process(uint8_t i_OptimumTemperature);
 
 #endif

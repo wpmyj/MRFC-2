@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : bsp_huawei_485_adjush.c
 * Version       : V1.00
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 *
 ***************************************************************************************************
 */
@@ -403,15 +403,9 @@ void Bsp_CmdDcModuleShutDown(void)
     Bsp_RS485_Send_Data(DCModuleTxBuf, 10);
 }
 
-
-
-
-
-
-
 /*
 ***************************************************************************************************
-*                     SetDcModeOutPutNominalVoltageButDifferentCurrent()
+*                     SetDcOutPutCurrentLimitPoint()
 *
 * Description : set hua wei module current voletage and current.
 *
@@ -422,9 +416,11 @@ void Bsp_CmdDcModuleShutDown(void)
 * Notes       : none.
 ***************************************************************************************************
 */
-void SetDcModeOutPutNominalVoltageButDifferentCurrent(float i_fIvalue)
+void SetDcOutPutCurrentLimitPoint(float i_fIvalue)
 {
     g_fIvalueNow = i_fIvalue;//刷新全局限流点
     Bsp_SetDcModuleOutPutVIvalue(VOLTAGE_LIMIT_MAX, i_fIvalue);
 }
+
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/
 

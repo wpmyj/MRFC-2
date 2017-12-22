@@ -11,7 +11,7 @@
 
 /********************************************************************************************************
 * Filename      :  app_dc_module_communicate_task.h
-* Programmer(s) :  Fanjun
+* Programmer(s) :  JasonFan
 * Version       :  V1.0
 * data          :  2016.12.10
 * brief         :  This file contains all the functions prototypes for the system run
@@ -86,6 +86,10 @@ void CurrentLimitTaskCreate(void);
 void SetDCModuleLimitCurrentSmoothlyTaskSwitch(uint8_t i_NewStatu);
 
 void CurrentSmoothlyLimitTaskCreate(void);
+
+
+void SendDecDCOutCurrentLimitCmdByCAN(void);
+void SendIncDCOutCurrentLimitCmdByCAN(void);
 /*
 ***************************************************************************************************
 *                                             MODULE END

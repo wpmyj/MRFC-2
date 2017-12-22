@@ -11,7 +11,7 @@
 
 /********************************************************************************
   * @file    bsp_speed_adjust_device.h
-  * @author  Fanjun
+  * @author  JasonFan
   * @version V1.0
   * @date    6-December-2016
   * @brief   This file contains all the functions prototypes for the analog sensor
@@ -72,10 +72,10 @@ void        SpeedControlDevManageTaskCreate(void);
 
 void        PumpSpdInc(void);
 void        PumpSpdDec(void);
-uint16_t    GetPumpCtlSpd(void);
+uint16_t    GetPumpCurrentCtrlSpd(void);
 uint16_t    GetPumpFeedBackSpd(void);
-void        SetPumpCtlSpd(uint16_t);
-void        SetPumpExpectSpdSmoothly(u16 i_u16ExpectSpdValue, u8 i_u8AdjustTimeDly);
+void        SetPumpCurrentCtrlSpd(uint16_t);
+void 		SetPumpExpectSpdSmoothly(u16 i_u16ExpectPumpSpdValue, u8 i_u8SmoothlyControlTimeDly);
 
 
 void        HydrgFanSpdInc(void);

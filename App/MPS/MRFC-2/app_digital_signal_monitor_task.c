@@ -2,7 +2,7 @@
 ***************************************************************************************************
 *                                              APPLICATION CODE
 *
-*                          (c) Copyright 2015; Guangdong Hydrogen Energy Science And Technology Co.,Ltd
+*                 (c) Copyright 2016; Guangdong ENECO Science And Technology Co.,Ltd
 *
 *               All rights reserved.  Protected by international copyright laws.
 *               Knowledge of the source code may NOT be used without authorization.
@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : app_thermocouple_temp.c
 * Version       : V1.00
-* Programmer(s) : SunKing.Yun
+* Programmer(s) : JasonFan
 ***************************************************************************************************
 */
 /*
@@ -35,7 +35,7 @@
 ***************************************************************************************************
 */
 #define     NMB_OF_AVERAGE_TEMPERATURE_SAMPLE           4   //平均温度采样样本数
-#define     DIG_SIGNAL_MONITOR_TASK_STK_SIZE            256
+#define     DIG_SIGNAL_MONITOR_TASK_STK_SIZE            128
 
 /*
 ***************************************************************************************************
@@ -58,7 +58,6 @@ static  float    g_fAnaTemp[2] = {0.0, 0.0};
 
 static  uint8_t  g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw = DEF_DISABLED;   //制氢机第一次点火后的数字信号监测任务开关
 static  uint8_t  g_u8HydrgProducerDigSigRunningMonitorAlarmHookSw = DEF_DISABLED;            //制氢机运行数字信号监测警报开关
-//static  uint8_t  g_u8StackExhaustTimesCountPerMinutesMonitorHookSw = DEF_DISABLED;//电堆每分钟排气次数监测开关
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
@@ -68,7 +67,7 @@ static   void   UpdateThermocoupleTemp(uint8_t *i_TempErr);
 static   void   DigSigMonitorTask(void *p_arg);
 static   void   HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook(void);
 static   void   HydrgProducerDigSigAlarmRunningMonitorHook(void);
-//static   void   SetStackExhaustTimesCountPerMinutesMonitorHook(void);
+
 /*
 ***************************************************************************************************
 *                                                UpdateThermocoupleTemp()
@@ -212,6 +211,7 @@ static void  DigSigMonitorTask(void *p_arg)
     DigTempSensorConvertStart();
 
     while(DEF_TRUE) {
+		
         OSTimeDlyHMSM(0, 0, 0, 250, OS_OPT_TIME_HMSM_STRICT, &err);
 
         //温度传感器片选选中,更新热电偶温度数据，获得错误标志数组
@@ -276,12 +276,18 @@ void SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(u8 i_NewStatu)
 static void HydrgProducerDigSigIgniteFirstTimeBehindMonitorHook(void)
 {
     OS_ERR err;
+	static uint8_t u8DlyTime = 0;
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();
 
     if(GetReformerTemp() >= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt) {
-        OSSemPost(&IgniteFirstBehindWaitSem, OS_OPT_POST_1, &err);
-        g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw = DEF_DISABLED;
+		
+		u8DlyTime ++;
+		if(u8DlyTime >= 12){//达到制定温度超过3秒
+			OSSemPost(&IgniteFirstBehindWaitSem, OS_OPT_POST_1, &err);
+			g_u8HydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSw = DEF_DISABLED;
+			u8DlyTime = 0;
+		}
     }
 
     CPU_CRITICAL_EXIT();
@@ -335,5 +341,5 @@ static void HydrgProducerDigSigAlarmRunningMonitorHook(void)
     }
 }
 
-/******************* (C) COPYRIGHT 2015 Guangdong Hydrogen *****END OF FILE****/
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/
 

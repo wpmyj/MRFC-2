@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : bsp_pid.c
 * Version       : V1.00
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 *
 ***************************************************************************************************
 */
@@ -44,7 +44,7 @@
 *                                           GLOBAL VARIABLES
 ***************************************************************************************************
 */
-INCREMENT_TYPE_PID_PARAMETER_Typedef IPID;
+INC_TYPE_PID_PARA_Typedef IPID;
 
 /*
 ***************************************************************************************************
@@ -81,6 +81,13 @@ void IncrementType_PID_Init(void)
 
 }
 
+
+void ResetPidErr(INC_TYPE_PID_PARA_Typedef * i_PidStruct)
+{
+	i_PidStruct->Err = 0;
+	i_PidStruct->Err_Last = 0;
+	i_PidStruct->Err_Next = 0;
+}
 
 /*
 ***************************************************************************************************
@@ -139,4 +146,4 @@ uint16_t IncrementType_PID_Process(uint8_t i_OptimumTemperature)
 }
 
 
-/******************* (C) COPYRIGHT 2016 Guangdong ENECO *****END OF FILE****/
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

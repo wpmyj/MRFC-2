@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : app_system_stk_check.c
 * Version       : V1.00
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 ***************************************************************************************************
 */
 
@@ -35,13 +35,14 @@
 #include "app_stack_short_circuit_task.h"
 #include "app_mf210_communicate_task.h"
 #include "app_digital_signal_monitor_task.h"
+#include "app_analog_signal_monitor_task.h"
 /*
 ***************************************************************************************************
 *                                       MACRO DEFINITIONS
 ***************************************************************************************************
 */
 
-#define  SYSTEM_STACK_USAGE_CHECK_TASK_STK_SIZE       200 // 任务的堆栈大小
+#define  SYSTEM_STACK_USAGE_CHECK_TASK_STK_SIZE       128 // 任务的堆栈大小
 
 /*
 ***************************************************************************************************
@@ -111,30 +112,30 @@ static void  SystemStackUsageCheckTask (void *p_arg)
 			
 				OSTaskStkChk (&StackManagerTaskTCB,&free,&used,&err);  
 				APP_TRACE_INFO(("StackManagerTaskTCB--->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
-			
-				OSTaskStkChk (&StackHydrogenYieldMatchingOffsetValueMonitorTaskTCB,&free,&used,&err);  
-				APP_TRACE_INFO(("StackHYMOValueMonitorTaskTCB--->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 				
 				OSTaskStkChk (&CommDataSendTaskTCB,&free,&used,&err);  
-				APP_TRACE_INFO(("CommunicateTask------------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+				APP_TRACE_INFO(("CommTask------------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 				
 				OSTaskStkChk (&CommDataSendTaskTCB,&free,&used,&err);  
-				APP_TRACE_INFO(("CommunicateDataSendTask---->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+				APP_TRACE_INFO(("CommDataSendTask---->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 
 				OSTaskStkChk (&MF210_CommunicateTaskTCB,&free,&used,&err);  
-				APP_TRACE_INFO(("MF210_CommunicateTask------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+				APP_TRACE_INFO(("MF210_CommTask------>used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 
-				OSTaskStkChk (&Make_Vaccuum_FunctionTaskTCB,&free,&used,&err);  
-				APP_TRACE_INFO(("Make_Vaccuum_FunctionTask-->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  				
+				OSTaskStkChk (&MembraneTubeProtectTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("MembraneTubeProtectTask-->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  				
 				
 				OSTaskStkChk (&DCLimitCurrentSmoothlyTaskTCB,&free,&used,&err);  
 				APP_TRACE_INFO(("DCLimitCurrentSmoothlyTask-->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 								
 				OSTaskStkChk (&DigSigMonitorTaskTCB,&free,&used,&err);  
-				APP_TRACE_INFO(("DigSigMonitorTaskTCB-------->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
+				APP_TRACE_INFO(("DigSigMonitorTask-------->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));  
 								
+				OSTaskStkChk (&AnaSigMonitorTaskTCB,&free,&used,&err);  
+				APP_TRACE_INFO(("AnaSigMonitorTask---->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));
+				
 				OSTaskStkChk (&StackRunningShortTaskTCB,&free,&used,&err);  
-				APP_TRACE_INFO(("AnaSigMonitorTaskTCB---->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));
+				APP_TRACE_INFO(("StackRunShortTask---->used/free:%d/%d  usage:%d%%\r\n",used,free,(used*100)/(used+free)));
 				
 				APP_TRACE_INFO(("\r\n\r\n"));  
 				
@@ -147,4 +148,4 @@ static void  SystemStackUsageCheckTask (void *p_arg)
 				}
 		} 
 }
-/******************* (C) COPYRIGHT 2016 Guangdong ENECO *****END OF FILE****/
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

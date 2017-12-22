@@ -12,7 +12,7 @@
 ***************************************************************************************************
 * Filename      : bsp_speed_adjust_device.c
 * Version       : V1.00
-* Programmer(s) : Fanjun
+* Programmer(s) : JasonFan
 ***************************************************************************************************
 */
 /*
@@ -64,6 +64,10 @@ static  uint16_t    g_u16HydrgFanCurrentCtlSpd = 0;
 
 static  uint16_t    g_u16HydrgPumpCtlSpd = 0;
 static  uint16_t    g_u16HydrgExpectPumpCtlSpd = 0;
+
+static  uint16_t    g_u16PumpExpectCtrlSpd = 0;
+static  uint16_t    g_u16PumpCurrentCtrlSpd = 0;
+static  uint16_t    g_u16PumpAdjAcceleratedSpdVal = 0;
 
 static  uint16_t    g_u16StackFanCtlSpd = 0;
 
@@ -162,7 +166,7 @@ static void SpeedControlDevManageTask(void)
 void PumpSpdInc()
 {
     uint16_t u16PumpCtlSpd;
-    u16PumpCtlSpd = GetPumpCtlSpd();
+    u16PumpCtlSpd = GetPumpCurrentCtrlSpd();
 
     if(u16PumpCtlSpd >= 1990) {
         u16PumpCtlSpd = 2000;
@@ -170,7 +174,7 @@ void PumpSpdInc()
         u16PumpCtlSpd += 10;
     }
 
-    SetPumpCtlSpd(u16PumpCtlSpd);
+    SetPumpCurrentCtrlSpd(u16PumpCtlSpd);
 }
 
 /*
@@ -189,7 +193,7 @@ void PumpSpdInc()
 void PumpSpdDec()
 {
     uint16_t u16PumpCtlSpd;
-    u16PumpCtlSpd = GetPumpCtlSpd();
+    u16PumpCtlSpd = GetPumpCurrentCtrlSpd();
 
     if(u16PumpCtlSpd < 10) {
         u16PumpCtlSpd = 0;
@@ -197,12 +201,12 @@ void PumpSpdDec()
         u16PumpCtlSpd -= 10;
     }
 
-    SetPumpCtlSpd(u16PumpCtlSpd);
+    SetPumpCurrentCtrlSpd(u16PumpCtlSpd);
 }
 
 /*
 ***************************************************************************************************
-*                                         GetPumpCtlSpd()
+*                                         GetPumpCurrentCtrlSpd()
 *
 * Description : get the pump speed grade number.
 *
@@ -213,18 +217,18 @@ void PumpSpdDec()
 * Notes       : the speed grade whole number is 2000.
 ***************************************************************************************************
 */
-uint16_t GetPumpCtlSpd(void)
+uint16_t GetPumpCurrentCtrlSpd(void)
 {
     return g_u16HydrgPumpCtlSpd;
 }
 
-uint16_t GetPumpExpectCtlSpd(void)
+uint16_t GetPumpExpectCtrlSpd(void)
 {
     return g_u16HydrgExpectPumpCtlSpd;
 }
 /*
 ***************************************************************************************************
-*                                         SetPumpCtlSpd()
+*                                         SetPumpCurrentCtrlSpd()
 *
 * Description : set the pump speed grade.
 *
@@ -235,7 +239,7 @@ uint16_t GetPumpExpectCtlSpd(void)
 * Notes       : the speed grade whole number is 2000.
 ***************************************************************************************************
 */
-void SetPumpCtlSpd(uint16_t i_u16NewSpd)
+void SetPumpCurrentCtrlSpd(uint16_t i_u16NewSpd)
 {
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();
@@ -250,8 +254,8 @@ void SetPumpCtlSpd(uint16_t i_u16NewSpd)
 *
 * Description : Control the speed of the pump smoothly.
 *
-* Argument(s) : i_u16ExpectSpdValue:Expect Speed.
-*               i_u8AdjustTimeDly:Adjust pump Delay Time >= 0;if i_u8AdjustTimeDly = 0,set immediately.
+* Argument(s) : i_u16ExpectPumpSpdValue:Expect Speed.
+*               i_u8SmoothlyControlTimeDly:Adjust pump Delay Time >= 0;if i_u8AdjustTimeDly = 0,set immediately.
 *
 * Return(s)   : none.
 *
@@ -260,48 +264,39 @@ void SetPumpCtlSpd(uint16_t i_u16NewSpd)
 * Note(s)     : the actual speed grade whole number is 2000.
 ***************************************************************************************************
 */
-void SetPumpExpectSpdSmoothly(u16 i_u16ExpectSpdValue, u8 i_u8AdjustTimeDly)
+void SetPumpExpectSpdSmoothly(u16 i_u16ExpectPumpSpdValue, u8 i_u8SmoothlyControlTimeDly)
 {
     OS_ERR err;
-    uint8_t AdjustTimerTick;
-    uint16_t m_PumpCurrentCtlSpd = 0;
     uint16_t m_u16PumpSpdDiffValue = 0;
 
-    if(i_u8AdjustTimeDly > 0) { //需要速度平滑处理
-        g_u16HydrgExpectPumpCtlSpd = i_u16ExpectSpdValue;
-        m_PumpCurrentCtlSpd = GetPumpCtlSpd();
+    OSTmrDel(&PumpSpdAdjustTmr, &err);//重置定时器状态
 
-        if(m_PumpCurrentCtlSpd != g_u16HydrgExpectPumpCtlSpd) {
-            if(g_u16HydrgExpectPumpCtlSpd > m_PumpCurrentCtlSpd) {
-                m_u16PumpSpdDiffValue = g_u16HydrgExpectPumpCtlSpd - m_PumpCurrentCtlSpd;
-            } else {
-                m_u16PumpSpdDiffValue = m_PumpCurrentCtlSpd - g_u16HydrgExpectPumpCtlSpd;
-            }
+    if(i_u8SmoothlyControlTimeDly > 0) { //需要速度平滑处理
+        if(i_u16ExpectPumpSpdValue != g_u16PumpExpectCtrlSpd){//产生新的期望速度
+            g_u16PumpExpectCtrlSpd = i_u16ExpectPumpSpdValue;
+        }
+        
+        if(g_u16PumpCurrentCtrlSpd != g_u16PumpExpectCtrlSpd) {
+            m_u16PumpSpdDiffValue = abs(g_u16PumpExpectCtrlSpd - g_u16PumpCurrentCtrlSpd);
+        }
+        
+        /*加速度计算*/
+        g_u16PumpAdjAcceleratedSpdVal = m_u16PumpSpdDiffValue / 2 / i_u8SmoothlyControlTimeDly;
+        
+        OSTmrCreate((OS_TMR *)&PumpSpdAdjustTmr,
+                    (CPU_CHAR *)"Pump Speed Adjust Timer",
+                    (OS_TICK)0,
+                    (OS_TICK) OS_CFG_TMR_TASK_RATE_HZ / 2,      /* control cycle 0.5s */
+                    (OS_OPT)OS_OPT_TMR_PERIODIC,
+                    (OS_TMR_CALLBACK_PTR)PumpAdjustCallBack,
+                    (void *)0,
+                    (OS_ERR *)&err);
 
-            /* Every adjustment of ticks */
-            AdjustTimerTick = i_u8AdjustTimeDly * OS_CFG_TICK_RATE_HZ / m_u16PumpSpdDiffValue;//调节加速度
-
-            if(AdjustTimerTick > 1) {
-                AdjustTimerTick = AdjustTimerTick;
-            } else {
-                AdjustTimerTick = 1;
-            }
-
-            OSTmrCreate((OS_TMR *)&PumpSpdAdjustTmr,
-                        (CPU_CHAR *)"Pump Speed Adjust Timer",
-                        (OS_TICK)0,
-                        (OS_TICK)AdjustTimerTick,      /* AdjustTimerTick * 10ms */
-                        (OS_OPT)OS_OPT_TMR_PERIODIC,
-                        (OS_TMR_CALLBACK_PTR)PumpAdjustCallBack,
-                        (void *)0,
-                        (OS_ERR *)&err);
-
-            if(err == OS_ERR_NONE) {
-                OSTmrStart(&PumpSpdAdjustTmr, &err);
-            }
+        if(err == OS_ERR_NONE) {
+            OSTmrStart(&PumpSpdAdjustTmr, &err);
         }
     } else {
-        SetPumpCtlSpd(i_u16ExpectSpdValue);
+        SetPumpCurrentCtrlSpd(i_u16ExpectPumpSpdValue);
     }
 }
 /*
@@ -320,20 +315,27 @@ void SetPumpExpectSpdSmoothly(u16 i_u16ExpectSpdValue, u8 i_u8AdjustTimeDly)
 ***************************************************************************************************
 */
 static void PumpAdjustCallBack(OS_TMR *p_tmr, void *p_arg)
-{
-    OS_ERR err;
-    uint16_t u16HydrgPumpCurrentCtlSpd = 0;
+{	
+	OS_ERR err;
+    uint16_t u16PumpCurrentCtlSpd = 0;
 
-    u16HydrgPumpCurrentCtlSpd = GetPumpCtlSpd();
+    u16PumpCurrentCtlSpd = GetPumpCurrentCtrlSpd();
 
-    if(u16HydrgPumpCurrentCtlSpd != GetPumpExpectCtlSpd()) {
-        if(u16HydrgPumpCurrentCtlSpd > GetPumpExpectCtlSpd()) {
-            u16HydrgPumpCurrentCtlSpd -= 10;
+    if(u16PumpCurrentCtlSpd != GetPumpExpectCtrlSpd()) {
+        if(u16PumpCurrentCtlSpd > GetPumpExpectCtrlSpd()) {
+            if(u16PumpCurrentCtlSpd > g_u16PumpAdjAcceleratedSpdVal){//防止减溢出
+                u16PumpCurrentCtlSpd -= g_u16PumpAdjAcceleratedSpdVal;
+            }else{
+                u16PumpCurrentCtlSpd = 0;
+                BSP_LqdValve2_PwrOff();//延时关闭完后才关阀
+            }
         } else {
-            u16HydrgPumpCurrentCtlSpd += 10;
+            u16PumpCurrentCtlSpd += g_u16PumpAdjAcceleratedSpdVal;
+            if(u16PumpCurrentCtlSpd >= g_u16PumpExpectCtrlSpd){
+                u16PumpCurrentCtlSpd = g_u16PumpExpectCtrlSpd;
+            }
         }
-
-        SetPumpCtlSpd(u16HydrgPumpCurrentCtlSpd);
+        SetPumpCurrentCtrlSpd(u16PumpCurrentCtlSpd);
     } else {
         OSTmrDel(&PumpSpdAdjustTmr, &err);
     }
@@ -885,3 +887,5 @@ void ResetSpdMonitorSwitch(SPEED_MONITOR_CHANNEL_Typedef i_SpdMonitorChannel)
 {
     g_eSpdCaptureWorkSwitch[i_SpdMonitorChannel] = OFF;
 }
+
+/******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/

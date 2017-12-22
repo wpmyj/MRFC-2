@@ -11,7 +11,7 @@
 
 /********************************************************************************
   * @file    bsp_delay_task_timer.h
-  * @author  Fanjun
+  * @author  JasonFan
   * @version V1.0
   * @date    7-March-2017
   * @brief   This file contains all the functions prototypes for the analog sensor
@@ -48,12 +48,13 @@ typedef enum {
     CAN_BUS_AUTO_RECONNECT_AFTER_30_SEC = 0,
     START_UP_SWITCH_CHECK_DELAY_1S,
     SHUT_DOWN_SWITCH_CHECK_DELAY_3S,
+	UPDATE_DECOMPRESS_CNT_EVER_1MIN,
     TASK_MAX_NUM = 19,
 
-} TIM6_DELAY_TASK_TYPE_Typedef;
+} TIMER_DELAY_TASK_TYPE_Typedef;
 
 typedef struct {
-    TIM6_DELAY_TASK_TYPE_Typedef DelayTask;
+    TIMER_DELAY_TASK_TYPE_Typedef DelayTask;
     uint16_t DelayTime;
 } TIM6_DELAY_TASK_TYPE_AND_TIME_PARA_Typedef;
 
@@ -74,8 +75,8 @@ typedef struct {
 *                                           EXPORTED FUNCTION
 ***************************************************************************************************
 */
-void Delay_Queue_Timer6_Init(void);
-void AddNewDelayTaskToTimer6Queue(TIM6_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 ARR);
-void StartTim6DelayTask(TIM6_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 i_u16TaskDelayMs);
+void DelayQueueTimerInit(void);
+void AddNewDelayTaskToTimerQueue(TIMER_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 ARR);
+void StartTimerDelayTask(TIMER_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 i_u16TaskDelayMs);
 
 #endif
