@@ -249,10 +249,12 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
     OS_ERR      err;
     VERIFY_RESULT_TYPE_VARIABLE_Typedef WaitCmdStatu;
  
-    SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL);
-    
+    SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL);  
     APP_TRACE_INFO(("---HYDROGEN_PRODUCER_AND_FUEL_CELL_MODE---\r\n"));
-
+	
+//	SetWorkMode(EN_WORK_MODE_FUEL_CELL);  
+//    APP_TRACE_INFO(("---FUEL_CELL_MODE---\r\n"));
+	
     while(DEF_TRUE) {
         if(EN_THROUGH == DeviceSelfCheck()) {
             APP_TRACE_INFO(("Self-check success...\n\r"));
@@ -388,7 +390,7 @@ void Starting(void)
 * Notes       : none.
 ***************************************************************************************************
 */
-void    KeepingWarm(void)
+void KeepingWarm(void)
 {
     ShutDown();
     APP_TRACE_INFO(("Keeping warm...\n\r"));

@@ -156,6 +156,7 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
 						OSTaskResume(&StackRunningShortTaskTCB, &err);//恢复短路活化任务
 #endif
 						u8CurrentLimitDelayCount = 0;
+						SetRestartLimitCurrentFlagStatus(DEF_CLR);//清重新限流标志
 						APP_TRACE_INFO(("Smoothly current limit finished and break...\n\r"));
 						break;//平滑限流完成
 					}
@@ -168,7 +169,7 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
 
 /*
 ***************************************************************************************************
-*                            SendDecDCOutCurrentLimitCmdByCAN()
+*                            HoldSlaveDCOutCurrentCmdSendThroughCAN()
 *
 * Description:  Enable or Disable the dc module limit current task switch.
 *
@@ -177,20 +178,20 @@ static void DcModuleLimitCurrentSmoothlyTask(void *p_arg)
 * Returns    :  none
 ***************************************************************************************************
 */
-void SendDecDCOutCurrentLimitCmdByCAN(void)
+void HoldSlaveDCOutCurrentCmdSendThroughCAN(void)
 {	
 	uint8_t TxBuf[CAN_TX_LEN_OF_SHORT_ACT] = {0xFC,0xFD,0xFE,0x20,g_u16GlobalNetWorkId,0x04,0x05,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xAA};
-												/*		 请求code  减  */
+												/*		 							请求code  保持  */
 	SendCanMsgContainNodeId(CAN_TX_LEN_OF_SHORT_ACT, TxBuf, g_u16GlobalNetWorkId);
-	APP_TRACE_INFO(("Send Dec DC Out Current Limit Cmd...\n\r"));
+	APP_TRACE_INFO(("Send Cmd to hold slave dc out current limit point...\n\r"));
 }
 
-void SendIncDCOutCurrentLimitCmdByCAN(void)
+void ResumeSlaveDCOutCurrentCmdSendThroughCAN(void)
 {	
 	uint8_t TxBuf[CAN_TX_LEN_OF_SHORT_ACT] = {0xFC,0xFD,0xFE,0x20,g_u16GlobalNetWorkId,0x04,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xAA};
-												/*		 请求code  减  */
+												/*		 							请求code  恢复  */
 	SendCanMsgContainNodeId(CAN_TX_LEN_OF_SHORT_ACT,TxBuf,g_u16GlobalNetWorkId);
-	APP_TRACE_INFO(("Send Inc DC Out Current Limit Cmd...\n\r"));
+	APP_TRACE_INFO(("Send Cmd to resume slave dc out max current limit point...\n\r"));
 }
 /*
 ***************************************************************************************************

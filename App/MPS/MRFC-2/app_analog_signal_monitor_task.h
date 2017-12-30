@@ -68,7 +68,8 @@ void    SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(unsigned char);
 void    SetHydrgProducerPumpRunningStartAutoAdjHookSwitch(uint8_t i_NewStatu);
 
 void    SetStackIsPulledStoppedMonitorHookSwitch(uint8_t i_NewStatu);
-uint8_t GetStackNeedRestartLimitCurrentFlag(void);
+uint8_t GetRestartLimitCurrentFlagStatus(void);
+void 	SetRestartLimitCurrentFlagStatus(uint8_t i_NewStatu);
 
 void    StartRunningBeepAlarm(SYSTEM_ALARM_GRADE_Typedef , uint8_t);
 /*

@@ -35,7 +35,7 @@
 ***************************************************************************************************
 */
 #define     NMB_OF_AVERAGE_TEMPERATURE_SAMPLE           4   //平均温度采样样本数
-#define     DIG_SIGNAL_MONITOR_TASK_STK_SIZE            128
+#define     DIG_SIGNAL_MONITOR_TASK_STK_SIZE            200
 
 /*
 ***************************************************************************************************
@@ -85,7 +85,7 @@ static void UpdateThermocoupleTemp(uint8_t *i_TempErr)
 {
     uint8_t     i, j;
     uint8_t     u8TempErr[2] = {0};
-    float       fltOriginalValue[2];
+    float       fltOriginalValue[2] = {0.0};
     CPU_SR_ALLOC();
 
     BSP_MAX6675_Temp_Read(fltOriginalValue, u8TempErr);
@@ -93,7 +93,6 @@ static void UpdateThermocoupleTemp(uint8_t *i_TempErr)
     if(g_u8DigTempFilterOperationCursor >= NMB_OF_AVERAGE_TEMPERATURE_SAMPLE) {
         g_u8DigTempFilterOperationCursor = 0;
     }
-
     CPU_CRITICAL_ENTER();
 
     for(i = 0; i < 2; i++) {
@@ -227,7 +226,7 @@ static void  DigSigMonitorTask(void *p_arg)
         if(TempErr[1] == 1) {
             SetMachinePartASelfCheckCodeBit(SelfCheckCodeGrpHydrgFireThermocoupleBit);
         } else {
-            ResetMachinePartASelfCheckCodeBit(SelfCheckCodeGrpHydrgReformerThermocoupleBit);
+            ResetMachinePartASelfCheckCodeBit(SelfCheckCodeGrpHydrgFireThermocoupleBit);
         }
 
         //开启监测任务

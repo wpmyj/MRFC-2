@@ -1875,7 +1875,7 @@ static void EXTI15_10_StatusCheck_IRQHandler()
 
 /*
 ***************************************************************************************************
-*                            GetPassiveDecompressCnt()
+*                            GetPassiveDecompressCntEver30Sec()
 *
 * Description : get the passive decompress count.
 *
@@ -1886,7 +1886,7 @@ static void EXTI15_10_StatusCheck_IRQHandler()
 * Note(s)     : none.
 ***************************************************************************************************
 */
-uint8_t GetPassiveDecompressCnt(void)
+uint8_t GetPassiveDecompressCntEver30Sec(void)
 {
 	return g_u8PassiveDecompressCnt;
 }

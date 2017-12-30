@@ -64,7 +64,7 @@ extern OS_TCB       StackRunningShortTaskTCB;
 *                                            FUNCTION PROTOTYPES
 ***************************************************************************************************
 */
-void StackShortCtrlTaskCreate(void);
+void StackRunningShortCtrlTaskCreate(void);
 
 void SetStackShortCtrlTaskSwitch(uint8_t i_NewStatu);
 
@@ -73,4 +73,7 @@ uint8_t StackShortCtrl(void);
 
 uint8_t GetDlyShortCtrlFlagStatus(void);
 void SetDlyShortCtrlFlagStatus(uint8_t i_NewStatu);
+
+void SetInShortControlFlagStatus(uint8_t i_NewStatu);
+uint8_t GetInShortControlFlagStatus(void);
 #endif

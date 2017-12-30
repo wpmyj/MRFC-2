@@ -134,7 +134,7 @@ ErrorStatus BSP_GetCalibratedAnaSensorPara(ANALOG_SIGNAL_SERSOR_PARAMETERS_Typed
     float Temp;
     float fOriginalDigValueSum[BSP_ANA_SENSORS_NMB] = {0};
 
-    OSTimeDlyHMSM(0, 0, 0, 100,    //等待传感器上电充分
+    OSTimeDlyHMSM(0, 0, 0, 200,    //等待传感器上电充分
                   OS_OPT_TIME_HMSM_STRICT,
                   &err);
 
@@ -423,9 +423,14 @@ float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
     if(STACK_TEMP == i_eAnaSigKind) {
         fMidRtMul100K = 59000 * (3.3 * g_fDigFilteredValue[STACK_TEMP] / 5.0 / 4095) / (1 - 3.3 * g_fDigFilteredValue[STACK_TEMP] / 5.0 / 4095);
         fRtValue = fMidRtMul100K * 100000 / (100000 - fMidRtMul100K);
-        g_fAnaSigAnaValue[STACK_TEMP] = (float)(GetSourceTemp(fRtValue));
-//            APP_TRACE_INFO(("--> g_fDigFilteredValue[STACK_TEMP]: %f \r\n", g_fDigFilteredValue[STACK_TEMP]));
-//            APP_TRACE_INFO(("--> g_fAnaSigAnaValue[STACK_TEMP]: %f \r\n\r\n", g_fAnaSigAnaValue[STACK_TEMP]));
+		if(fRtValue > 351020){
+			g_fAnaSigAnaValue[STACK_TEMP] = 0;
+		}else{
+			g_fAnaSigAnaValue[STACK_TEMP] = (float)(GetSourceTemp(fRtValue));
+		}        
+//		APP_TRACE_INFO(("--> g_fDigFilteredValue[STACK_TEMP]: %f \r\n", g_fDigFilteredValue[STACK_TEMP]));
+//		APP_TRACE_INFO(("--> fRtValue: %f \r\n", fRtValue));
+//		APP_TRACE_INFO(("--> g_fAnaSigAnaValue[STACK_TEMP]: %f \r\n\r\n", g_fAnaSigAnaValue[STACK_TEMP]));
     } else {
         if(STACK_VOLTAGE == i_eAnaSigKind) {
             if(g_fDigFilteredValue[STACK_VOLTAGE] <= g_stAnaSigSensorParameter[STACK_VOLTAGE].BaseDigValue) {

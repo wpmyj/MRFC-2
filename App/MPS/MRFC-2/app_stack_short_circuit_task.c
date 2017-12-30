@@ -55,7 +55,7 @@ static 	CPU_STK    STACK_SHORT_CIRCUIT_TASK_STK[STACK_RUNNING_SHORT_TASK_STK_SIZ
 ***************************************************************************************************
 */
 static   uint8_t     g_ShortCtrlTaskSwitch = DEF_ENABLED;
-
+static   uint8_t	 g_InShortCtrlFlag = DEF_CLR;
 static   uint8_t	 g_ShortCtrlDlyFlag = DEF_CLR;
 /*
 ***************************************************************************************************
@@ -73,7 +73,7 @@ static void  StackRunningShortTask(void *p_arg);
 
 /*
 ***************************************************************************************************
-*                               StackShortCtrlTaskCreate()
+*                               StackRunningShortCtrlTaskCreate()
 *
 * Description : The use of the the funciton is to create the task that monitor the analog signal.
 *
@@ -84,7 +84,7 @@ static void  StackRunningShortTask(void *p_arg);
 * Notes       : none.
 ***************************************************************************************************
 */
-void StackShortCtrlTaskCreate(void)
+void StackRunningShortCtrlTaskCreate(void)
 {
     OS_ERR  err;
 
@@ -192,7 +192,7 @@ static void  StackRunningShortTask(void *p_arg)
 				
 				if((g_ShortCtrlTaskSwitch == DEF_DISABLED) || (EN_SHUTTING_DOWN == GetSystemWorkStatu())) {
 					APP_TRACE_INFO(("Stack running short task break...\n\r"));
-					SendIncDCOutCurrentLimitCmdByCAN();//恢复另一台机的限流点
+					ResumeSlaveDCOutCurrentCmdSendThroughCAN();//恢复另一台机的限流点
 					break;
 				}
 
@@ -208,13 +208,14 @@ static void  StackRunningShortTask(void *p_arg)
 						OSTimeDlyHMSM(0, 0, 30, 0, OS_OPT_TIME_HMSM_STRICT, &err);//如果另外一台机器正处于短路活化，这边1分钟后再进行短路活化
 						APP_TRACE_INFO(("Stack running short delay finished...\n\r"));
 					}
-					//发送消息给系统中另外一台机做限流处理
-					SendDecDCOutCurrentLimitCmdByCAN();
-					
-					if(DEF_SET != GetStackNeedRestartLimitCurrentFlag()){//拉停后重新限流阶段不进行短路活化
+
+					if(DEF_SET != GetRestartLimitCurrentFlagStatus()){//拉停后重新限流阶段不进行短路活化
+						
+						SetInShortControlFlagStatus(DEF_SET);
+						HoldSlaveDCOutCurrentCmdSendThroughCAN();//发送消息给系统中另外一台机做限流处理
 						SetStackFanSpdPidControlSwitch(DEF_DISABLED);//短路活化时关闭PID调节
 						ResetPidErr(&IPID);//清零PID误差参数
-						SetStackFanCtrlSpd(300);
+						SetStackFanCtrlSpd(800);
 
 						//短路活化前阶段限流
 						SetDcOutPutCurrentLimitPoint(LIMIT_POINT_1_IN_SHORT_PRGM);
@@ -242,14 +243,15 @@ static void  StackRunningShortTask(void *p_arg)
 						}
 
 						//阶梯式提升限流点
+						SetStackFanCtrlSpd(300);
 						SetDcOutPutCurrentLimitPoint(LIMIT_POINT_2_IN_SHORT_PRGM);
-						BSP_OS_TimeDlyMs(10000);
+						BSP_OS_TimeDlyMs(5000);
 						SetDcOutPutCurrentLimitPoint(LIMIT_POINT_1_IN_SHORT_PRGM);
-						BSP_OS_TimeDlyMs(10000);
+						BSP_OS_TimeDlyMs(5000);
 						SetDcOutPutCurrentLimitPoint(CURRENT_LIMIT_MAX);
 						
 						SetStackFanSpdPidControlSwitch(DEF_ENABLED);//短路活化完成打开PID调节
-						SendIncDCOutCurrentLimitCmdByCAN();//恢复另一台机的限流点
+						ResumeSlaveDCOutCurrentCmdSendThroughCAN();//恢复另一台机的限流点
 					}
 				}
 			}	
@@ -289,6 +291,16 @@ void SetDlyShortCtrlFlagStatus(uint8_t i_NewStatu)
 uint8_t GetDlyShortCtrlFlagStatus(void)
 {
     return g_ShortCtrlDlyFlag ;
+}
+
+void SetInShortControlFlagStatus(uint8_t i_NewStatu)
+{
+	g_InShortCtrlFlag = i_NewStatu;
+}
+
+uint8_t GetInShortControlFlagStatus(void)
+{
+	return g_InShortCtrlFlag;
 }
 /******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/
 

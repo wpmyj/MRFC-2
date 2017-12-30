@@ -215,8 +215,6 @@ int8_t GetSrcTemp(double Rt_Value)
     int i;
     uint32_t m_u32Rt_Value = (uint32_t)Rt_Value;
 
-//  printf("the mid_Rt is %d \r\n",m_u32Rt_Value);
-
     if(m_u32Rt_Value < NTC_PARAMTET_TABLE[165].resistance) {
         return NTC_PARAMTET_TABLE[165].temp;
     } else if(m_u32Rt_Value > NTC_PARAMTET_TABLE[0].resistance) {

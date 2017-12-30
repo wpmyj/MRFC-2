@@ -106,7 +106,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
 
 		if(GetReformerTemp() <= g_stReformerTempCmpTbl.IgFstTimeOverTmpPnt) {
 			
-			OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 3,//快速加热等待三分钟
+			OSTaskSemPend(OS_CFG_TICK_RATE_HZ * 60 * 1,//快速加热等待三分钟
 						  OS_OPT_PEND_BLOCKING,
 						  NULL,
 						  &err);
@@ -125,7 +125,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
             APP_TRACE_INFO(("Ignite first time behind...\n\r"));
             BSP_LqdValve1_PwrOn();
             SetPumpCurrentCtrlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterFirstTime);
-            SetHydrgFanCtlSpdSmoothly(g_stStartHydrogenFanSpdPara.FanSpdIgniterFirstTime, 90, 10, g_stStartHydrogenFanSpdPara.FanSpdAfterIgniterFirstSuccessd);
+            SetHydrogenFanCtrlSpdSmoothly(g_stStartHydrogenFanSpdPara.FanSpdIgniterFirstTime, 90, 10, g_stStartHydrogenFanSpdPara.FanSpdAfterIgniterFirstSuccessd);
             IgniterWorkForSeconds(240);
 
             SetHydrgProducerDigSigIgniteFirstTimeBehindMonitorHookSwitch(DEF_ENABLED);//重整温度监测
@@ -157,7 +157,7 @@ IGNITE_CHECK_STATU_Typedef IgniteFirstTime(float m_IgniteCheckTable1, float m_Go
                 APP_TRACE_INFO(("Ignite first time behind sem wait err...\n\r"));
                 IgniterWorkForSeconds(0);
                 SetPumpCurrentCtrlSpd(0);
-                SetHydrgFanCtlSpdSmoothly(0, 0, 0, 0);
+                SetHydrogenFanCtrlSpdSmoothly(0, 0, 0, 0);
                 m_eIgniteStatu = EN_NOT_PASS;
             }
 
@@ -196,7 +196,7 @@ IGNITE_CHECK_STATU_Typedef IgniteSecondTime(float m_IgniteCheckTable2, float m_G
     BSP_FastHeaterPwrOff();
     BSP_LqdValve2_PwrOn();
     SetPumpCurrentCtrlSpd(g_stStartHydrgPumpSpdPara.PumpSpdIgniterSecondTime);
-    SetHydrgFanCtlSpdSmoothly(g_stStartHydrogenFanSpdPara.FanSpdIgniterSecondTime, 90, 10, g_stStartHydrogenFanSpdPara.FanSpdAfterIgniterSecondSuccessd);
+    SetHydrogenFanCtrlSpdSmoothly(g_stStartHydrogenFanSpdPara.FanSpdIgniterSecondTime, 90, 10, g_stStartHydrogenFanSpdPara.FanSpdAfterIgniterSecondSuccessd);
 
     IgniterWorkForSeconds(180);
     m_eIgniteStatu = EN_PASS;
@@ -371,7 +371,7 @@ void HydrgProducerManagerDlyStopTask(void)
         SetPumpExpectSpdSmoothly(0, 10); //关机泵控平滑处理
 		BSP_LqdValve1_PwrOff();
         BSP_LqdValve2_PwrOff();
-        SetHydrgFanCtlSpdSmoothly(2000, 0, 0, 2000);
+        SetHydrogenFanCtrlSpdSmoothly(2000, 0, 0, 2000);
 
         while(DEF_TRUE) {
             OSTimeDlyHMSM(0, 0, 1, 0,
@@ -403,7 +403,7 @@ void HydrgProducerManagerDlyStopTask(void)
             }
         }
 
-        SetHydrgFanCtlSpdSmoothly(0, 0, 0, 0);	
+        SetHydrogenFanCtrlSpdSmoothly(0, 0, 0, 0);	
         g_eHydrgProducerManagerStopDlyStatu = OFF;
     }
 }

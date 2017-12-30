@@ -36,10 +36,10 @@
 #define STRCMP(str1, str2) strncmp(str1, str2, strlen(str2))
 
 /* for debug */
-//#define SERVER_IP_PORT   "112.74.132.34,40399"
+#define SERVER_IP_PORT   "112.74.132.34,40399"
 
 /* use */
-#define SERVER_IP_PORT   "120.76.204.115,40304"
+//#define SERVER_IP_PORT   "120.76.204.115,40304"
 
 #define DEBUG_3G 0
 

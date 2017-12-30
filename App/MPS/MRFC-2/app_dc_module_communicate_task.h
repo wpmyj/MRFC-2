@@ -41,10 +41,10 @@
 #define VOLTAGE_LIMIT_MAX  (53.5)
 //正常金威源参数
 #if 	1
-#define CURRENT_LIMIT_MAX                            38.0 
-#define LIMIT_POINT_1_IN_SHORT_PRGM                  30.0
-#define LIMIT_POINT_2_IN_SHORT_PRGM                  20.0
-#define HOLD_LIMIT_POINT                             13.0
+#define CURRENT_LIMIT_MAX                            25.0 //38
+#define LIMIT_POINT_1_IN_SHORT_PRGM                  20.0 //30
+#define LIMIT_POINT_2_IN_SHORT_PRGM                  15.0//20
+#define HOLD_LIMIT_POINT                             10.0 //13
 #define CURRENT_LIMIT_MIN                             5.0
 #endif
  
@@ -54,7 +54,6 @@
 ***************************************************************************************************
 */
 extern      OS_TCB      DCLimitCurrentSmoothlyTaskTCB;
-extern      OS_TCB      DCModuleDynamicAdjustTaskTCB;
 /*
 ***************************************************************************************************
 *                                   EXPORTED GLOABLE VARIABLE DECLARATIONS
@@ -68,13 +67,7 @@ extern      float   g_fVvalueNow;
 *                                           EXPORTED TYPE
 ***************************************************************************************************
 */
-typedef enum {
 
-    NONE_SMOOTHLY_RUSUME = 0,
-    START_STEP_RESUME,
-    AFTER_SHORT_CIRCUIT_RESUME,
-
-} SMOOTHLY_RESUME_Typedef;
 /*
 ***************************************************************************************************
 *                                           EXPORTED FUNCTION
@@ -88,8 +81,8 @@ void SetDCModuleLimitCurrentSmoothlyTaskSwitch(uint8_t i_NewStatu);
 void CurrentSmoothlyLimitTaskCreate(void);
 
 
-void SendDecDCOutCurrentLimitCmdByCAN(void);
-void SendIncDCOutCurrentLimitCmdByCAN(void);
+void HoldSlaveDCOutCurrentCmdSendThroughCAN(void);
+void ResumeSlaveDCOutCurrentCmdSendThroughCAN(void);
 /*
 ***************************************************************************************************
 *                                             MODULE END

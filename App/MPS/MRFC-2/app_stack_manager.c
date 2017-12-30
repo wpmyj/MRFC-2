@@ -108,8 +108,7 @@ void StackManagerTaskCreate(void)
 {
     OS_ERR  err;
 
-	OSSemCreate(&StackStartSem, "Stack manager sem", 0, &err);
-	
+	OSSemCreate(&StackStartSem, "Stack manager sem", 0, &err);	
     OSSemCreate(&StackManagerStopSem, "Stack manager sem", 0, &err);
 
     OSTaskCreate((OS_TCB *)&StackManagerTaskTCB,                    // Create the start task
@@ -179,23 +178,24 @@ void StackManagerTask(void)
 			StackWorkTimesInc();
 			IncrementType_PID_Init();   //PID参数初始化
 			SetStackWorkStatu(EN_IN_WORK);
-			StartTimerDelayTask(UPDATE_DECOMPRESS_CNT_EVER_1MIN,60000);//开始排气次数监测,一分钟更新一次
-
-			SetStackIsPulledStoppedMonitorHookSwitch(DEF_ENABLED);//监测电堆是否被拉停			
+			StartTimerDelayTask(UPDATE_DECOMPRESS_CNT_EVER_30SEC,30000);//开始排气次数监测,一分钟更新一次
+		
 			SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);
 			SetStackFanSpdPidControlSwitch(DEF_ENABLED);		
-			SetStackStartUpShortTaskSwitch(DEF_ENABLED);            
-
-            OSTaskResume(&StackStartUpCtrlTaskTCB, &err);//开始启动阶段短路以及风机控制流程
-
-			if(DEF_TRUE != PendSemByKeepWaiting(&StackStartUpShortCtrlFinishedSem)){
-				APP_TRACE_INFO(("Stack start up short ctrl finished sem pend err...\r\n"));
-				break;
-			}
+			SetStackStartUpShortTaskSwitch(DEF_ENABLED);  
 			
+#ifdef  STACK_SHORT_CTRL_EN
+//            OSTaskResume(&StackStartUpCtrlTaskTCB, &err);//开始启动阶段短路以及风机控制流程
+
+//			if(DEF_TRUE != PendSemByKeepWaiting(&StackStartUpShortCtrlFinishedSem)){
+//				APP_TRACE_INFO(("Stack start up short ctrl finished sem pend err...\r\n"));
+//				break;
+//			}
+#endif			
 			SetDCModuleLimitCurrentSmoothlyTaskSwitch(DEF_ENABLED);//打开平滑限流开关
 			OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB,&err);  //恢复平滑限流任务
-						 
+			SetStackIsPulledStoppedMonitorHookSwitch(DEF_ENABLED);//监测电堆是否被拉停	
+			
 			while(DEF_TRUE) {
 
 				OSSemPend(&StackManagerStopSem,
@@ -208,13 +208,15 @@ void StackManagerTask(void)
 					break;
 				}
 
+				UpdateDCReportInfo();//更新DC上报参数
+				
 				//安培秒排气
 				fCurrent = GetSrcAnaSig(STACK_CURRENT);
 				u16AmpIntegralSum += (uint16_t)fCurrent;
 
 				if(u16AmpIntegralSum >= g_u16RunPurifyAmpIntegralValue) {
 					BSP_HydrgOutValvePwrOn();
-					OSTimeDlyHMSM(0, 0, 0, 500, OS_OPT_TIME_HMSM_STRICT, &err);
+					OSTimeDlyHMSM(0, 0, 0, 600, OS_OPT_TIME_HMSM_STRICT, &err);
 					BSP_HydrgOutValvePwrOff();
 					u16AmpIntegralSum = 0;
 				}
@@ -226,6 +228,7 @@ void StackManagerTask(void)
 						IPID.CalcCycleCnt++;
 
 						if(IPID.CalcCycleCnt >= IPID.Tsam) {
+							GetSrcAnaSig(STACK_TEMP);
 							fOptimumStackTemp = CalcStackOptimumTemperatureByCurrent();//计算最佳温度
 							u16StackFanSpeed = IncrementType_PID_Process(fOptimumStackTemp);
 							SetStackFanCtrlSpd(u16StackFanSpeed);
@@ -429,7 +432,7 @@ uint8_t GetStackStopDlyStatu(void)
 ***************************************************************************************************
 *                        StackStartUpCtrlTaskCreate()
 *
-* Description:  Create the cycle vent task.
+* Description:  The start up step short control and fan control task create.
 *
 * Arguments  :  none
 *
@@ -460,9 +463,9 @@ void StackStartUpCtrlTaskCreate(void)
 
 /*
 ***************************************************************************************************
-*                        StackStartUpCtrlTask()
+*                          	StackStartUpCtrlTask()
 *
-* Description:  The cycle vent task.
+* Description:  The start up step short control and fan control task.
 *
 * Arguments  :  none
 *
@@ -573,8 +576,11 @@ uint8_t GetPassiveDecompressCntPerMin(void)
 
 void UpdatePassiveDecompressCntPerMin(void)
 {
-	g_u8DecompressCountPerMinute = GetPassiveDecompressCnt();
-	ResetPassiveDecompressCnt();//清零中断排气计数值
+	uint8_t temp;
+	
+	temp = GetPassiveDecompressCntEver30Sec();
+	g_u8DecompressCountPerMinute = temp * 2;
+	ResetPassiveDecompressCnt();//清零中断中排气计数值
 }
 /*
 ***************************************************************************************************

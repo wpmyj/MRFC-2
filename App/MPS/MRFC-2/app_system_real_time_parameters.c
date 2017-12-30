@@ -28,6 +28,7 @@
 #include <cpu.h>
 #include <bsp_ana_sensor.h>
 #include "app_analog_signal_monitor_task.h"
+#include "app_dc_module_communicate_task.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -1241,5 +1242,32 @@ float GetCurrentPower(void)
     return GetSrcAnaSig(STACK_VOLTAGE) * GetSrcAnaSig(STACK_CURRENT);
 }
 
+/*
+***************************************************************************************************
+*                             CalcDCOutCurrentThisTime()
+*
+* Description:  Calc the DC module out current roughly.
+*
+* Arguments  :  none.
+*
+* Returns    :  float.
+*
+* Note(s)    :  none.
+***************************************************************************************************
+*/
+float CalcDCOutCurrentThisTime(void)
+{
+	uint8_t out_current;
+	
+	out_current = (uint8_t)(GetCurrentPower() / VOLTAGE_LIMIT_MAX);
+	
+	if(out_current < CURRENT_LIMIT_MAX){
+		return out_current;
+	}else{
+		return CURRENT_LIMIT_MAX;
+	}
+	
+	
+}
 /******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/
 

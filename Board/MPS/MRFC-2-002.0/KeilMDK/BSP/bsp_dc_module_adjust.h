@@ -42,23 +42,27 @@
 *                                           EXPORTED GLOBAL VARIABLE DECLARATIONS
 ***************************************************************************************************
 */
-extern uint16_t RS485_RX_BUF[64];         //接收缓冲,最大64个字节
-extern uint8_t  RS485_RX_CNT;             //接收到的数据长度
-
-extern  float       g_fDCInputVoltageA;     //DC-A路输入电压  [10-11]
-extern  float       g_fDCTemp;              //DC内部环境温度  [18-19]
-extern  float       g_fDCOutputVoltage;     //DC输出电压      [23-24]
-extern  float       g_fDCOutputCurrent;     //DC输出电流      [25-26]
-
-extern  uint16_t       g_u16DCOutputPower;       //DC输出功率      [27-28]
-extern  uint16_t       g_u16DCOutputCurrent;
+extern 	uint16_t 	RS485_RX_BUF[64];         //接收缓冲,最大64个字节
+extern 	uint8_t  	RS485_RX_CNT;             //接收到的数据长度
 
 /*
 ***************************************************************************************************
 *                                           EXPORTED DATA TYPE
 ***************************************************************************************************
 */
+typedef struct {
+    float    	InputVoltageA;		//DC-A路输入电压  [10-11]
+	float    	InputVoltageB;     	//DC-B路输入电压  [12-13]
+    float    	Temp;				//DC内部环境温度  [18-19]
+	float    	OutputVoltage;		//DC输出电压      [23-24]
+	float    	OutputCurrent;		//DC输出电流      [25-26]
+    float    	OutputPower;		//DC输出功率      [27-28]	
+    uint8_t     Alarm_1;           	//DC告警1         [20] bit[7]为1表示A路输入过压告警  bit[6]为1表示A路输入低压告警
+    uint8_t     Alarm_2;           	//DC告警2         [21] bit[3]为1表示限流标志
 
+} DC_INFO_Typedef;
+
+extern	DC_INFO_Typedef st_GPDCInfo;
 
 /*
 ***************************************************************************************************
@@ -68,7 +72,7 @@ extern  uint16_t       g_u16DCOutputCurrent;
 void Bsp_RS485_Send_Data(u8 *buf, u8 len);
 void Bsp_RS485_Receive_Data(u8 *buf, u8 *len);
 
-void DCToStm32Message(void);
+void UpdateDCReportInfo(void);
 
 void Bsp_CmdDcModuleShutDown(void);
 void Bsp_CmdDcModuleStartUp(void);

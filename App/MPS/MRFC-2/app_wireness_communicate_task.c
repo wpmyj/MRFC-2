@@ -36,18 +36,20 @@
 #include "app_dc_module_communicate_task.h"
 #include "app_stack_short_circuit_task.h"
 #include "bsp_can.h"
-
+#include "bsp_dc_module_adjust.h"
 /*
 ***************************************************************************************************
 *                                       MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define COMM_TASK_STK_SIZE               128
-#define COMM_DATA_SEND_TASK_STK_SIZE     128
+#define COMM_TASK_STK_SIZE               256
+#define COMM_DATA_SEND_TASK_STK_SIZE     256
 
 #define  TX_MSG_MEM_BLK_NUM             30    //内存分区的内存块数量
 #define  TX_MSG_MEM_BLK_SIZE            60    //内存分区的内存块大小
 #define  TX_MSG_QUEUE_SIZE              30    //发送消息队列长度
+
+#define	 ADD_FUNCTION_NUM				3
 /*
 ***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
@@ -81,13 +83,21 @@ static   uint32_t                    g_u32TxMsgDataTagNumber[EN_SEND_DATA_TYPE_M
 static      void        CommTask(void *p_arg);
 static      void        CommDataSendTask(void *p_arg);
 static      void        ResponsePrgmCmd(uint8_t *);
-static      void        SendAPrgmMsgFrame(uint8_t i_u8TxMsgLen, uint8_t *i_pTxMsg);
+static      void        SendPrgmMsgFrame(uint8_t i_u8TxMsgLen, uint8_t *i_pTxMsg);
 
 static      void        AddRealTimeWorkInfoPartA1ToSendQueue(void);
 static      void        AddRealTimeWorkInfoPartB1ToSendQueue(void);
 static      void        AddRealTimeWorkInfoPartB2ToSendQueue(void);
 static      void        AddNonRealTimeWorkInfoToSendQueue(uint8_t , uint8_t, uint8_t, uint8_t *);
 
+//数据添加函数指针数组
+void (*add_info_fun)(void);
+void (*add_info_fun_list[ADD_FUNCTION_NUM])(void) = 
+{
+	AddRealTimeWorkInfoPartA1ToSendQueue,
+	AddRealTimeWorkInfoPartB1ToSendQueue,
+	AddRealTimeWorkInfoPartB2ToSendQueue,
+};
 /*
 ***************************************************************************************************
 *                                       MACRO DEFINITIONS
@@ -213,24 +223,18 @@ void  CommTask(void *p_arg)
 		if(g_u8WifiCmdRec == DEF_YES) { //收到串口指令而提前结束延时，响应上位机指令
             ResponsePrgmCmd(g_u8SerRxMsgBuff);
             g_u8WifiCmdRec = DEF_NO;		
-//WIFI_RX_DATA_TEST
-#if     0  
-            APP_TRACE_INFO(("WIFI Rx data:"));
-            for(uint8_t i = 0;i < 16;i++){
-                APP_TRACE_INFO(("%X ",g_u8SerRxMsgBuff[i]));
-            }
-            APP_TRACE_INFO(("...\n\r"));
-#endif
 		}
 			
         if(g_eCanMsgRxStatu == DEF_YES){//是否因收到CAN接口指令而提前结束延时
 			ResponsePrgmCmd(g_u8CanRxMsg);
 			g_eCanMsgRxStatu = DEF_NO;
 		}
+		
 		//添加实时信息到发送队列
-		AddRealTimeWorkInfoPartA1ToSendQueue();
-        AddRealTimeWorkInfoPartB1ToSendQueue();
-        AddRealTimeWorkInfoPartB2ToSendQueue();
+		for(uint8_t j = 0;j < ADD_FUNCTION_NUM ;j++){
+			add_info_fun = add_info_fun_list[j];
+			add_info_fun();
+		}
 
         //发送信号量，启动一次数据传输
         OSSemPost(&g_stCommDataSendSem,
@@ -260,6 +264,7 @@ static void CommDataSendTask(void *p_arg)
     CPU_INT08U   *pTxMsgData = NULL;
  
     while(DEF_TRUE) {
+		
         
           pTxMsgData = OSQPend((OS_Q        *)&CommInfoQueue,
                                (OS_TICK      )OS_CFG_TICK_RATE_HZ / 5,
@@ -271,7 +276,7 @@ static void CommDataSendTask(void *p_arg)
           if(err == OS_ERR_NONE){
               if(pTxMsgData != NULL){
 				  
-                  SendAPrgmMsgFrame(msg_size, pTxMsgData);
+                  SendPrgmMsgFrame(msg_size, pTxMsgData);
                   OSMemPut(&CommInfoMem,pTxMsgData,&err);    
               }                   
           }   
@@ -296,10 +301,10 @@ static void AddRealTimeWorkInfoPartA1ToSendQueue(void)
 	CPU_INT08U   *pTxBlkPtr; 
     uint16_t    u16CurrentTemp = 0;
     uint16_t    u16HydrgWorkTimes = 0;
-//    uint16_t    u16HydrogenGasConcentration = 0;
+    uint16_t    u16HydrogenGasConcentration = 0;
     uint16_t    u16VacuumNetativePressure = 0;
     uint16_t    u16LiquidLevel = 0;
-//    uint16_t    u16LiquidFeedPerMinute = 0;
+    uint16_t    u16LiquidFeedPerMinute = 0;
     uint16_t    u16PumpFeedbackSpeed = 0, u16PumpCtlSpeed = 0;
     uint16_t    u16HydrgFanCtlSpd = 0, u16HydrgFeedbackFanSpd = 0;
 //    uint16_t    u16FluidWeightPerMinuteMul100 = 0;
@@ -343,7 +348,7 @@ static void AddRealTimeWorkInfoPartA1ToSendQueue(void)
         *(pTxBlkPtr + RUNNING_STATU_CODE_BYTE_2) = (uint8_t)((u32SystemRunningStatuCode & 0xFF00) >> 8);
         *(pTxBlkPtr + RUNNING_STATU_CODE_BYTE_1) = (uint8_t)(u32SystemRunningStatuCode & 0xFF);
         //重整温度
-        u16CurrentTemp = (uint16_t)GetReformerTemp();
+        u16CurrentTemp = (uint16_t)GetReformerTemp();		
         *(pTxBlkPtr + REFORMER_TEMP_HIGH) = (uint8_t)((u16CurrentTemp & 0xFF00) >> 8);
         *(pTxBlkPtr + REFORMER_TEMP_LOW) = (uint8_t)((u16CurrentTemp & 0xFF));
         //火焰温度
@@ -396,23 +401,21 @@ static void AddRealTimeWorkInfoPartA1ToSendQueue(void)
 		
         //每分钟进液量
 //        u16LiquidFeedPerMinute = (uint16_t)(ReadLiquidFlowRate() * 100);
-//        u16LiquidFeedPerMinute = 0;
-//        *(pTxBlkPtr + LIQUID_FEED_PER_MINUTE_INTEGER_PART) = (uint8_t)(u16LiquidFeedPerMinute / 100);
-//        *(pTxBlkPtr + LIQUID_FEED_PER_MINUTE_DECIMAL_PART) = (uint8_t)(u16LiquidFeedPerMinute % 100);
+        u16LiquidFeedPerMinute = 5511;
+        *(pTxBlkPtr + LIQUID_FEED_PER_MINUTE_MUL_10_INTEGER_PART) = (uint8_t)(u16LiquidFeedPerMinute / 100);
+        *(pTxBlkPtr + LIQUID_FEED_PER_MINUTE_MUL_10_DECIMAL_PART) = (uint8_t)(u16LiquidFeedPerMinute % 100);
 
         //真空负压
         u16VacuumNetativePressure = (uint16_t)(GetSrcAnaSig(NEGATIVE_PRESSURE) * 100);
         *(pTxBlkPtr + VACUUM_NEGATIVE_PRESSURE_HIGH) = (uint8_t)(u16VacuumNetativePressure / 100);
         *(pTxBlkPtr + VACUUM_NEGATIVE_PRESSURE_LOW) = (uint8_t)(u16VacuumNetativePressure % 100);
 
-        //氢气浓度
+        //氢气浓度--改为液位2
 //        u16HydrogenGasConcentration = (uint16_t)(GetSrcAnaSig(LIQUID_LEVEL2) * 100);
-//        u16HydrogenGasConcentration = 0;
-//        *(pTxBlkPtr + HYDROGEN_PRODUCT_GAS_CONCENTRATION_INTEGER_PART) = (uint8_t)(u16HydrogenGasConcentration / 100);
-//        *(pTxBlkPtr + HYDROGEN_PRODUCT_GAS_CONCENTRATION_DECIMAL_PART) = (uint8_t)(u16HydrogenGasConcentration % 100);
+        u16HydrogenGasConcentration = 2323;
+        *(pTxBlkPtr + HYDROGEN_PRODUCT_GAS_CONCENTRATION_INTEGER_PART) = (uint8_t)(u16HydrogenGasConcentration / 100);
+        *(pTxBlkPtr + HYDROGEN_PRODUCT_GAS_CONCENTRATION_DECIMAL_PART) = (uint8_t)(u16HydrogenGasConcentration % 100);
 
-        //子模块ID号
-//        *(pTxBlkPtr + SUB_MODULE_ID_OF_THE_MULTI_MODULE_TYPE) = SUB_MODULE_ID;
         //数据报尾段
         *(pTxBlkPtr + END_BYTE_ONE) = 0x5F;
         *(pTxBlkPtr + END_BYTE_TWO) = 0x6F;
@@ -429,6 +432,9 @@ static void AddRealTimeWorkInfoPartA1ToSendQueue(void)
 		APP_TRACE_INFO(("- ->RT work info part_a1 mem blk get err,err code is %d\n\r",err));
 	}   
 }
+
+
+
 /*
 ***************************************************************************************************
 *                                      LoadFuelCellRealTimeWorkInfoPartA()
@@ -444,7 +450,7 @@ static void AddRealTimeWorkInfoPartB1ToSendQueue(void)
 {
 	OS_ERR        err;
 	CPU_INT08U   *pTxBlkPtr; 
-    uint16_t  u16StackTemp = 0;
+    int16_t  i16StackTemp = 0;
     uint16_t  u16StackFanSpdFeedBack = 0;
     uint16_t  u16StackFanSpdFeedBackB = 0;
     uint16_t  u16StackFanCtlSpd = 0;
@@ -504,11 +510,10 @@ static void AddRealTimeWorkInfoPartB1ToSendQueue(void)
         *(pTxBlkPtr + STACK_VOLTAGE_INTEGER_PART) = (uint8_t)(m_u16StackVoltageMul100 / 100);
         *(pTxBlkPtr + STACK_VOLTAGE_DECIMAL_PART) = (uint8_t)(m_u16StackVoltageMul100 % 100);
 
-        //电堆温度,暂时只用整数部分
-        u16StackTemp = (uint16_t)GetSrcAnaSig(STACK_TEMP);
-        *(pTxBlkPtr + STACK_TEMP_INTEGER_PART) = (uint8_t)(u16StackTemp & 0xFF);
-//      *(pTxBlkPtr + STACK_TEMP_INTEGER_PART) = (uint8_t)((u32SystemWorkStatuCode & 0xFF00) >> 8);
-//      *(pTxBlkPtr + STACK_TEMP_DECIMAL_PART) = (uint8_t)(u32SystemWorkStatuCode & 0xFF);
+        //电堆温度
+        i16StackTemp = (uint16_t)GetSrcAnaSig(STACK_TEMP);
+        *(pTxBlkPtr + STACK_TEMP_INTEGER_PART) = (int8_t)((i16StackTemp >> 8)& 0xFF);
+		*(pTxBlkPtr + STACK_TEMP_DECIMAL_PART) = (int8_t)(i16StackTemp & 0xFF);
 
         //电堆氢气压力*100
         m_u16StackPressMul100 = (uint16_t)(GetSrcAnaSig(HYDROGEN_PRESS_1) * 100);
@@ -556,6 +561,7 @@ static void AddRealTimeWorkInfoPartB1ToSendQueue(void)
         *(pTxBlkPtr + ISOLATED_GENERATED_ENERGY_THIE_TIME_DECIMAL_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyThisTime % 1000) & 0xFF00) >> 8);
         *(pTxBlkPtr + ISOLATED_GENERATED_ENERGY_THIE_TIME_DECIMAL_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyThisTime % 1000) & 0xFF);
 
+		//累计发电量
         u32IsolatedGenratedEnergyCount = 0;
         *(pTxBlkPtr + GENERATED_ENERGY_TOTAL_INTEGER_PART_HIGH) = (uint8_t)(((uint16_t)(u32IsolatedGenratedEnergyCount / 1000) & 0xFF00) >> 8);
         *(pTxBlkPtr + GENERATED_ENERGY_TOTAL_INTEGER_PART_LOW) = (uint8_t)((uint16_t)(u32IsolatedGenratedEnergyCount / 1000) & 0xFF);
@@ -565,7 +571,6 @@ static void AddRealTimeWorkInfoPartB1ToSendQueue(void)
         //匹氢偏移值
 		i16HydrogYieldMatchOffsetValue = 0;
 //        i16HydrogYieldMatchOffsetValue = (int16_t)(GetStackHydrogenYieldMatchOffsetValue() * 100);
-
         if(i16HydrogYieldMatchOffsetValue > 0 || i16HydrogYieldMatchOffsetValue < -100) { //整数位带符号位
             *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_INTEGER_PART_MUL100) = (int8_t)(i16HydrogYieldMatchOffsetValue / 100);
             *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_DECIMAL_PART_MUL100_HIGH) = (uint8_t)(((i16HydrogYieldMatchOffsetValue % 100)) & 0xFF);
@@ -573,9 +578,6 @@ static void AddRealTimeWorkInfoPartB1ToSendQueue(void)
             *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_INTEGER_PART_MUL100) = (uint8_t)(i16HydrogYieldMatchOffsetValue / 100);
             *(pTxBlkPtr + HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_DECIMAL_PART_MUL100_HIGH) = (int8_t)((i16HydrogYieldMatchOffsetValue % 100) & 0xFF);
         }
-
-        //子模块ID号
-//        *(pTxBlkPtr + SUB_MODULE_ID_OF_THE_MULTI_MODULE_TYPE) = SUB_MODULE_ID;
 
         //数据报尾段
         *(pTxBlkPtr + END_BYTE_ONE) = 0x5F;
@@ -635,7 +637,7 @@ static void AddRealTimeWorkInfoPartB2ToSendQueue(void)
         *(pTxBlkPtr + DATA_IDENTIFY_TAG_INF_CODE_4) = (uint8_t)(g_u32TxMsgDataTagNumber[RT_RUNNING_INFO_B_PART_A] & 0xFF);
 
         //电堆一分钟内实时的泄压排气次数
-        u8DecompressCountPerMin = GetPassiveDecompressCntPerMin();
+        u8DecompressCountPerMin = GetPassiveDecompressCntPerMin();		
         *(pTxBlkPtr + STACK_DECOMPRESS_COUNT_PER_MINUTES_HIGH) = 0;
         *(pTxBlkPtr + STACK_DECOMPRESS_COUNT_PER_MINUTES_LOW) = (uint8_t)(u8DecompressCountPerMin & 0xFF);
 
@@ -844,7 +846,7 @@ void StoreCfgParaBySingleAndReport(uint8_t *i_PrgmRxMsg,uint16_t *i_StoreData,St
 }
 /*
 ***************************************************************************************************
-*                                      SendAPrgmMsgFrame()
+*                                      SendPrgmMsgFrame()
 *
 * Description:  The use of the funciton start the DMA send the message that sendout.
 *
@@ -853,7 +855,7 @@ void StoreCfgParaBySingleAndReport(uint8_t *i_PrgmRxMsg,uint16_t *i_StoreData,St
 * Returns    :  none
 ***************************************************************************************************
 */
-static void SendAPrgmMsgFrame(uint8_t i_u8TxMsgLen, uint8_t *i_pTxMsg)
+static void SendPrgmMsgFrame(uint8_t i_u8TxMsgLen, uint8_t *i_pTxMsg)
 {
     BSP_PrgmDataDMASend(i_u8TxMsgLen, i_pTxMsg);
 
@@ -886,6 +888,7 @@ static void ResponsePrgmCmd(uint8_t *i_PrgmRxMsg)
     OS_ERR      err;
     uint32_t    u32ErrCode;
     uint8_t     i;
+	float 		fDcOutCurrent;
 
     if((*(i_PrgmRxMsg + REC_DATA_BYTE_HEAD_ONE)     == 0xFC)
             && (*(i_PrgmRxMsg + REC_DATA_BYTE_HEAD_TWO)     == 0xFD)
@@ -945,15 +948,15 @@ static void ResponsePrgmCmd(uint8_t *i_PrgmRxMsg)
                         break;
 
                     case DBG_HYDRG_SPEED_INC:
-                        HydrgFanSpdInc();
+                        HydrogenFanCtrSpdInc();
                         break;
 
                     case DBG_HYDRG_SPEED_DEC:
-                        HydrgFanSpdDec();
+                        HydrogenFanCtrSpdDec();
                         break;
 
                     case DBG_HYDRG_SPEED_SET_WHTI_PARAMETERS:
-                        SetHydrgFanCtlSpd((uint16_t)((*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_1) << 8) + * (i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_2)));
+                        SetHydrogenFanCtrlSpd((uint16_t)((*(i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_1) << 8) + * (i_PrgmRxMsg + REC_DATA_BYTE_CMD_PARA_SECTION_2)));
                         break;
 
                     case DBG_STACK_FAN_SPEED_INC:
@@ -1079,15 +1082,17 @@ static void ResponsePrgmCmd(uint8_t *i_PrgmRxMsg)
 					
 					case REQ_INC_DC_OUT_CURRENT_LIMIT_POINT:
 						
-						APP_TRACE_INFO(("Req inc dc out current limit point cmd recived...\n\r"));
+						APP_TRACE_INFO(("Req resume max current limit point cmd recived...\n\r"));
 						SetDlyShortCtrlFlagStatus(DEF_CLR);
-						SetDcOutPutCurrentLimitPoint(CURRENT_LIMIT_MAX);//请求增加限流点
+						SetDcOutPutCurrentLimitPoint(CURRENT_LIMIT_MAX);//请求恢复最大限流点
                         break;
 					
 					case REQ_DEC_DC_OUT_CURRENT_LIMIT_POINT:
-						APP_TRACE_INFO(("Req dec dc out current limit point cmd recived...\n\r"));
+						APP_TRACE_INFO(("Req hold this time current limit point cmd recived...\n\r"));
+						fDcOutCurrent = st_GPDCInfo.OutputCurrent;
+						APP_TRACE_INFO(("fDcOutCurrent: %f...\n\r",fDcOutCurrent));
 						SetDlyShortCtrlFlagStatus(DEF_SET);
-                        SetDcOutPutCurrentLimitPoint(CURRENT_LIMIT_MAX - 10);
+                        SetDcOutPutCurrentLimitPoint(fDcOutCurrent);//保持当前运行电流值
                         break;
 
                     default:

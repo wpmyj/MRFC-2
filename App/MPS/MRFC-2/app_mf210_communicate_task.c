@@ -34,7 +34,7 @@
 *                                       MICRO DEFINE
 ***************************************************************************************************
 */
-#define MF210_TASK_STK_SIZE 	  156
+#define MF210_TASK_STK_SIZE 	  200
 
 #define PRGM_TX_BUFF_SIZE       	60
 #define PRGM_RX_BUFF_SIZE       	16
@@ -252,7 +252,7 @@ void RespondRemoteControlCmd(void)
 ***************************************************************************************************
 *                                MF210_CommunicateTaskCreate()
 *
-* Description:  MF210 module communicate task create.
+* Description:  MF210 （3G/4G） module communicate task create.
 *
 * Arguments  :  none
 *
@@ -263,7 +263,7 @@ void MF210_CommunicateTaskCreate(void)
 {
     OS_ERR  err;
 
-    BSP_Ser_To_3G_Init(115200);//3G模块使用的串口2初始化
+    BSP_Ser_To_3G_Init(115200);//uart2 init
     OSTaskCreate((OS_TCB *)&MF210_CommunicateTaskTCB,
                  (CPU_CHAR *)"MF210 Function Task Start",
                  (OS_TASK_PTR)MF210_Communicate_Task,

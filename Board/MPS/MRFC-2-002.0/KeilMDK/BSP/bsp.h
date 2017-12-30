@@ -580,7 +580,7 @@ void  CmdButtonStatuCheck(void);
 void  StartCmdButtonActionCheckDly(void);
 void  TIM7_DlyMilSecondsInit(u16 i_u16DlyMilSeconds);
 
-uint8_t GetPassiveDecompressCnt(void);//获取排气次数
+uint8_t GetPassiveDecompressCntEver30Sec(void);//获取排气次数
 void ResetPassiveDecompressCnt(void);
 /*
 ***************************************************************************************************

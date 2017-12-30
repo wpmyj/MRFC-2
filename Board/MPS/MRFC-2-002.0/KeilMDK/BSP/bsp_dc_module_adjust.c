@@ -52,13 +52,7 @@ uint16_t    RS485_RX_BUF[64] = {0};     //接收缓冲区,最大64个字节
 uint8_t     RS485_RX_CNT = 0;           //接收到的数据长度
 uint8_t     g_u8RS485TxDateType = 0;    //485发送数据的类型
 
-float       g_fDCInputVoltageA = 0;     //DC-A路输入电压  [10-11]
-float       g_fDCTemp = 0;              //DC内部环境温度  [18-19]
-float       g_fDCOutputVoltage = 0;     //DC输出电压      [23-24]
-float       g_fDCOutputCurrent = 0;     //DC输出电流      [25-26]
-uint16_t    g_u16DCOutputPower = 0;       //DC输出功率      [27-28]
-
-
+DC_INFO_Typedef st_GPDCInfo;			//DC上报信息结构体
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
@@ -150,9 +144,6 @@ static void RS485Rx_IRQHandler(void)
 
         USART_ClearITPendingBit(UART5, USART_IT_RXNE);
     }
-
-
-
 }
 
 /*
@@ -235,59 +226,33 @@ void Bsp_RS485_Receive_Data(u8 *buf, u8 *len)
 }
 /*
 ***************************************************************************************************
-*                            DCToStm32Message()
+*                            UpdateDCReportInfo()
 *
-* Description:  DC to Stm32 message.
+* Description:  Update the DC module report infomation.
 *
 * Arguments  :  none
 *
 * Returns    :  none
 ***************************************************************************************************
 */
-void DCToStm32Message()
+void UpdateDCReportInfo()
 {
-    u16         u16DCInputVoltageA;
-    u16         u16DCOutputCurrent;
-//  u16         u16DCInputVoltageB;
-//  float       DCInputVoltageB;     //DC-A路输入电压  [12-13]
-
-    u16         u16DCTemp;
-
-    u16         u16DCOutputVoltage;
-
-    u16         u16DCOutputPower;
-    uint8_t     DCAlarm_1;           //DC告警1         [20] bit[7]为1表示A路输入过压告警  bit[6]为1表示A路输入低压告警
-    uint8_t     DCAlarm_2;           //DC告警2         [21] bit[3]为1表示限流标志
-
     uint8_t u8RxLength = 0;
     uint8_t u8Rs485RxBuf[64] = {0};
 
     Bsp_RS485_Receive_Data(u8Rs485RxBuf, &u8RxLength);
 
-    if((u8Rs485RxBuf[0] == 0xA0) &&
-            (u8Rs485RxBuf[1] == 0xA0) &&
-            (u8Rs485RxBuf[2] == 0xA0)) {
-        u16DCInputVoltageA = (u8Rs485RxBuf[10] << 8) + u8Rs485RxBuf[11];
-        g_fDCInputVoltageA = (float)u16DCInputVoltageA / 100;;              //DC-A路输入电压[10-11]
-
-        u16DCTemp = (u8Rs485RxBuf[18] << 8) +  u8Rs485RxBuf[19];
-        g_fDCTemp = (float)u16DCTemp / 100;                                 //DC内部环境温度[18-19]
-
-        u16DCOutputVoltage = (u8Rs485RxBuf[23] << 8) + u8Rs485RxBuf[24];
-        g_fDCOutputVoltage = (float)u16DCOutputVoltage / 100;               //DC输出电压 [23-24]
-
-        u16DCOutputCurrent = (u8Rs485RxBuf[25] << 8) + u8Rs485RxBuf[26];
-        g_fDCOutputCurrent = (float)u16DCOutputCurrent / 100;               //DC输出电流 [25-26]
-
-        u16DCOutputPower = (u8Rs485RxBuf[27] << 8) + u8Rs485RxBuf[28];
-        g_u16DCOutputPower  = (uint16_t)u16DCOutputPower / 100;             //DC输出功率 [27-28]
-
-        DCAlarm_1 = u8Rs485RxBuf[20];                                       //DC告警1 [20] bit[7]为1表示A路输入过压告警  bit[6]为1表示A路输入低压告警
-        DCAlarm_2 = u8Rs485RxBuf[21];                                       //DC告警2 [21] bit[3]为1表示限流标志
+    if((u8Rs485RxBuf[0] == 0xA0) &&(u8Rs485RxBuf[1] == 0xA0) &&(u8Rs485RxBuf[2] == 0xA0)) {
+				
+        st_GPDCInfo.InputVoltageA = (float)((u8Rs485RxBuf[10] << 8) + u8Rs485RxBuf[11]) / 100;        
+		st_GPDCInfo.Temp = 			(float)((u8Rs485RxBuf[18] << 8) + u8Rs485RxBuf[19]) / 100;
+        st_GPDCInfo.OutputVoltage = (float)((u8Rs485RxBuf[23] << 8) + u8Rs485RxBuf[24]) / 100;
+		st_GPDCInfo.OutputCurrent = (float)((u8Rs485RxBuf[25] << 8) + u8Rs485RxBuf[26]) / 100;	
+		st_GPDCInfo.OutputPower = 	(float)((u8Rs485RxBuf[27] << 8) + u8Rs485RxBuf[28]) / 100;
+		st_GPDCInfo.Alarm_1 = 		u8Rs485RxBuf[20];
+		st_GPDCInfo.Alarm_2 = 		u8Rs485RxBuf[21];                                    
     }
 }
-
-
 
 /*
 ***************************************************************************************************

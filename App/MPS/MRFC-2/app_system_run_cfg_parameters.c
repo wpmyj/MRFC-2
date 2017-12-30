@@ -86,7 +86,7 @@ uint16_t                                                g_u16RunPurifyAmpIntegra
 //在CAN总线中的节点ID/本地组网ID,默认为255号,独立运行的机器设置为0
 uint16_t                                    g_u16GlobalNetWorkId = 0x20;//0xFF
 //PS3:0x1100,MRFC-2:0x1101,发电模块0100，制氢机0x1000、1001
-uint16_t                                   g_ProductsType = 0x1000;  
+uint16_t                                   g_ProductsType = 0x1100;  
 /*
 ***************************************************************************************************
 *                                     LOCAL VARIABLES
@@ -225,18 +225,14 @@ void LoadApplicationLayerParameters()
         APP_TRACE_INFO(("Load g_u16GlobalNetWorkId:%d...\n\r", g_u16GlobalNetWorkId));
         GetReformerTempCmpTblFromFlash(&g_stReformerTempCmpTbl);
         GetLqdPressCmpTblFromFlash(&g_stLqdPressCmpTbl);
-		APP_TRACE_INFO(("g_stLqdPressAlarmLower:%d...\n\r", g_stLqdPressCmpTbl.AlarmUpperLimit));
         GetLqdHeightCmpTblFromFlash(&g_stLqdHeightCmpTbl);
-		APP_TRACE_INFO(("stTotalWorkTime:%d...\n\r", stTotalWorkTime.hour));
         GetStartHydrgPumpSpdParaFromFlash(&g_stStartHydrgPumpSpdPara);
         GetStartHydrgFanSpdParaFromFlash(&g_stStartHydrogenFanSpdPara);
         GetRunPurifyAmpIntegralValueFromFlash(&g_u16RunPurifyAmpIntegralValue);
         GetRunningStageDelayAndAdjustSpdFromFlash(&g_stRunningStatusDelayAdjustSpdPara);
         GetFirstTimeHeatHoldSecondsFromFlash(&g_u16FirstTimeHeatHoldSeconds);
-		APP_TRACE_INFO(("g_u16FirstTimeHeatHoldSeconds:%d...\n\r", g_u16FirstTimeHeatHoldSeconds));
 		GetRunningStageDelayAndAdjustSpdFromFlash(&g_stRunningStatusDelayAdjustSpdPara);
         GetRichHydrogenModeParaFromFlash(&g_stRichHydrogenModePara);
-		APP_TRACE_INFO(("g_stRichHydrogenModePara:%d...\n\r", g_stRichHydrogenModePara.ActiveStep1FanSpd));
 
     } else { //载入默认参数
         APP_TRACE_INFO(("First time run,the machine will work with the default parameters!...\r\n"));

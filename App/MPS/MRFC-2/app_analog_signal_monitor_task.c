@@ -33,12 +33,13 @@
 #include "app_dc_module_communicate_task.h"
 #include "app_mf210_communicate_task.h"
 #include "bsp_MF210v2.h"
+#include "app_stack_short_circuit_task.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINES
 ***************************************************************************************************
 */
-#define         ANA_SIGNAL_MONITOR_TASK_STK_SIZE        128
+#define         ANA_SIGNAL_MONITOR_TASK_STK_SIZE        200
 
 //保护报警开关
 #define         STACK_TEMP_MONITOR_SWITCH                1u
@@ -66,7 +67,7 @@ static      uint8_t      g_u8HydrgProducerPumpRunningStartAutoAdjHookSw = DEF_DI
 static      uint8_t      g_u8StackHydrgPressArriveWaitSw = DO_NOT_WAIT; //等待电堆压力满足开关
 static      uint8_t      g_u8StackAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED;//电堆运行模拟信号警报监测开关
 static      uint8_t      g_u8StackIsPulledStoppedMonitorHookSw = DEF_DISABLED;//电堆是否被拉停监测开关
-static      uint8_t      g_u8StackNeedRestartLimitCurrentFlag = DEF_CLR;//电堆被拉停后重新限流标志
+static      uint8_t      g_u8RestartLimitCurrentFlag = DEF_CLR;//电堆被拉停后重新限流标志
 static      uint8_t      g_u8PumpAutoAdjFinishStatu = DEF_NO;//运行首次泵速调整状态
 static      uint16_t     g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;       //电堆气压小于10Kpa的秒数
 /*
@@ -205,18 +206,18 @@ void HydrgProducerAnaSigAlarmRunningMonitorHook(void)
 
     flqdHeight = GetSrcAnaSig(LIQUID_LEVEL1);
 
-    if(flqdHeight < g_stLqdHeightCmpTbl.AlarmlowerLiquidLevellimit) {
-        AlarmCmd(FUEL_SHORTAGE_ALARM, GENERAL_GRADE, ON);
+//    if(flqdHeight < g_stLqdHeightCmpTbl.AlarmlowerLiquidLevellimit) {
+//        AlarmCmd(FUEL_SHORTAGE_ALARM, GENERAL_GRADE, ON);
 
-    } else {
-        AlarmCmd(FUEL_SHORTAGE_ALARM, GENERAL_GRADE, OFF);
+//    } else {
+//        AlarmCmd(FUEL_SHORTAGE_ALARM, GENERAL_GRADE, OFF);
 
-        if(flqdHeight <= g_stLqdHeightCmpTbl.OpenAutomaticliquidValue) { //自动加液水泵
-            BSP_OutsidePumpPwrOn();
-        } else if(flqdHeight >= g_stLqdHeightCmpTbl.CloseAutomaticliquidValue) {
-            BSP_OutsidePumpPwrOff();
-        } else {}
-    }
+//        if(flqdHeight <= g_stLqdHeightCmpTbl.OpenAutomaticliquidValue) { //自动加液水泵
+//            BSP_OutsidePumpPwrOn();
+//        } else if(flqdHeight >= g_stLqdHeightCmpTbl.CloseAutomaticliquidValue) {
+//            BSP_OutsidePumpPwrOff();
+//        } else {}
+//    }
 }
 
 /*
@@ -514,36 +515,46 @@ static void JudgeWhetherTheStackIsPulledStoppedMonitorHook(void)
     OS_ERR err;
     float fStackVoltage;
     float fStackCurrent;
-    static uint16_t u16RestartLimitCurrentCount = 0;
+    static uint16_t u16RestartLimitCurrentCount = 0;   
 
-    fStackVoltage = GetSrcAnaSig(STACK_VOLTAGE);
-    fStackCurrent = GetSrcAnaSig(STACK_CURRENT);
-
-    u16RestartLimitCurrentCount ++;
-
-	if( g_u8StackNeedRestartLimitCurrentFlag != DEF_SET){
-		if(u16RestartLimitCurrentCount >= 30){//每3秒监测一次是否需要开始重新限流
-			if(EN_IN_WORK == GetStackWorkStatu()) {
-				
-				if((fStackVoltage >= 51.0) && (fStackCurrent <= 7.0)) {
-
-					g_u8StackNeedRestartLimitCurrentFlag = DEF_SET;
-					OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB, &err);
-
-				} else {
-					g_u8StackNeedRestartLimitCurrentFlag = DEF_CLR;
-				}
+	if((GetRestartLimitCurrentFlagStatus() != DEF_SET) && (GetInShortControlFlagStatus() != DEF_SET)){
+		u16RestartLimitCurrentCount ++;			
+		if(u16RestartLimitCurrentCount >= 100){//每10秒监测一次是否需要开始重新限流
+						
+			fStackVoltage = GetSrcAnaSig(STACK_VOLTAGE);
+			fStackCurrent = GetSrcAnaSig(STACK_CURRENT);
+			
+			if((fStackVoltage >= 55.0) && (fStackCurrent <= 5.0)) {
+				SetRestartLimitCurrentFlagStatus(DEF_SET);
+				SetDCModuleLimitCurrentSmoothlyTaskSwitch(DEF_ENABLED);//打开平滑限流开关
+				OSTaskResume(&DCLimitCurrentSmoothlyTaskTCB, &err);//恢复平滑限流任务
 			}
-			u16RestartLimitCurrentCount = 0;
+			u16RestartLimitCurrentCount = 0;	
 		}
 	}
 }
+/*
+***************************************************************************************************
+*                               GetRestartLimitCurrentFlagStatus()
+*
+* Description : Start beep alarm by alarm grade.
+*
+* Arguments   : none.
+*
+* Returns     : none.
+*
+* Notes       : none.
+***************************************************************************************************
+*/
 
-uint8_t GetStackNeedRestartLimitCurrentFlag(void)
+uint8_t GetRestartLimitCurrentFlagStatus(void)
 {
-    return g_u8StackNeedRestartLimitCurrentFlag;
+    return g_u8RestartLimitCurrentFlag;
 }
-
+void SetRestartLimitCurrentFlagStatus(uint8_t i_NewStatu)
+{
+	g_u8RestartLimitCurrentFlag = i_NewStatu;
+}
 /*
 ***************************************************************************************************
 *                               StartRunningAlarm()

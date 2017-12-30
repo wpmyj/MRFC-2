@@ -78,13 +78,13 @@ void        SetPumpCurrentCtrlSpd(uint16_t);
 void 		SetPumpExpectSpdSmoothly(u16 i_u16ExpectPumpSpdValue, u8 i_u8SmoothlyControlTimeDly);
 
 
-void        HydrgFanSpdInc(void);
-void        HydrgFanSpdDec(void);
+void        HydrogenFanCtrSpdInc(void);
+void        HydrogenFanCtrSpdDec(void);
 uint16_t    GetHydrgFanCurrentCtlSpd(void);
 uint16_t    GetHydrgFanExpectCtlSpd(void);
 uint16_t    GetHydrgFanFeedBackSpd(void);
-void        SetHydrgFanCtlSpd(uint16_t);
-void        SetHydrgFanCtlSpdSmoothly(uint16_t i_u16CurrentSpdValue, uint8_t i_u8StartDlyAdjTime, uint8_t i_u8CycleDlyAdjTime, uint16_t i_u16ExpSpdValue);
+void        SetHydrogenFanCtrlSpd(uint16_t);
+void        SetHydrogenFanCtrlSpdSmoothly(uint16_t i_u16CurrentSpdValue, uint8_t i_u8StartDlyAdjTime, uint8_t i_u8CycleDlyAdjTime, uint16_t i_u16ExpSpdValue);
 
 
 void        StackFanSpdInc(void);

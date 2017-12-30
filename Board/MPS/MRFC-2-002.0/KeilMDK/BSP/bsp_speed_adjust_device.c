@@ -52,18 +52,14 @@ static      CPU_STK     SpdCtrlDevManageTaskStk[SPEED_CONTROL_DEVICE_MANAGE_TASK
 
 static      OS_TMR      PumpSpdAdjustTmr;//±ÃËÙÆ½»¬µ÷½Ú¶¨Ê±Æ÷
 
-static      OS_TMR      HydrgFanSpdDlyAdjTmr;//ÑÓÊ±µ÷½Ú¶¨Ê±Æ÷
-static      OS_TMR      HydrgFanSpdCycleDlyTimeAdjustTmr;//ÖÜÆÚÑÓÊ±µ÷½Ú¶¨Ê±Æ÷
+static      OS_TMR      HydrogenFanSpdCycleDlyTimeAdjustTmr;//ÖÆÇâ·ç»úÑÓÊ±µ÷½Ú¶¨Ê±Æ÷
 /*
 ***************************************************************************************************
 *                                       LOCAL GLOBAL VARIABLES
 ***************************************************************************************************
 */
-static  uint16_t    g_u16HydrgFanExpectCtlSpd = 0;
-static  uint16_t    g_u16HydrgFanCurrentCtlSpd = 0;
-
-static  uint16_t    g_u16HydrgPumpCtlSpd = 0;
-static  uint16_t    g_u16HydrgExpectPumpCtlSpd = 0;
+static  uint16_t    g_u16HydrogenFanExpectCtrlSpd = 0;
+static  uint16_t    g_u16HydrogenFanCurrentCtrlSpd = 0;
 
 static  uint16_t    g_u16PumpExpectCtrlSpd = 0;
 static  uint16_t    g_u16PumpCurrentCtrlSpd = 0;
@@ -82,8 +78,7 @@ static  uint16_t g_u16SpeedCaptureValue[3][2] = {0}; //Èý¸öÍ¨µÀÖÜÆÚÄÚµÚÒ»´Î½øÈëÖ
 *                                         FUNCTION PROTOTYPES
 ***************************************************************************************************
 */
-static void HydrgFanSpdDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg);
-static void HydrgFanSpdCycleDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg);
+static void HydrogenFanSpdCycleDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg);
 
 static void PumpAdjustCallBack(OS_TMR *p_tmr, void *p_arg);
 
@@ -219,12 +214,12 @@ void PumpSpdDec()
 */
 uint16_t GetPumpCurrentCtrlSpd(void)
 {
-    return g_u16HydrgPumpCtlSpd;
+    return g_u16PumpCurrentCtrlSpd;
 }
 
 uint16_t GetPumpExpectCtrlSpd(void)
 {
-    return g_u16HydrgExpectPumpCtlSpd;
+    return g_u16PumpExpectCtrlSpd;
 }
 /*
 ***************************************************************************************************
@@ -243,7 +238,7 @@ void SetPumpCurrentCtrlSpd(uint16_t i_u16NewSpd)
 {
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();
-    g_u16HydrgPumpCtlSpd = i_u16NewSpd;
+    g_u16PumpCurrentCtrlSpd = i_u16NewSpd;
     BSP_SetPumpSpd(i_u16NewSpd);
     CPU_CRITICAL_EXIT();
 }
@@ -342,7 +337,7 @@ static void PumpAdjustCallBack(OS_TMR *p_tmr, void *p_arg)
 }
 /*
 ***************************************************************************************************
-*                                         HydrgFanSpdInc()
+*                                         HydrogenFanCtrSpdInc()
 *
 * Description : increase the hydrogen fan speed a grade.
 *
@@ -353,7 +348,7 @@ static void PumpAdjustCallBack(OS_TMR *p_tmr, void *p_arg)
 * Notes       : the speed grade whole number is 2000.
 ***************************************************************************************************
 */
-void HydrgFanSpdInc()
+void HydrogenFanCtrSpdInc()
 {
     uint16_t u16HydrgFanCtlSpd;
     u16HydrgFanCtlSpd = GetHydrgFanCurrentCtlSpd();
@@ -364,12 +359,12 @@ void HydrgFanSpdInc()
         u16HydrgFanCtlSpd += 100;
     }
 
-    SetHydrgFanCtlSpd(u16HydrgFanCtlSpd);
+    SetHydrogenFanCtrlSpd(u16HydrgFanCtlSpd);
 }
 
 /*
 ***************************************************************************************************
-*                                         HydrgFanSpdDec()
+*                                         HydrogenFanCtrSpdDec()
 *
 * Description : decrease the hydrogen fan speed a grade.
 *
@@ -380,7 +375,7 @@ void HydrgFanSpdInc()
 * Notes       : the speed grade whole number is 2000.
 ***************************************************************************************************
 */
-void HydrgFanSpdDec()
+void HydrogenFanCtrSpdDec()
 {
     uint16_t u16HydrgFanCtlSpd;
     u16HydrgFanCtlSpd = GetHydrgFanCurrentCtlSpd();
@@ -391,7 +386,7 @@ void HydrgFanSpdDec()
         u16HydrgFanCtlSpd -= 100;
     }
 
-    SetHydrgFanCtlSpd(u16HydrgFanCtlSpd);
+    SetHydrogenFanCtrlSpd(u16HydrgFanCtlSpd);
 }
 
 /*
@@ -409,17 +404,17 @@ void HydrgFanSpdDec()
 */
 uint16_t GetHydrgFanCurrentCtlSpd(void)
 {
-    return g_u16HydrgFanCurrentCtlSpd;
+    return g_u16HydrogenFanCurrentCtrlSpd;
 }
 
 uint16_t GetHydrgFanExpectCtlSpd(void)
 {
-    return g_u16HydrgFanExpectCtlSpd;
+    return g_u16HydrogenFanExpectCtrlSpd;
 }
 
 /*
 ***************************************************************************************************
-*                                         SetHydrgFanCtlSpd()
+*                                         SetHydrogenFanCtrlSpd()
 *
 * Description : set the hydrogen fan speed grade.
 *
@@ -430,18 +425,18 @@ uint16_t GetHydrgFanExpectCtlSpd(void)
 * Notes       : the speed grade whole number is 2000.
 ***************************************************************************************************
 */
-void SetHydrgFanCtlSpd(uint16_t i_u16NewSpd)
+void SetHydrogenFanCtrlSpd(uint16_t i_u16NewSpd)
 {
     CPU_SR_ALLOC();
     CPU_CRITICAL_ENTER();
-    g_u16HydrgFanCurrentCtlSpd = i_u16NewSpd;
+    g_u16HydrogenFanCurrentCtrlSpd = i_u16NewSpd;
     BSP_SetHydrgFanSpd(i_u16NewSpd);
     CPU_CRITICAL_EXIT();
 }
 
 /*
 ***************************************************************************************************
-*                                         SetHydrgFanCtlSpdSmoothly()
+*                                         SetHydrogenFanCtrlSpdSmoothly()
 *
 * Description : Delay for a period of time to set the hydrogen fan speed.
 *
@@ -454,94 +449,57 @@ void SetHydrgFanCtlSpd(uint16_t i_u16NewSpd)
 * Notes       : the actual speed grade whole number is 2000.
 ***************************************************************************************************
 */
-void SetHydrgFanCtlSpdSmoothly(uint16_t i_u16CurrentSpdValue, uint8_t i_u8StartDlyAdjTime, uint8_t i_u8CycleDlyAdjTime, uint16_t i_u16ExpSpdValue)
+
+void SetHydrogenFanCtrlSpdSmoothly(uint16_t i_u16CurrentSpdVal, uint8_t i_u8FirstDlyAdjTime, uint8_t i_u8CycleDlyAdjTime, uint16_t i_u16ExpSpdVal)
 {
     OS_ERR err;
 
-    g_u16HydrgFanExpectCtlSpd = i_u16ExpSpdValue ;
+    OSTmrDel(&HydrogenFanSpdCycleDlyTimeAdjustTmr, &err);//ÖØÖÃ¶¨Ê±Æ÷×´Ì¬
+    g_u16HydrogenFanExpectCtrlSpd = i_u16ExpSpdVal ;
 
-    if(i_u8CycleDlyAdjTime > 0) {//ÖÜÆÚÑÓÊ±µ÷½Ú¶¨Ê±Æ÷
-        OSTmrCreate((OS_TMR *)&HydrgFanSpdCycleDlyTimeAdjustTmr,
+    if((i_u8FirstDlyAdjTime > 0) || (i_u8CycleDlyAdjTime > 0)) {
+        OSTmrCreate((OS_TMR *)&HydrogenFanSpdCycleDlyTimeAdjustTmr,
                     (CPU_CHAR *)"Hydrg fan Speed cycle Delay Adjust Timer",
-                    (OS_TICK)0,
-                    (OS_TICK)i_u8CycleDlyAdjTime * OS_CFG_TMR_TASK_RATE_HZ,
+                    (OS_TICK)i_u8FirstDlyAdjTime * OS_CFG_TMR_TASK_RATE_HZ,//Ê×´ÎÑÓÊ±dly(s)
+                    (OS_TICK)i_u8CycleDlyAdjTime * OS_CFG_TMR_TASK_RATE_HZ,//ÖÜÆÚÑÓÊ±cycle(s)
                     (OS_OPT)OS_OPT_TMR_PERIODIC,
-                    (OS_TMR_CALLBACK_PTR)HydrgFanSpdCycleDlyAdjCallBack,
+                    (OS_TMR_CALLBACK_PTR)HydrogenFanSpdCycleDlyAdjCallBack,
                     (void *)0,
                     (OS_ERR *)&err);
-    }
-
-    if(i_u8StartDlyAdjTime > 0) {//µ¥´ÎÑÓÊ±µ÷½Ú¶¨Ê±Æ÷
-        OSTmrCreate((OS_TMR *)&HydrgFanSpdDlyAdjTmr,
-                    (CPU_CHAR *)"Hydrg fan Speed Delay Adjust Timer",
-                    (OS_TICK)i_u8StartDlyAdjTime * OS_CFG_TMR_TASK_RATE_HZ,//dly
-                    (OS_TICK)0,                                            //period
-                    (OS_OPT)OS_OPT_TMR_ONE_SHOT,
-                    (OS_TMR_CALLBACK_PTR)HydrgFanSpdDlyAdjCallBack,
-                    (void *)0,
-                    (OS_ERR *)&err);
-
-        if(err == OS_ERR_NONE) {
-            OSTmrStart(&HydrgFanSpdDlyAdjTmr, &err);
-        }
+                    
+         if(err == OS_ERR_NONE) {
+            OSTmrStart(&HydrogenFanSpdCycleDlyTimeAdjustTmr, &err);   
+        }          
     } else {
-        if(i_u8CycleDlyAdjTime > 0) {
-            OSTmrStart(&HydrgFanSpdCycleDlyTimeAdjustTmr, &err);
-        }
-    }
-
-    SetHydrgFanCtlSpd(i_u16CurrentSpdValue);
+        SetHydrogenFanCtrlSpd(g_u16HydrogenFanExpectCtrlSpd);
+    }  
+    SetHydrogenFanCtrlSpd(i_u16CurrentSpdVal);
 }
 /*
 ***************************************************************************************************
-*                            HydrgFanSpdAdjustDlyCallBack()
+*                            HydrogenFanSpdCycleDlyAdjCallBack()
 *
-* Description : when HydrgFanSpdCycleDlyTimeAdjustTmr time out that call back function.
+* Description : when HydrogenFanSpdCycleDlyTimeAdjustTmr time out that call back function.
 *
 * Argument(s) : none.
 *
 * Return(s)   : none.
 *
-* Caller(s)   : Application.
-*
 * Note(s)     : none.
 ***************************************************************************************************
 */
-static void HydrgFanSpdDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg)
+static void HydrogenFanSpdCycleDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg)
 {
     OS_ERR err;
 
-    OSTmrStart(&HydrgFanSpdCycleDlyTimeAdjustTmr, &err);
-    OSTmrDel(&HydrgFanSpdDlyAdjTmr, &err);//É¾³ýµ¥´Î¶¨Ê±Æ÷
-}
-
-/*
-***************************************************************************************************
-*                            HydrgFanSpdCycleDlyAdjCallBack()
-*
-* Description : when HydrgFanSpdCycleDlyTimeAdjustTmr time out that call back function.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : Application.
-*
-* Note(s)     : none.
-***************************************************************************************************
-*/
-static void HydrgFanSpdCycleDlyAdjCallBack(OS_TMR *p_tmr, void *p_arg)
-{
-    OS_ERR err;
-
-    if(g_u16HydrgFanCurrentCtlSpd != g_u16HydrgFanExpectCtlSpd) {
-        if(g_u16HydrgFanCurrentCtlSpd < g_u16HydrgFanExpectCtlSpd) {
-            HydrgFanSpdInc();
+    if(g_u16HydrogenFanCurrentCtrlSpd != g_u16HydrogenFanExpectCtrlSpd) {
+        if(g_u16HydrogenFanCurrentCtrlSpd < g_u16HydrogenFanExpectCtrlSpd) {
+            HydrogenFanCtrSpdInc();
         } else {
-            HydrgFanSpdDec();
+            HydrogenFanCtrSpdDec();
         }
     } else {
-        OSTmrDel(&HydrgFanSpdCycleDlyTimeAdjustTmr, &err);
+        OSTmrDel(&HydrogenFanSpdCycleDlyTimeAdjustTmr, &err);
     }
 }
 /*
@@ -806,7 +764,7 @@ uint16_t    GetPumpFeedBackSpd(void)
     g_fSpdCaptureFrequency[PUMP_SPD_MONITOR] = 60 * (((5000.0 - g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][FRONT_EDGE] \
             + g_u16SpeedCaptureValue[PUMP_SPD_MONITOR][LAST_EDGE]) / 5000.0) + (g_u16SpdCaptureEdgeNum[PUMP_SPD_MONITOR] - 1));
 
-    return (uint16_t)(g_fSpdCaptureFrequency[PUMP_SPD_MONITOR] * 0.33);//2000/6000£¨ÉÏÎ»»úÊý¾ÝÏÔÊ¾±ÈÀý£©
+    return (uint16_t)(g_fSpdCaptureFrequency[PUMP_SPD_MONITOR] * 0.33);//ÉÏÎ»»úÊý¾ÝÏÔÊ¾±ÈÀý£©
 
 }
 /*
@@ -849,7 +807,7 @@ uint16_t GetStackFanSpdFeedBack(void)
     g_fSpdCaptureFrequency[STACK_FAN_SPD_MONITOR] = 60 * (((5000.0 - g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][FRONT_EDGE] \
             + g_u16SpeedCaptureValue[STACK_FAN_SPD_MONITOR][LAST_EDGE]) / 5000.0) + (g_u16SpdCaptureEdgeNum[STACK_FAN_SPD_MONITOR] - 1));
 
-    return (uint16_t)(g_fSpdCaptureFrequency[STACK_FAN_SPD_MONITOR]); //2000/6000
+    return (uint16_t)(g_fSpdCaptureFrequency[STACK_FAN_SPD_MONITOR]); 
 }
 
 /*

@@ -481,7 +481,8 @@ void ResetConrolAndCommunicateStatuCodeBit(uint8_t i_u8BitNmb);
 
 //获取系统功率
 float                   GetCurrentPower(void);
-
+//获取DC输出电流
+float CalcDCOutCurrentThisTime(void);
 //时间统计任务
 void                    SystemTimeStatTaskCreate(void);
 

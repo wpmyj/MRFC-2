@@ -227,7 +227,7 @@ void StartTimerDelayTask(TIMER_DELAY_TASK_TYPE_Typedef i_eTaskType, u16 i_u16Tas
 * Description : Add the new delay task to the timer6 delay queue.
 *
 * Arguments   : i_eTaskType:定义的延时任务类型.
-*               i_u16TaskDelayMs:添加的延时任务的延时时间,单位ms
+*               i_u16TaskDelayMs:添加的延时任务的延时时间,单位ms,最长32.7s
 *
 * Returns     : none
 *
@@ -342,7 +342,6 @@ static void DelayQueue_IRQHandler(void)
 */
 static void ResponseTheDelayTaskAndExecuteCmd(TIMER_DELAY_TASK_TYPE_Typedef i_eTaskType)
 {
-
     switch((u8)i_eTaskType) {
 
         case CAN_BUS_AUTO_RECONNECT_AFTER_30_SEC:
@@ -358,9 +357,10 @@ static void ResponseTheDelayTaskAndExecuteCmd(TIMER_DELAY_TASK_TYPE_Typedef i_eT
             CmdButtonStatuCheck();
             break;
 		
-		case UPDATE_DECOMPRESS_CNT_EVER_1MIN:
+		case UPDATE_DECOMPRESS_CNT_EVER_30SEC:
+			
+            AddNewDelayTaskToTimerQueue(UPDATE_DECOMPRESS_CNT_EVER_30SEC,30000);
 			UpdatePassiveDecompressCntPerMin();
-            AddNewDelayTaskToTimerQueue(UPDATE_DECOMPRESS_CNT_EVER_1MIN,60000);
             break;
 		
 

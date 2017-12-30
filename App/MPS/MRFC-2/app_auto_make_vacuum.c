@@ -120,18 +120,15 @@ static void  Make_Vacuum_FunctionTask(void *p_arg)
 
         while(DEF_TRUE) {
 
+
 			OSTimeDlyHMSM(0, 0, 1, 000,OS_OPT_TIME_HMSM_STRICT,&err);
 			
 			if(InVacuumFlag != DEF_YES){
-				
-				WaitSec ++;
-				if(WaitSec >= 60){
-					
-					BSP_PureHydrogenGasOutValvePwrOff();//关闭纯氢出口阀
-					BSP_TailGasOutValvePwrOn();//抽真空小板上电
-					InVacuumFlag = DEF_YES;
-					WaitSec = 0;
-				}
+							
+				BSP_PureHydrogenGasOutValvePwrOff();//关闭纯氢出口阀
+				BSP_TailGasOutValvePwrOn();//抽真空小板上电
+				InVacuumFlag = DEF_YES;
+
 			}else{
 				SysWorkStatus = GetSystemWorkStatu();
 				if(SysWorkStatus == EN_RUNNING){//切换后关闭抽真空

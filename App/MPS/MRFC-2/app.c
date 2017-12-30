@@ -37,7 +37,7 @@
 #include "app_stack_short_circuit_task.h"
 #include "app_mf210_communicate_task.h"
 #include "bsp_can.h"
-
+#include "bsp_delay_task_timer.h"
 /*
 ***************************************************************************************************
 *                                           MACRO DEFINITIONS
@@ -165,7 +165,7 @@ static  void  AppTaskStart(void *p_arg)
 
     LoadApplicationLayerParameters();
 
-    App_OS_SetAllHooks();             //钩子函数设置
+    App_OS_SetAllHooks();             
 
     CAN1_Init();                      //需先载入组网ID后再进行CAN总线配置，波特率50K
 
@@ -192,9 +192,9 @@ static  void  AppTaskStart(void *p_arg)
     StackManagerTaskCreate();
 	
 #ifdef  STACK_SHORT_CTRL_EN
-    StackShortCtrlTaskCreate();
+    StackRunningShortCtrlTaskCreate();
 	
-	StackStartUpCtrlTaskCreate();//启动阶段短路以及风机控制任务创建
+	StackStartUpCtrlTaskCreate();
 #endif
 
     CurrentSmoothlyLimitTaskCreate();
@@ -203,7 +203,7 @@ static  void  AppTaskStart(void *p_arg)
 
     StackManagerDlyStopTaskCreate();
 		
-	SystemStackUsageCheckTaskCreate();//任务堆栈使用情况监测任务
+//	SystemStackUsageCheckTaskCreate();//任务堆栈使用情况监测任务
 
     BSP_BuzzerOn();
     OSTimeDlyHMSM(0, 0, 0, 150, OS_OPT_TIME_HMSM_STRICT, &err);
@@ -212,15 +212,11 @@ static  void  AppTaskStart(void *p_arg)
     APP_TRACE_INFO(("Running top Task...\n\r"));
 	
 	OSTaskResume(&MembraneTubeProtectTaskTCB, &err); //开始抽真空
-	//测试代码段
-	OSTaskResume(&StackRunningShortTaskTCB, &err);//恢复短路活化任务
-	SetSystemWorkStatu(EN_RUNNING);
-	OSTaskResume(&StackManagerTaskTCB,&err);
-	OSTaskSuspend(&AppTaskStartTCB, //阻塞主任务，由制氢机管理任务和电堆管理任务管理机器
-				  &err);
-	SetSystemWorkStatu(EN_SHUTTING_DOWN);
 	
 	//测试代码段
+	/*--*/
+	//测试代码段
+	
     while(DEF_TRUE) {
         if(EN_THROUGH == CheckAuthorization()) {
 
@@ -257,7 +253,7 @@ static  void  AppTaskStart(void *p_arg)
 */
 void USER_NVIC_Cfg(void)
 {
-    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_3);     //设置NVIC中断分组3位抢占优先级，1位从占优先级
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_3);    
 }
 
 /******************* (C) COPYRIGHT 2016 Guangdong ENECO POWER *****END OF FILE****/
