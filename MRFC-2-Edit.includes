@@ -1,0 +1,17 @@
+App/MPS/MRFC-2
+Board/MPS/MRFC-2-002.0/KeilMDK/BSP
+Board/MPS/MRFC-2-002.0/KeilMDK/BSP/OS/uCOS-III
+CPU/ST/STM32F10x_StdPeriph_Lib_V3.5.0/Libraries/CMSIS/CM3/CoreSupport
+CPU/ST/STM32F10x_StdPeriph_Lib_V3.5.0/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x
+CPU/ST/STM32F10x_StdPeriph_Lib_V3.5.0/Libraries/STM32F10x_StdPeriph_Driver/inc
+uC-CPU
+uC-CPU/ARM-Cortex-M3/RealView
+uC-CPU/Cfg/Template
+uC-LIB
+uC-LIB/Cfg/Template
+uCOS-III/Cfg
+uCOS-III/Ports/ARM-Cortex-M3/Generic/GNU
+uCOS-III/Ports/ARM-Cortex-M3/Generic/IAR
+uCOS-III/Ports/ARM-Cortex-M3/Generic/RealView
+uCOS-III/Source
+Doc
