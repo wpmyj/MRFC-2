@@ -138,7 +138,7 @@ static void  Make_Vacuum_FunctionTask(void *p_arg)
 					break;
 				}else if(SysWorkStatus == EN_WAIT_CMD){
 
-					if(GetSrcAnaSig(NEGATIVE_PRESSURE) >= 55){//关机够抽到指定值就关停
+                    if(GetSrcAnaSig(NEGATIVE_PRESSURE) >= 55){//关机够抽到指定值就关停或者抽指定时间就停
 						BSP_PureHydrogenGasOutValvePwrOn();
 						BSP_TailGasOutValvePwrOff();
 						InVacuumFlag = DEF_NO;

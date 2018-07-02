@@ -127,7 +127,7 @@ static  void  BSP_StackFanPwrOff(void);
 static void   BSP_DeviceSpdCheckPortInit(u16 arr, u16 psc);
 static void   BSP_VentingTimeRecordHandler(void);
 
-static  void  BSP_CheckSwTypeWorkStatuInit(void);
+//static  void  BSP_CheckSwTypeWorkStatuInit(void);
 /*
 ***************************************************************************************************
 *                                             REGISTERS
@@ -265,7 +265,6 @@ void  BSP_Init(void)
 	DelayQueueTimerInit();
 	Bsp_Usart3Init();				//初始化本地限流端口
 //    AT25256B_Init();              //外部EEPROM初始化
-	BSP_CheckSwTypeWorkStatuInit();
 
     BSP_VentingIntervalRecordTimerInit();//电堆排气时间参数定时器初始化
 
@@ -1088,13 +1087,13 @@ void  BSP_OutsidePumpPwrOff(void)
 */
 void  BSP_StackShortCircuitActivationOn(void)
 {
-    GPIO_SetBits(GPIOB, BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_SetBits(GPIOE, BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Stack Short Circuit Activation On...\n\r"));
 }
 
 void  BSP_StackShortCircuitActivationOff(void)
 {
-    GPIO_ResetBits(GPIOB, BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
+    GPIO_ResetBits(GPIOE, BSP_GPIOE_PIN15_RSVD4_OUTPUT_PWR_CTRL_PORT_NMB);
     APP_TRACE_INFO(("Stack Short Circuit Activation Off...\n\r"));
 }
 /*
@@ -1962,47 +1961,7 @@ void CmdButtonStatuCheck(void)
 }
 
 
-/*
-*********************************************************************************************************
-*                                             BSP_CheckSwTypeWorkStatuInit()
-*
-* Description : Initialize the signal Port(s) for the SwType device work status.
-*
-* Argument(s) : none.
-*
-* Return(s)   : none.
-*
-* Caller(s)   : BSP_Init().
-*
-* Note(s)     : none.
-*********************************************************************************************************
-*/
-static  void  BSP_CheckSwTypeWorkStatuInit(void)
-{
-    GPIO_InitTypeDef  GPIO_InitStructure;
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE); //使能所有GPIO口时钟
 
-    PWR_BackupAccessCmd(ENABLE);//允许修改RTC 和后备寄存器
-    RCC_LSEConfig(RCC_LSE_OFF);//关闭外部低速外部时钟信号功能 后，PC13 PC14 PC15 才可以当普通IO用。
-    BKP_TamperPinCmd(DISABLE);//关闭入侵检测功能，也就是 PC13，也可以当普通IO 使用
-    PWR_BackupAccessCmd(DISABLE);//禁止修改后备寄存器
-
-    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_5;  //点火器火焰查询状态引脚
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
-    GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_13;  // 进液阀1查询状态引脚
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
-    GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_14;  // 进液阀2查询状态引脚
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
-    GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_15;  // 风机查询状态引脚
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;
-    GPIO_Init(GPIOC, &GPIO_InitStructure);
-}
 //开关设备工作状态查询函数
 WHETHER_TYPE_VARIABLE_Typedef   Check_Swtype_Work_Status(SwType_WORK_STATUS_Typedef Is_Swtype_Work)
 {
