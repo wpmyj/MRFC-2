@@ -1011,8 +1011,13 @@ uint8_t CalcStackOptimumTemperatureByCurrent(void)
     float m_StackOptimumTemperature;
 
     m_StackCurrent = GetSrcAnaSig(STACK_CURRENT);
-    m_StackOptimumTemperature = (0.53 * m_StackCurrent) + 26.01;
 
+    /* Parel Stack optimum temp para*/
+    if(m_StackCurrent < 51) {
+        m_StackOptimumTemperature = (0.1176 * m_StackCurrent) + 42;
+    } else {
+        m_StackOptimumTemperature = (0.2353 * m_StackCurrent) + 36;
+    }
     return (uint8_t)m_StackOptimumTemperature;
 }
 

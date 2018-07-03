@@ -212,7 +212,9 @@ static  void  AppTaskStart(void *p_arg)
 
     APP_TRACE_INFO(("Running top Task...\n\r"));
 	
-	OSTaskResume(&MembraneTubeProtectTaskTCB, &err); //开始抽真空
+    if(EN_WORK_MODE_FUEL_CELL != GetWorkMode()){
+        OSTaskResume(&MembraneTubeProtectTaskTCB, &err); //开始抽真空
+    }
 	
 	//测试代码段
 	/*--*/

@@ -68,16 +68,16 @@ void IncrementType_PID_Init(void)
     IPID.Err_Next = 0;
     IPID.Err_Last = 0;
 
-    IPID.OutValueMax = 1900;
+    IPID.OutValueMax = 2000;
     IPID.OutValueMin = 200;//MRFC-2板上已有3.2V电压输出了，实际为30%转速了
     IPID.OutValue = 200;
 
     IPID.CalcCycleCnt = 0;//计算/控制周期
 
-    IPID.Kp = 13.5;
+    IPID.Kp = 35;//13.5
     IPID.Ki = 16.2;
     IPID.Kd = 12.5;
-    IPID.Tsam = 10.0;
+    IPID.Tsam = 6.0;//10
 
 }
 

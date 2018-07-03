@@ -38,13 +38,12 @@
 *                                           MACRO DEFINITIONS
 ***************************************************************************************************
 */
-#define STACK_MANAGER_TASK_STK_SIZE                             				128
+#define STACK_MANAGER_TASK_STK_SIZE                             				200
 #define STACK_MANAGER_DELAY_STOP_TASK_STK_SIZE                  			 	100
 #define STACK_HYDROGEN_YIELD_MATCHING_OFFSET_VALUE_MONITOR_TASK_STK_SIZE     	256
 #define STACK_START_UP_CRTL_TASK_STK_SIZE                                    	100
 
 
-#define  STACK_FAN_CONTROL_CYCLE   8  //风机控制周期
 /*
 ***************************************************************************************************
 *                                         OS-RELATED    VARIABLES
@@ -159,7 +158,7 @@ void StackManagerTask(void)
 			SetDcOutPutCurrentLimitPoint(HOLD_LIMIT_POINT);
 
 			APP_TRACE_INFO(("Waitting the hydrogen press up to 45KPa ...\r\n"));
-			SetHydrogenPressArrivedWaitSwitch(WAIT_FOR_45KPA);
+            SetHydrogenPressArrivedWaitSwitch(WAIT_FOR_50KPA);
 			if(DEF_TRUE != PendSemByKeepWaiting(&StackStartSem)){
 				APP_TRACE_INFO(("Stack start sem pend err...\r\n"));
 				break;
@@ -167,24 +166,32 @@ void StackManagerTask(void)
 			
 			APP_TRACE_INFO(("Start the stack start purify...\r\n"));
 			SetStackFanCtrlSpd(1000);
-			BSP_HydrgOutValvePwrOn();
+
+            /*start vent step*/
 			OSTimeDlyHMSM(0, 0, 3, 0, OS_OPT_TIME_HMSM_STRICT, &err);
-			SetStackFanCtrlSpd(200);
-			OSTimeDlyHMSM(0, 0, 2, 0, OS_OPT_TIME_HMSM_STRICT, &err);
+            BSP_HydrgOutValvePwrOn();
+            OSTimeDlyHMSM(0, 0, 0, 250, OS_OPT_TIME_HMSM_STRICT, &err);
+            BSP_HydrgOutValvePwrOff();
+            OSTimeDlyHMSM(0, 0, 3, 0, OS_OPT_TIME_HMSM_STRICT, &err);
+            BSP_HydrgOutValvePwrOn();
+            OSTimeDlyHMSM(0, 0, 0, 250, OS_OPT_TIME_HMSM_STRICT, &err);
 			BSP_HydrgOutValvePwrOff();
+            SetStackFanCtrlSpd(200);
 			APP_TRACE_INFO(("Finish the stack start purify...\r\n"));
 						
+            /*10s 之后才能开始加载*/
 			BSP_DCConnectValvePwrOn();
 			StackWorkTimesInc();
-			IncrementType_PID_Init();   //PID参数初始化
+            IncrementType_PID_Init();   //PID参数初始化
 			SetStackWorkStatu(EN_IN_WORK);
 			StartTimerDelayTask(UPDATE_DECOMPRESS_CNT_EVER_30SEC,30000);//开始排气次数监测,30s更新一次
 		
 			SetStackAnaSigAlarmRunningMonitorHookSwitch(DEF_ENABLED);
 			SetStackFanSpdPidControlSwitch(DEF_ENABLED);		
-			SetStackStartUpShortTaskSwitch(DEF_ENABLED);  
+			
 			
 #ifdef  STACK_SHORT_CTRL_EN
+            SetStackStartUpShortTaskSwitch(DEF_ENABLED);  
             OSTaskResume(&StackStartUpCtrlTaskTCB, &err);//开始启动阶段短路以及风机控制流程
 
 			if(DEF_TRUE != PendSemByKeepWaiting(&StackStartUpShortCtrlFinishedSem)){
@@ -214,7 +221,7 @@ void StackManagerTask(void)
 
 				if(u16AmpIntegralSum >= g_u16RunPurifyAmpIntegralValue) {
 					BSP_HydrgOutValvePwrOn();
-					OSTimeDlyHMSM(0, 0, 0, 600, OS_OPT_TIME_HMSM_STRICT, &err);
+					OSTimeDlyHMSM(0, 0, 0, 250, OS_OPT_TIME_HMSM_STRICT, &err);//Parel排气0.25s
 					BSP_HydrgOutValvePwrOff();
 					u16AmpIntegralSum = 0;
 				}

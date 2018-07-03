@@ -69,7 +69,7 @@ static      uint8_t      g_u8StackAnaSigRunningMonitorAlarmHookSw = DEF_DISABLED
 static      uint8_t      g_u8StackIsPulledStoppedMonitorHookSw = DEF_DISABLED;//电堆是否被拉停监测开关
 static      uint8_t      g_u8RestartLimitCurrentFlag = DEF_CLR;//电堆被拉停后重新限流标志
 static      uint8_t      g_u8PumpAutoAdjFinishStatu = DEF_NO;//运行首次泵速调整状态
-static      uint16_t     g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;       //电堆气压小于10Kpa的秒数
+
 /*
 ***************************************************************************************************
 *                                         FUNCTION PROTOTYPES
@@ -296,7 +296,7 @@ static void StackHydrgPressHighEnoughWaitHook(uint8_t i_u8WaitStatus)
     fHydrgPress = GetSrcAnaSig(HYDROGEN_PRESS_1);
 
     //等待气压达到电堆进入排杂状态
-    if((fHydrgPress >= 45.0) && (WAIT_FOR_45KPA == i_u8WaitStatus)) {
+    if((fHydrgPress >= 50.0) && (WAIT_FOR_50KPA == i_u8WaitStatus)) {
 		
         OSSemPost(&StackStartSem, OS_OPT_POST_1, &err);
         g_u8StackHydrgPressArriveWaitSw = DO_NOT_WAIT;
@@ -318,10 +318,17 @@ static void StackHydrgPressHighEnoughWaitHook(uint8_t i_u8WaitStatus)
 */
 void StackAnaSigAlarmRunningMonitorHook(void)
 {
+#if STACK_TEMP_MONITOR_SWITCH
     float fStackTemp = 0;
-    float fHydrgPress = 0;
+    static uint8_t temp_high_cnt = 0;
     static uint8_t StackTempHighFlag = NO;
-    static uint8_t StackHydrogenPressLowFlag = NO;
+#endif
+
+    float fHydrgPress = 0;
+    static uint8_t FcPressHighFlag = NO;
+    static uint8_t FcPressLowFlag = NO;
+    static uint8_t g_FcPressOver75KPaHoldSec = 0;
+    static uint8_t g_FcPressBelow10KPaHoldSec = 0;       //电堆气压小于10Kpa的秒数
 #if STACK_VOLETAGE_MONITOR_SWITCH
     float fStackVoletage = 0;
     static uint8_t StackVoletageLowFlag = NO;
@@ -337,27 +344,24 @@ void StackAnaSigAlarmRunningMonitorHook(void)
         if(fStackTemp > 60) {
             AlarmCmd(STACK_TEMP_HIGH_ALARM, GENERAL_GRADE, ON);
 
-            if(fStackTemp > 68) {
-                if(StackTempHighFlag != YES) {
+            if(fStackTemp > 62) {
+                temp_high_cnt ++;
+                if((temp_high_cnt > 30) && (StackTempHighFlag != YES)){
                     BSP_DCConnectValvePwrOff();
+//                    CmdShutDown();      //关机命令
                     StackTempHighFlag = YES;
                     APP_TRACE_INFO(("Stack temp is above the high temp protect line,stop output...\n\r"));
                 }
             }
-        } else if(fStackTemp < 10) {
-            AlarmCmd(STACK_TEMP_LOW_ALARM, GENERAL_GRADE, ON);
-            APP_TRACE_INFO(("Stack temp is below the low temp protect line...\n\r"));
         } else {
             if((fStackTemp >= 20) && (fStackTemp <= 55)) {//系统恢复到正常温度,恢复输出
                 if(StackTempHighFlag == YES) {
                     BSP_DCConnectValvePwrOn();
                     StackTempHighFlag = NO;
                 }
-
                 AlarmCmd(STACK_TEMP_HIGH_ALARM, GENERAL_GRADE, OFF);
+                AlarmCmd(STACK_TEMP_LOW_ALARM, GENERAL_GRADE, OFF);
             }
-
-            AlarmCmd(STACK_TEMP_LOW_ALARM, GENERAL_GRADE, OFF);
         }
 
 #endif
@@ -366,33 +370,42 @@ void StackAnaSigAlarmRunningMonitorHook(void)
         /* 监测气压 */
         fHydrgPress = GetSrcAnaSig(HYDROGEN_PRESS_1);
 
-		if(fHydrgPress >= 75){
-			AlarmCmd(HYDROGEN_PRESS_HIGH_ALARM, SERIOUS_GRADE, ON);
-//            CmdShutDown();      //关机命令
-			APP_TRACE_INFO(("Stack hydrogen press is to high...\n\r"));
-		}else if(fHydrgPress >= 30) {
-            AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, SERIOUS_GRADE, OFF);
-			AlarmCmd(HYDROGEN_PRESS_HIGH_ALARM, SERIOUS_GRADE, OFF);
-			
-            if(StackHydrogenPressLowFlag != NO) {
-                APP_TRACE_INFO(("Stack hydrogen press resume...\n\r"));
-                BSP_DCConnectValvePwrOn();
-                StackHydrogenPressLowFlag = NO;
+        if(fHydrgPress >= 75){
+            if(FcPressHighFlag != YES){
+                g_FcPressOver75KPaHoldSec ++;
+                if(g_FcPressOver75KPaHoldSec >= 30) {
+//                    CmdShutDown();      //关机命令
+                    FcPressHighFlag = YES;
+                    g_FcPressOver75KPaHoldSec = 0;
+                    APP_TRACE_INFO(("Stack hydrogen press to high so shut down it...\n\r"));
+                }
             }
-        } else if(fHydrgPress >= 10) {
-            g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;
-        } else {
-            AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, SERIOUS_GRADE, ON);
-            g_u16StackHydrgPressBelow10KPaHoldSeconds++;
 
-            if(g_u16StackHydrgPressBelow10KPaHoldSeconds >= 30) {//气压小于10超过3s,电堆停止输出
-                BSP_DCConnectValvePwrOff();
-                StackHydrogenPressLowFlag = YES;
-                g_u16StackHydrgPressBelow10KPaHoldSeconds = 0;
-                APP_TRACE_INFO(("Stack hydrogen press is below the low temp protect line...\n\r"));
-//                CmdShutDown();      //关机命令
+        }else if(fHydrgPress >= 70) {
+            g_FcPressOver75KPaHoldSec = 0;
+            AlarmCmd(HYDROGEN_PRESS_HIGH_ALARM, SERIOUS_GRADE, ON);
+        }else if(fHydrgPress >= 50) {
+//            APP_TRACE_INFO(("Stack hydrogen press resume...\n\r"));
+            AlarmCmd(HYDROGEN_PRESS_HIGH_ALARM, SERIOUS_GRADE, OFF);
+            AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, SERIOUS_GRADE, OFF);
+            FcPressHighFlag = NO;
+            FcPressLowFlag = NO;
+        }else if(fHydrgPress >= 30) {
+//            AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, SERIOUS_GRADE, ON);
+            g_FcPressBelow10KPaHoldSec = 0;
+        }else {
+//            AlarmCmd(HYDROGEN_PRESS_LOW_ALARM, SERIOUS_GRADE, ON);
+            if(FcPressLowFlag != YES){
+                g_FcPressBelow10KPaHoldSec ++;
+                if(g_FcPressBelow10KPaHoldSec >= 20) {//气压小于20超过3s,电堆停止输出
+                    FcPressLowFlag = YES;
+                    g_FcPressBelow10KPaHoldSec = 0;
+                    APP_TRACE_INFO(("Stack hydrogen press is below the low temp protect line...\n\r"));
+//                    CmdShutDown();      //关机命令
+                }
             }
         }
+
 
 #endif
 
@@ -461,7 +474,7 @@ void SetHydrgProducerAnaSigAlarmRunningMonitorHookSwitch(uint8_t i_NewStatu)
 * Notes       : none.
 ***************************************************************************************************
 */
-void SetHydrogenPressArrivedWaitSwitch(uint8_t i_WaitStatus)
+void  SetHydrogenPressArrivedWaitSwitch(uint8_t i_WaitStatus)
 {
     g_u8StackHydrgPressArriveWaitSw = i_WaitStatus;
 }

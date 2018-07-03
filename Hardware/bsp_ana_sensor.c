@@ -422,6 +422,7 @@ float GetSrcAnaSig(ANALOG_SIGNAL_KIND_Typedef i_eAnaSigKind)
 
     if(STACK_TEMP == i_eAnaSigKind) {
         fMidRtMul100K = 59000 * (3.3 * g_fDigFilteredValue[STACK_TEMP] / 5.0 / 4095) / (1 - 3.3 * g_fDigFilteredValue[STACK_TEMP] / 5.0 / 4095);
+        fMidRtMul100K = fMidRtMul100K /1.21040;//ÐÞÕýÔË·ÅÎó²î
         fRtValue = fMidRtMul100K * 100000 / (100000 - fMidRtMul100K);
 		if(fRtValue > 351020){
 			g_fAnaSigAnaValue[STACK_TEMP] = 0;

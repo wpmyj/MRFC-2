@@ -41,7 +41,7 @@
 //等待排杂和工作气压状态
 #define  DO_NOT_WAIT      0
 #define  WAIT_FOR_36KPA   1
-#define  WAIT_FOR_45KPA   2
+#define  WAIT_FOR_50KPA   2
 
 
 

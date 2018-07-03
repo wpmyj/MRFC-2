@@ -249,11 +249,11 @@ VERIFY_RESULT_TYPE_VARIABLE_Typedef WaittingCommand(void)
     OS_ERR      err;
     VERIFY_RESULT_TYPE_VARIABLE_Typedef WaitCmdStatu;
  
-    SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL);  
-    APP_TRACE_INFO(("---HYDROGEN_PRODUCER_AND_FUEL_CELL_MODE---\r\n"));
+//    SetWorkMode(EN_WORK_MODE_HYDROGEN_PRODUCER_AND_FUEL_CELL);  
+//    APP_TRACE_INFO(("---HYDROGEN_PRODUCER_AND_FUEL_CELL_MODE---\r\n"));
 	
-//	SetWorkMode(EN_WORK_MODE_FUEL_CELL);  
-//    APP_TRACE_INFO(("---FUEL_CELL_MODE---\r\n"));
+	SetWorkMode(EN_WORK_MODE_FUEL_CELL);  
+    APP_TRACE_INFO(("---FUEL_CELL_MODE---\r\n"));
 	
     while(DEF_TRUE) {
         if(EN_THROUGH == DeviceSelfCheck()) {
@@ -327,7 +327,9 @@ void Starting(void)
         if(EN_START_PRGM_ONE_FRONT == GetSystemWorkStatu()) {
 			
             HydrgProducerWorkTimesInc();
-            OSTaskResume(&MembraneTubeProtectTaskTCB, &err); //重复启动时恢复抽真空任务，若是首次启动则无效
+            if(EN_WORK_MODE_FUEL_CELL != GetWorkMode()){
+                OSTaskResume(&MembraneTubeProtectTaskTCB, &err); //重复启动时恢复抽真空任务，若是首次启动则无效
+            }
             //第一次点火
             if((EN_PASS == IgniteFirstTime(IgniteCheckTable1, GoToNextStepTempTable1, 3, 1))) {
                 SetSystemWorkStatu(EN_START_PRGM_TWO);
